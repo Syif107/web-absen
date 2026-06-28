@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RelawanSync - Secure Ops v3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5', secondary: '#818CF8' } } } }</script>
+    <style>
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 4px; }
+        .view-section { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .view-active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .toast-enter { animation: slideInRight 0.3s ease-out forwards; }
+        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .bulk-checkbox { width: 1.25rem; height: 1.25rem; cursor: pointer; accent-color: #4F46E5; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased flex h-screen overflow-hidden">
+
+    <div id="loginScreen" class="fixed inset-0 bg-slate-900 z-[100] flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-96 text-center">
+            <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-lock text-primary text-2xl"></i></div>
+            <h2 class="text-2xl font-bold text-slate-800 mb-2">Akses Operasional</h2>
+            <p class="text-sm text-slate-500 mb-6">Masukkan PIN Admin untuk mengakses sistem.</p>
+            <input type="password" id="pinInput" placeholder="PIN..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-4 text-center text-xl tracking-[0.5em] font-bold outline-none focus:border-primary mb-4" onkeypress="if(event.key === 'Enter') checkPin()">
+            <button onclick="checkPin()" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-md">Buka Kunci Sistem</button>
+            <p id="loginError" class="text-red-500 text-sm font-bold mt-3 hidden">PIN Salah!</p>
+        </div>
+    </div>
+
+    <aside class="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col shadow-sm z-10 shrink-0">
+        <div class="h-16 flex items-center px-6 border-b border-slate-100"><div class="flex items-center gap-2 text-primary font-bold text-xl tracking-tight"><i class="fa-solid fa-fingerprint"></i><span>RelawanSync</span></div></div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <button onclick="switchView('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-4 py-3 bg-indigo-50 text-primary rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-chart-pie w-5"></i> Dashboard Analytics</button>
+            <button onclick="switchView('input')" id="nav-input" class="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-users-viewfinder w-5"></i> Validasi Absensi</button>
+            <button onclick="switchView('logs')" id="nav-logs" class="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-clipboard-list w-5"></i> Riwayat Absen</button>
+            <button onclick="switchView('master')" id="nav-master" class="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-database w-5"></i> Master Data</button>
+        </nav>
+        <div class="p-4 bg-slate-50 m-2 rounded-xl border border-slate-100"><button onclick="lockSystem()" class="w-full flex items-center justify-center gap-2 text-red-600 font-bold text-sm hover:bg-red-50 py-2 rounded-lg transition-colors"><i class="fa-solid fa-power-off"></i> Kunci Sistem</button></div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 lg:px-10 shadow-sm shrink-0">
+            <h1 class="text-xl font-bold text-slate-800" id="headerTitle">Dashboard Analytics</h1>
+            <button onclick="fetchServerData()" class="text-sm text-primary hover:bg-indigo-50 px-4 py-2 rounded-lg font-bold transition-colors border border-indigo-100 flex items-center gap-2"><i class="fa-solid fa-rotate"></i> Sync Server</button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-6 lg:p-10 bg-slate-50 custom-scroll relative">
+            <div id="loadingOverlay" class="absolute inset-0 bg-slate-50/90 z-20 flex flex-col items-center justify-center hidden">
+                <i class="fa-solid fa-circle-notch fa-spin text-5xl text-primary mb-4"></i>
+                <p class="text-slate-600 font-bold tracking-wide">Menyinkronkan Database...</p>
+            </div>
+
+            <div id="view-dashboard" class="view-section view-active max-w-6xl mx-auto space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-slate-400"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Total Terdaftar</p><h3 class="text-3xl font-black text-slate-800" id="kpi-total">-</h3></div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-primary"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Total Absensi</p><h3 class="text-3xl font-black text-primary" id="kpi-log">-</h3></div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-orange-400"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Hadir Siang</p><h3 class="text-3xl font-black text-orange-500" id="kpi-siang">-</h3></div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-indigo-800"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Hadir Malam</p><h3 class="text-3xl font-black text-indigo-900" id="kpi-malam">-</h3></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><h3 class="font-bold text-slate-800 mb-4">Distribusi Lokasi Proyek</h3><canvas id="chartLokasi" height="200"></canvas></div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><h3 class="font-bold text-slate-800 mb-4">Komposisi Bidang/Jabatan</h3><div class="w-full max-w-[250px] mx-auto"><canvas id="chartBidang"></canvas></div></div>
+                </div>
+            </div>
+
+            <div id="view-input" class="view-section max-w-5xl mx-auto">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="p-8">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-slate-50 p-5 rounded-xl border border-slate-200">
+                            <div><label class="text-xs font-bold text-slate-500 uppercase">Tanggal</label><input type="date" id="tanggal" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none"></div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase">Sesi</label>
+                                <select id="sesi" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none"><option value="Siang">☀️ Siang</option><option value="Malam">🌙 Malam</option></select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase">Ditugaskan Oleh (Global)</label>
+                                <input list="orgList" id="organisasi" placeholder="Organisasi Default..." class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none">
+                                <datalist id="orgList"><option value="Deputi ORSHID Mlg Raya"></option><option value="DPC PLOSO"></option></datalist>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase">Lokasi Proyek Kerja</label>
+                                <select id="lokasi" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none">
+                                    <option value="Masjid Raya Fatchan Mubiina">Masjid Raya</option>
+                                    <option value="Monumen Semboyan">Monumen Semboyan</option>
+                                    <option value="Pembesian">Pembesian</option>
+                                    <option value="Kanal Ta'at">Kanal Ta'at</option>
+                                    <option value="Gapuro Syukur">Gapuro Syukur</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="step-paste">
+                            <label class="text-sm font-bold text-slate-700 mb-2 block">Daftar Nama (OCR)</label>
+                            <textarea id="daftarNama" rows="8" placeholder="Paste di sini..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm outline-none resize-y"></textarea>
+                            <button type="button" onclick="generateStagingGrid()" class="mt-4 w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-sm">Review & Finalisasi</button>
+                        </div>
+
+                        <div id="step-review" class="hidden">
+                            <div class="flex justify-between items-center mb-4">
+                                <label class="text-sm font-bold text-primary"><i class="fa-solid fa-robot mr-1"></i> AI Auto-Detect Jabatan & Asal Organisasi</label>
+                                <button type="button" onclick="cancelStaging()" class="text-sm text-red-600 font-bold hover:bg-red-50 px-3 py-1 rounded">Batal</button>
+                            </div>
+                            <div class="border border-slate-200 rounded-xl overflow-hidden mb-6">
+                                <div class="max-h-96 overflow-y-auto custom-scroll">
+                                    <table class="w-full text-left text-sm whitespace-nowrap">
+                                        <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 shadow-sm z-10">
+                                            <tr>
+                                                <th class="px-3 py-3 w-12 text-center">No</th>
+                                                <th class="px-3 py-3">Nama Relawan</th>
+                                                <th class="px-3 py-3 w-40">Keahlian</th>
+                                                <th class="px-3 py-3 w-48">Asal Organisasi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="stagingBody" class="divide-y divide-slate-100 bg-white"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <button type="button" id="btnSubmitFinal" onclick="submitDataToServer()" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-all shadow-md text-lg"><i class="fa-solid fa-cloud-arrow-up"></i> Sinkronisasi Permanen</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-logs" class="view-section max-w-6xl mx-auto space-y-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex flex-col lg:flex-row justify-between items-center gap-4 mb-4">
+                        <h3 class="font-bold text-xl text-slate-800"><i class="fa-solid fa-clipboard-list text-primary mr-2"></i> Hasil Absensi</h3>
+                        <div class="flex flex-wrap gap-2 w-full lg:w-auto bg-slate-50 p-2 rounded-xl border border-slate-100">
+                            <input type="date" id="filterDate" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" onchange="applyFilters()">
+                            <select id="filterSesi" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" onchange="applyFilters()">
+                                <option value="">Semua Sesi</option>
+                                <option value="Siang">Siang</option>
+                                <option value="Malam">Malam</option>
+                            </select>
+                            <input type="text" id="searchLog" placeholder="Cari nama/sektor..." class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium w-48" oninput="applyFilters()">
+                            <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm"><i class="fa-solid fa-file-excel"></i> Eksport</button>
+                        </div>
+                    </div>
+                    
+                    <div id="bulkActionBanner" class="hidden bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex justify-between items-center transition-all">
+                        <span class="text-red-700 font-bold text-sm"><span id="selectedCount">0</span> Data Terpilih</span>
+                        <button onclick="deleteBulkLogs()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md text-sm font-bold shadow-sm"><i class="fa-solid fa-trash mr-2"></i> Hapus Terpilih</button>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-xl overflow-hidden">
+                        <div class="overflow-x-auto custom-scroll max-h-[500px]">
+                            <table class="w-full text-left text-sm whitespace-nowrap"><thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200 sticky top-0 z-10"><tr>
+                                <th class="px-4 py-3 text-center"><input type="checkbox" id="checkAll" class="bulk-checkbox" onchange="toggleAll(this)"></th>
+                                <th class="px-4 py-3 font-bold">Waktu Rekam</th>
+                                <th class="px-4 py-3 font-bold">Tanggal</th>
+                                <th class="px-4 py-3 font-bold">Sesi</th>
+                                <th class="px-4 py-3 font-bold">Nama</th>
+                                <th class="px-4 py-3 font-bold">Bidang</th>
+                                <th class="px-4 py-3 font-bold">Organisasi</th>
+                                <th class="px-4 py-3 font-bold">Lokasi Proyek</th>
+                                <th class="px-4 py-3 font-bold text-center">Aksi</th>
+                            </tr></thead><tbody id="logTableBody" class="divide-y divide-slate-100 text-slate-700 font-medium"></tbody></table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-master" class="view-section max-w-5xl mx-auto space-y-4">
+                <div class="flex justify-between items-center bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="font-bold text-xl text-slate-800">Database Master</h3>
+                    <input type="text" id="searchMaster" placeholder="Cari NIP / Nama..." class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm outline-none w-64 font-medium" oninput="searchMasterData()">
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="overflow-x-auto custom-scroll">
+                        <table class="w-full text-left text-sm"><thead class="bg-slate-50 border-b border-slate-200"><tr><th class="px-5 py-3 font-bold">NIP</th><th class="px-5 py-3 font-bold">Nama</th><th class="px-5 py-3 font-bold">Jabatan Aktif</th><th class="px-5 py-3 font-bold text-center">Aksi</th></tr></thead><tbody id="masterTableBody" class="divide-y divide-slate-100 font-medium"></tbody></table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <div id="toastContainer" class="fixed top-20 right-6 z-50 flex flex-col gap-3"></div>
+    </main>
+
+    <script>
+        // ⚠️ TARUH URL DEPLOYMENT BARU DI SINI
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbywrDXVI3k7F2Qffv1p4nWgUyJxd7ZAAkL9SWACm0VMrinP7qpVFyss90AfkQoZzXlSag/exec";
+        
+        // SECURITY
+        const PIN_ADMIN = "1234";
+        function checkPin() {
+            if(document.getElementById('pinInput').value === PIN_ADMIN) {
+                document.getElementById('loginScreen').style.opacity = '0';
+                setTimeout(() => { document.getElementById('loginScreen').style.display = 'none'; fetchServerData(); }, 500);
+            } else {
+                document.getElementById('loginError').classList.remove('hidden'); document.getElementById('pinInput').value = '';
+            }
+        }
+        function lockSystem() {
+            document.getElementById('pinInput').value = ''; document.getElementById('loginError').classList.add('hidden');
+            document.getElementById('loginScreen').style.display = 'flex'; setTimeout(() => { document.getElementById('loginScreen').style.opacity = '1'; }, 50);
+        }
+
+        // UI ROUTING & TOAST
+        const views = { 'dashboard': { id: 'view-dashboard', title: 'Dashboard Analytics' }, 'input': { id: 'view-input', title: 'Operasional: Validasi Absensi' }, 'logs': { id: 'view-logs', title: 'Operasional: Hasil Absensi' }, 'master': { id: 'view-master', title: 'Database Master Relawan' } };
+        function switchView(targetView) {
+            Object.keys(views).forEach(key => { document.getElementById(views[key].id).classList.remove('view-active'); document.getElementById(`nav-${key}`).classList.remove('bg-indigo-50', 'text-primary'); document.getElementById(`nav-${key}`).classList.add('text-slate-500'); });
+            document.getElementById(views[targetView].id).classList.add('view-active'); document.getElementById(`nav-${targetView}`).classList.remove('text-slate-500'); document.getElementById(`nav-${targetView}`).classList.add('bg-indigo-50', 'text-primary'); document.getElementById('headerTitle').innerText = views[targetView].title;
+            if(targetView !== 'input') fetchServerData();
+        }
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toastContainer'); const toast = document.createElement('div');
+            const config = { success: { b: 'border-green-500', i: '<i class="fa-solid fa-check text-green-500"></i>' }, error: { b: 'border-red-500', i: '<i class="fa-solid fa-xmark text-red-500"></i>' }, loading: { b: 'border-blue-500', i: '<i class="fa-solid fa-spinner fa-spin text-blue-500"></i>' } };
+            toast.className = `toast-enter flex items-center gap-4 w-80 p-4 rounded-xl shadow-lg border-l-4 bg-white ${config[type].b} text-slate-800 z-50`;
+            toast.innerHTML = `<div>${config[type].i}</div><div class="text-sm font-bold">${msg}</div>`;
+            container.appendChild(toast);
+            if (type !== 'loading') setTimeout(() => toast.remove(), 4000);
+            return toast;
+        }
+
+        // CORE DATA
+        let masterDataCache = []; let logDataCache = []; let filteredLogData = [];
+        let chartLokasiInst = null; let chartBidangInst = null;
+
+        async function fetchServerData() {
+            if(GOOGLE_SCRIPT_URL === "TARUH_URL_EXEC_DI_SINI") return;
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            try {
+                // CACHE BUSTING: Mencegah browser menampilkan data lawas yang nyangkut
+                const response = await fetch(GOOGLE_SCRIPT_URL + "?t=" + new Date().getTime());
+                const data = await response.json();
+                if(data.status === "success") {
+                    masterDataCache = data.master || []; logDataCache = data.logs || [];
+                    document.getElementById('kpi-total').innerText = masterDataCache.length;
+                    document.getElementById('kpi-log').innerText = logDataCache.length;
+                    document.getElementById('kpi-siang').innerText = logDataCache.filter(r=>r[3]==="Siang").length;
+                    document.getElementById('kpi-malam').innerText = logDataCache.filter(r=>r[3]==="Malam").length;
+                    
+                    renderMasterTable(masterDataCache); applyFilters(); renderCharts(logDataCache);
+                    document.getElementById('checkAll').checked = false; toggleBulkActionBanner();
+                }
+            } catch (e) { showToast("Gagal menarik data dari server.", "error"); } 
+            finally { document.getElementById('loadingOverlay').classList.add('hidden'); }
+        }
+
+        function renderCharts(logs) {
+            const pyCount = {}; const bdCount = {};
+            logs.forEach(r => { pyCount[r[7] || 'Lainnya'] = (pyCount[r[7] || 'Lainnya'] || 0) + 1; bdCount[r[6] || 'Helper'] = (bdCount[r[6] || 'Helper'] || 0) + 1; });
+            const ctxLokasi = document.getElementById('chartLokasi').getContext('2d');
+            if(chartLokasiInst) chartLokasiInst.destroy();
+            chartLokasiInst = new Chart(ctxLokasi, { type: 'bar', data: { labels: Object.keys(pyCount), datasets: [{ data: Object.values(pyCount), backgroundColor: '#4F46E5', borderRadius: 6 }] }, options: { responsive: true, plugins: { legend: { display: false } } } });
+            const ctxBidang = document.getElementById('chartBidang').getContext('2d');
+            if(chartBidangInst) chartBidangInst.destroy();
+            chartBidangInst = new Chart(ctxBidang, { type: 'doughnut', data: { labels: Object.keys(bdCount), datasets: [{ data: Object.values(bdCount), backgroundColor: ['#818CF8', '#F59E0B', '#10B981', '#F43F5E'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+        }
+
+        // LOG FILTER & RENDER
+        function applyFilters() {
+            const filterDate = document.getElementById('filterDate').value;
+            const filterSesi = document.getElementById('filterSesi').value.toLowerCase();
+            const keyword = document.getElementById('searchLog').value.toLowerCase();
+            
+            filteredLogData = logDataCache.filter(r => {
+                let matchDate = true;
+                if (filterDate && r[5]) { matchDate = new Date(r[5]).toISOString().slice(0, 10) === filterDate; }
+                const matchSesi = filterSesi ? (r[3] && r[3].toString().toLowerCase() === filterSesi) : true;
+                const matchKey = (r[2] && r[2].toString().toLowerCase().includes(keyword)) || (r[4] && r[4].toString().toLowerCase().includes(keyword)) || (r[7] && r[7].toString().toLowerCase().includes(keyword));
+                return matchDate && matchSesi && matchKey;
+            });
+            renderLogTable(filteredLogData);
+        }
+
+        function renderLogTable(data) {
+            const tbody = document.getElementById('logTableBody'); tbody.innerHTML = '';
+            [...data].reverse().forEach(row => {
+                const tr = document.createElement('tr'); tr.className = "hover:bg-slate-50";
+                // Gunakan TimeStamp Mutlak untuk ID Data
+                const timeValueStr = new Date(row[0]).getTime().toString(); 
+                
+                tr.innerHTML = `
+                    <td class="px-4 py-2 text-center"><input type="checkbox" class="bulk-checkbox log-checkbox" value="${timeValueStr}" onchange="toggleBulkActionBanner()"></td>
+                    <td class="px-4 py-2 text-xs text-slate-400">${new Date(row[0]).toLocaleTimeString('id-ID')}</td>
+                    <td class="px-4 py-2">${row[5] ? new Date(row[5]).toLocaleDateString('id-ID') : '-'}</td>
+                    <td class="px-4 py-2 font-bold ${row[3]==='Siang'?'text-orange-500':'text-indigo-700'}">${row[3]}</td>
+                    <td class="px-4 py-2 font-bold">${row[2]}</td>
+                    <td class="px-4 py-2"><span class="bg-slate-200 px-2 py-1 rounded text-xs font-bold">${row[6] || 'Helper'}</span></td>
+                    <td class="px-4 py-2 text-xs font-bold text-slate-500">${row[4] || '-'}</td>
+                    <td class="px-4 py-2">${row[7] || '-'}</td>
+                    <td class="px-4 py-2 text-center"><button onclick="deleteSingleLog('${timeValueStr}')" class="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><i class="fa-solid fa-trash"></i></button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // HAPUS DATA (SINGLE & BULK)
+        function toggleAll(source) { document.querySelectorAll('.log-checkbox').forEach(cb => cb.checked = source.checked); toggleBulkActionBanner(); }
+        function toggleBulkActionBanner() {
+            const count = document.querySelectorAll('.log-checkbox:checked').length;
+            const banner = document.getElementById('bulkActionBanner');
+            if(count > 0) { banner.classList.remove('hidden'); document.getElementById('selectedCount').innerText = count; } 
+            else { banner.classList.add('hidden'); document.getElementById('checkAll').checked = false; }
+        }
+
+        async function deleteSingleLog(timestampVal) {
+            if(!confirm("Hapus data absen ini secara permanen?")) return;
+            executeDeleteLogs([timestampVal]);
+        }
+
+        async function deleteBulkLogs() {
+            const checked = document.querySelectorAll('.log-checkbox:checked');
+            if(checked.length === 0 || !confirm(`Yakin ingin menghapus ${checked.length} data terpilih?`)) return;
+            executeDeleteLogs(Array.from(checked).map(cb => cb.value));
+        }
+
+        async function executeDeleteLogs(timestampsArray) {
+            let loading = showToast("Menghapus data...", "loading");
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: 'delete_bulk_log', timestamps: timestampsArray }) });
+                const result = await response.json();
+                loading.remove();
+                if(result.status === "success") { showToast(`${result.deleted} Data berhasil dihapus!`); fetchServerData(); } 
+                else throw new Error(result.message);
+            } catch (e) { loading.remove(); showToast(e.message, "error"); }
+        }
+
+        // MASTER DATA
+        function searchMasterData() {
+            const key = document.getElementById('searchMaster').value.toLowerCase();
+            renderMasterTable(masterDataCache.filter(r => (r[0]&&r[0].toString().toLowerCase().includes(key)) || (r[1]&&r[1].toString().toLowerCase().includes(key))));
+        }
+        async function deleteMasterData(nip) {
+            if(!confirm(`Hapus permanen NIP ${nip}?`)) return;
+            let loading = showToast("Menghapus...", "loading");
+            try {
+                const res = await fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: 'delete_master', nip: nip }) });
+                const result = await res.json();
+                loading.remove();
+                if(result.status === "success") { showToast("Master dihapus!"); fetchServerData(); } else throw new Error(result.message);
+            } catch (e) { loading.remove(); showToast(e.message, "error"); }
+        }
+        function renderMasterTable(data) {
+            const tbody = document.getElementById('masterTableBody'); tbody.innerHTML = '';
+            data.forEach(row => {
+                const tr = document.createElement('tr'); tr.className = "hover:bg-slate-50";
+                tr.innerHTML = `<td class="px-5 py-3 text-slate-500">${row[0]}</td><td class="px-5 py-3 font-bold">${row[1]}</td><td class="px-5 py-3"><span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-bold">${row[2]||'Helper'}</span></td><td class="px-5 py-3 text-center"><button onclick="deleteMasterData('${row[0]}')" class="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><i class="fa-solid fa-trash"></i></button></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // INPUT STAGING & AI DETECT MULTI-ORGANISASI
+        document.getElementById('tanggal').valueAsDate = new Date();
+        function generateStagingGrid() {
+            const globalOrg = document.getElementById('organisasi').value;
+            const names = document.getElementById('daftarNama').value.split('\n').filter(n => n.trim() !== "");
+            if(names.length === 0) { showToast("Data kosong!", "error"); return; }
+            
+            const tbody = document.getElementById('stagingBody'); tbody.innerHTML = '';
+            names.forEach((nama, idx) => {
+                // AI Deteksi Master Data
+                const found = masterDataCache.find(r => r[1].toString().toLowerCase() === nama.toLowerCase());
+                const defaultRole = found ? (found[2] || 'Helper') : 'Helper';
+                const defaultOrg = found ? (found[3] || globalOrg) : globalOrg; // Deteksi Organisasinya!
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-2 py-2 text-center font-bold text-slate-400">${idx + 1}</td>
+                    <td class="px-2 py-2 font-bold">${nama}</td>
+                    <td class="px-2 py-2">
+                        <select id="bidang-${idx}" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm font-bold text-primary outline-none">
+                            <option value="Helper" ${defaultRole==='Helper'?'selected':''}>Helper</option>
+                            <option value="Tukang" ${defaultRole==='Tukang'?'selected':''}>Tukang</option>
+                            <option value="Ahli Batu" ${defaultRole==='Ahli Batu'?'selected':''}>Ahli Batu</option>
+                            <option value="Supir Bego" ${defaultRole==='Supir Bego'?'selected':''}>Supir Bego</option>
+                        </select>
+                    </td>
+                    <td class="px-2 py-2">
+                        <input list="orgList" id="org-${idx}" value="${defaultOrg}" placeholder="Asal..." class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm font-bold text-slate-700 outline-none">
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('step-paste').classList.add('hidden'); document.getElementById('step-review').classList.remove('hidden');
+        }
+
+        function cancelStaging() { document.getElementById('step-review').classList.add('hidden'); document.getElementById('step-paste').classList.remove('hidden'); }
+
+        async function submitDataToServer() {
+            const globalLokasi = document.getElementById('lokasi').value;
+            const namesRaw = document.getElementById('daftarNama').value.split('\n').filter(n => n.trim() !== "");
+            const payload = {
+                action: 'insert', tanggal: document.getElementById('tanggal').value, sesi: document.getElementById('sesi').value,
+                lokasi: globalLokasi,
+                relawan: namesRaw.map((n, idx) => ({ 
+                    nama: n, 
+                    bidang: document.getElementById(`bidang-${idx}`).value,
+                    organisasi: document.getElementById(`org-${idx}`).value // Organisasi unik per baris!
+                }))
+            };
+
+            const btn = document.getElementById('btnSubmitFinal'); btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyinkronkan...`; btn.disabled = true;
+            let loading = showToast("Menyimpan...", "loading");
+
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+                const result = await response.json();
+                loading.remove();
+                if(result.status === "success") {
+                    showToast(`Selesai! ${result.logCount} absen dicatat.`);
+                    document.getElementById('daftarNama').value = ""; cancelStaging(); switchView('logs');
+                } else throw new Error(result.message);
+            } catch (e) { loading.remove(); showToast(e.message, "error"); }
+            finally { btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Sinkronisasi Permanen`; btn.disabled = false; }
+        }
+
+        function exportToExcel() {
+            const dataToExport = filteredLogData.length > 0 ? filteredLogData : logDataCache;
+            if(dataToExport.length === 0) return showToast("Data kosong", "error");
+            
+            const exportData = dataToExport.map((r, idx) => ({
+                "No": idx + 1, "Tanggal": r[5]?new Date(r[5]).toLocaleDateString('id-ID'):'',
+                "Sesi": r[3], "Nama Relawan": r[2], "Bidang": r[6] || 'Helper',
+                "Ditugaskan Oleh": r[4], "Lokasi Proyek": r[7] || '-'
+            }));
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            ws['!cols'] = [{wch:5}, {wch:12}, {wch:10}, {wch:25}, {wch:15}, {wch:25}, {wch:25}];
+            ws['!autofilter'] = { ref: XLSX.utils.encode_range(XLSX.utils.decode_range(ws['!ref'])) };
+            
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Rekap");
+            XLSX.writeFile(wb, `Laporan_Absensi_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+    </script>
+</body>
+</html>
