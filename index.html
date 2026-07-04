@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RelawanSync - Enterprise Ops v4</title>
+    <title>RelawanSync - Enterprise Ops v6.0</title>
+    <!-- CSS & JS Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -15,24 +16,27 @@
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 4px; }
+        
         .view-section { display: none; animation: fadeIn 0.3s ease-in-out; }
         .view-active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
         .toast-enter { animation: slideInRight 0.3s ease-out forwards; }
         @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        
         .bulk-checkbox { width: 1.25rem; height: 1.25rem; cursor: pointer; accent-color: #4F46E5; }
         
-        /* Sidebar transition */
-        #sidebar { transition: width 0.3s ease; }
+        /* Animasi Sidebar Lipat */
+        #sidebar { transition: width 0.3s ease; overflow-x: hidden; }
         .sidebar-collapsed { width: 5rem !important; }
-        .sidebar-collapsed .sidebar-text { display: none; }
+        .sidebar-collapsed .sidebar-text { opacity: 0; display: none; }
         .sidebar-collapsed .nav-btn { justify-content: center; padding-left: 0; padding-right: 0; }
         .sidebar-collapsed .nav-icon { margin-right: 0; font-size: 1.25rem; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased flex h-screen overflow-hidden">
 
-    <!-- LOGIN OVERLAY -->
+    <!-- LOGIN SCREEN -->
     <div id="loginScreen" class="fixed inset-0 bg-slate-900 z-[100] flex flex-col items-center justify-center transition-opacity duration-500">
         <div class="bg-white p-8 rounded-2xl shadow-2xl w-96 text-center">
             <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-lock text-primary text-2xl"></i></div>
@@ -44,30 +48,59 @@
         </div>
     </div>
 
-    <!-- SIDEBAR COLLAPSIBLE -->
+    <!-- MODAL EDIT MASTER DATA -->
+    <div id="editModal" class="fixed inset-0 bg-slate-900/60 z-[110] flex items-center justify-center hidden opacity-0 transition-opacity">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md transform scale-95 transition-transform" id="editModalContent">
+            <h3 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2"><i class="fa-solid fa-pen-to-square text-primary mr-2"></i>Edit Master Data</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">NIP (Permanen)</label>
+                    <input type="text" id="editNip" readonly class="w-full bg-slate-100 border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-500 mt-1 cursor-not-allowed">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Nama Lengkap</label>
+                    <input type="text" id="editNama" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-bold mt-1 uppercase outline-none focus:border-primary">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Jabatan / Keahlian</label>
+                    <input list="listBidangData" id="editJabatan" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-bold mt-1 outline-none focus:border-primary">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Asal Organisasi</label>
+                    <input list="listOrgData" id="editAsal" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-bold mt-1 outline-none focus:border-primary">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="closeEditModal()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl transition-colors">Batal</button>
+                <button onclick="saveEditMaster()" id="btnSaveEdit" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition-colors shadow-md">Simpan Perubahan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SIDEBAR (Dapat Dilipat) -->
     <aside id="sidebar" class="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col shadow-sm z-10 shrink-0">
         <div class="h-16 flex items-center px-6 border-b border-slate-100 justify-between">
-            <div class="flex items-center gap-2 text-primary font-bold text-xl tracking-tight">
-                <i class="fa-solid fa-fingerprint nav-icon text-primary"></i><span class="sidebar-text">RelawanSync</span>
+            <div class="flex items-center gap-2 text-primary font-bold text-xl tracking-tight whitespace-nowrap">
+                <i class="fa-solid fa-fingerprint nav-icon"></i><span class="sidebar-text">RelawanSync</span>
             </div>
         </div>
         <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            <button onclick="switchView('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center px-4 py-3 bg-indigo-50 text-primary rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-chart-pie w-6 nav-icon text-center"></i> <span class="sidebar-text">Dashboard Analytics</span></button>
-            <button onclick="switchView('input')" id="nav-input" class="nav-btn w-full flex items-center px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-users-viewfinder w-6 nav-icon text-center"></i> <span class="sidebar-text">Validasi Absensi</span></button>
-            <button onclick="switchView('logs')" id="nav-logs" class="nav-btn w-full flex items-center px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-clipboard-list w-6 nav-icon text-center"></i> <span class="sidebar-text">Riwayat Absen</span></button>
-            <button onclick="switchView('master')" id="nav-master" class="nav-btn w-full flex items-center px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-database w-6 nav-icon text-center"></i> <span class="sidebar-text">Master Data</span></button>
+            <button onclick="switchView('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 bg-indigo-50 text-primary rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-chart-pie w-6 text-center nav-icon"></i><span class="sidebar-text">Dashboard Analytics</span></button>
+            <button onclick="switchView('input')" id="nav-input" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-users-viewfinder w-6 text-center nav-icon"></i><span class="sidebar-text">Validasi Absensi</span></button>
+            <button onclick="switchView('logs')" id="nav-logs" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-clipboard-list w-6 text-center nav-icon"></i><span class="sidebar-text">Riwayat Absen</span></button>
+            <button onclick="switchView('master')" id="nav-master" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-database w-6 text-center nav-icon"></i><span class="sidebar-text">Master Data</span></button>
         </nav>
-        <div class="p-4 border-t border-slate-100">
-            <button onclick="lockSystem()" class="nav-btn w-full flex items-center justify-center gap-2 text-red-600 font-bold text-sm hover:bg-red-50 py-2 rounded-lg transition-colors"><i class="fa-solid fa-power-off nav-icon"></i> <span class="sidebar-text">Kunci Sistem</span></button>
+        <div class="p-4 bg-slate-50 m-2 rounded-xl border border-slate-100">
+            <button onclick="lockSystem()" class="nav-btn w-full flex items-center justify-center gap-2 text-red-600 font-bold text-sm hover:bg-red-50 py-2 rounded-lg transition-colors"><i class="fa-solid fa-power-off nav-icon"></i><span class="sidebar-text whitespace-nowrap">Kunci Sistem</span></button>
         </div>
     </aside>
 
+    <!-- MAIN CONTENT -->
     <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <!-- HEADER -->
         <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0">
             <div class="flex items-center gap-4">
-                <button onclick="toggleSidebar()" class="text-slate-500 hover:text-primary hover:bg-slate-100 p-2 rounded-lg transition-colors"><i class="fa-solid fa-bars text-lg"></i></button>
-                <h1 class="text-xl font-bold text-slate-800" id="headerTitle">Dashboard Analytics</h1>
+                <button onclick="toggleSidebar()" class="text-slate-500 hover:text-primary hover:bg-slate-100 w-10 h-10 rounded-lg transition-colors flex items-center justify-center"><i class="fa-solid fa-bars text-lg"></i></button>
+                <h1 class="text-xl font-bold text-slate-800 hidden sm:block" id="headerTitle">Dashboard Analytics</h1>
             </div>
             <button onclick="fetchServerData()" class="text-sm text-primary hover:bg-indigo-50 px-4 py-2 rounded-lg font-bold transition-colors border border-indigo-100 flex items-center gap-2"><i class="fa-solid fa-rotate"></i> Sync Server</button>
         </header>
@@ -78,85 +111,74 @@
                 <p class="text-slate-600 font-bold tracking-wide">Menyinkronkan Database...</p>
             </div>
 
-            <!-- DASHBOARD DENGAN FITUR FILTER WAKTU & CHART BARU -->
+            <!-- GLOBAL DATALISTS UNTUK AUTO-SUGGEST DARI HISTORY (Diisi otomatis via JS) -->
+            <datalist id="listBidangData"></datalist>
+            <datalist id="listOrgData"></datalist>
+
+            <!-- VIEW: DASHBOARD -->
             <div id="view-dashboard" class="view-section view-active max-w-7xl mx-auto space-y-6">
                 <!-- Filter Dashboard -->
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center gap-4">
-                    <span class="font-bold text-slate-700 text-sm"><i class="fa-solid fa-filter text-primary mr-2"></i>Filter Tampilan Visual:</span>
-                    <select id="dashFilterType" class="bg-slate-50 border border-slate-300 text-sm rounded-lg px-3 py-2 outline-none" onchange="toggleDashFilterInput()">
-                        <option value="all">Keseluruhan (All Time)</option>
-                        <option value="daily">Per Hari (Harian)</option>
-                        <option value="monthly">Per Bulan</option>
+                    <span class="font-bold text-slate-700 text-sm"><i class="fa-solid fa-filter text-primary mr-2"></i>Filter Visual:</span>
+                    <select id="dashFilterType" class="bg-slate-50 border border-slate-300 text-sm rounded-lg px-3 py-2 outline-none font-semibold" onchange="toggleDashFilterInput()">
+                        <option value="all">Keseluruhan Waktu</option><option value="daily">Harian (Per Tanggal)</option><option value="monthly">Bulanan</option>
                     </select>
-                    <input type="date" id="dashFilterDate" class="hidden bg-slate-50 border border-slate-300 text-sm rounded-lg px-3 py-2 outline-none" onchange="renderCharts()">
-                    <input type="month" id="dashFilterMonth" class="hidden bg-slate-50 border border-slate-300 text-sm rounded-lg px-3 py-2 outline-none" onchange="renderCharts()">
+                    <input type="date" id="dashFilterDate" class="hidden bg-slate-50 border border-slate-300 text-sm rounded-lg px-3 py-2 outline-none font-semibold" onchange="renderCharts()">
+                    <input type="month" id="dashFilterMonth" class="hidden bg-slate-50 border border-slate-300 text-sm rounded-lg px-3 py-2 outline-none font-semibold" onchange="renderCharts()">
                 </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-slate-400"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Total Relawan (Filter)</p><h3 class="text-3xl font-black text-slate-800" id="kpi-total">-</h3></div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-primary"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Log Absensi (Filter)</p><h3 class="text-3xl font-black text-primary" id="kpi-log">-</h3></div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-slate-400"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Total Relawan</p><h3 class="text-3xl font-black text-slate-800" id="kpi-total">-</h3></div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-primary"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Log (Sesuai Filter)</p><h3 class="text-3xl font-black text-primary" id="kpi-log">-</h3></div>
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-orange-400"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Hadir Siang</p><h3 class="text-3xl font-black text-orange-500" id="kpi-siang">-</h3></div>
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-indigo-800"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Hadir Malam</p><h3 class="text-3xl font-black text-indigo-900" id="kpi-malam">-</h3></div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Chart 1: Pie Lokasi -->
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 md:col-span-1">
-                        <h3 class="font-bold text-slate-800 mb-1">Persentase Penempatan Lokasi</h3>
-                        <p class="text-xs text-slate-500 mb-4">Sebaran relawan per proyek (%)</p>
-                        <div class="w-full max-w-[250px] mx-auto"><canvas id="chartLokasiPie"></canvas></div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-1">
+                        <h3 class="font-bold text-slate-800 mb-1">Distribusi Lokasi Kerja</h3>
+                        <p class="text-xs text-slate-500 mb-4">Persentase sebaran relawan per proyek.</p>
+                        <div class="w-full max-w-[250px] mx-auto h-64"><canvas id="chartLokasiPie"></canvas></div>
                     </div>
-                    <!-- Chart 2: Bar DPD -->
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 md:col-span-2">
-                        <h3 class="font-bold text-slate-800 mb-1">Distribusi Asal Organisasi (DPD/DPC)</h3>
-                        <p class="text-xs text-slate-500 mb-4">Jumlah relawan berdasarkan asal pendelegasi</p>
-                        <canvas id="chartDPD" height="100"></canvas>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-2">
+                        <h3 class="font-bold text-slate-800 mb-1">Kehadiran Berdasarkan Organisasi</h3>
+                        <p class="text-xs text-slate-500 mb-4">Volume relawan dari masing-masing instansi.</p>
+                        <div class="h-64"><canvas id="chartDPD"></canvas></div>
                     </div>
                 </div>
             </div>
 
-            <!-- INPUT DENGAN SMART EXCEL PARSER -->
-            <div id="view-input" class="view-section max-w-5xl mx-auto">
+            <!-- VIEW: INPUT (Validasi Absensi) -->
+            <div id="view-input" class="view-section max-w-6xl mx-auto">
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="p-8">
+                    <div class="p-4 md:p-8">
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-slate-50 p-5 rounded-xl border border-slate-200">
                             <div><label class="text-xs font-bold text-slate-500 uppercase">Tanggal</label><input type="date" id="tanggal" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none"></div>
+                            <div><label class="text-xs font-bold text-slate-500 uppercase">Sesi</label><select id="sesi" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none"><option value="Siang">☀️ Siang</option><option value="Malam">🌙 Malam</option></select></div>
                             <div>
-                                <label class="text-xs font-bold text-slate-500 uppercase">Sesi</label>
-                                <select id="sesi" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none"><option value="Siang">☀️ Siang</option><option value="Malam">🌙 Malam</option></select>
+                                <label class="text-xs font-bold text-slate-500 uppercase">Organisasi (Default)</label>
+                                <input list="listOrgData" id="organisasi" placeholder="Pilih/Ketik Organisasi..." class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none">
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-slate-500 uppercase">Ditugaskan Oleh (Default)</label>
-                                <input list="orgListGlobal" id="organisasi" placeholder="DPC Ploso..." class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none">
-                                <datalist id="orgListGlobal"><option value="Deputi ORSHID Mlg Raya"></option><option value="DPC PLOSO"></option></datalist>
-                            </div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 uppercase">Lokasi Proyek Kerja</label>
+                                <label class="text-xs font-bold text-slate-500 uppercase">Lokasi Proyek</label>
                                 <select id="lokasi" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none">
-                                    <option value="Masjid Raya Fatchan Mubiina">Masjid Raya</option>
-                                    <option value="Monumen Semboyan">Monumen Semboyan</option>
-                                    <option value="Pembesian">Pembesian</option>
-                                    <option value="Kanal Ta'at">Kanal Ta'at</option>
-                                    <option value="Gapuro Syukur">Gapuro Syukur</option>
+                                    <option value="Masjid Raya Fatchan Mubiina">Masjid Raya</option><option value="Monumen Semboyan">Monumen Semboyan</option><option value="Pembesian">Pembesian</option><option value="Kanal Ta'at">Kanal Ta'at</option><option value="Gapuro Syukur">Gapuro Syukur</option>
                                 </select>
                             </div>
                         </div>
 
                         <div id="step-paste">
-                            <label class="text-sm font-bold text-slate-700 mb-1 block">Input Data Relawan</label>
-                            <p class="text-xs text-slate-500 mb-3"><i class="fa-solid fa-circle-info text-blue-500"></i> Tip: Bisa langsung Copy-Paste dari tabel Excel (Gemini) yang berisi kolom Nama, Bidang, Asal Organisasi.</p>
-                            <textarea id="daftarNama" rows="8" placeholder="Paste data excel di sini..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm outline-none resize-y font-mono whitespace-pre"></textarea>
+                            <label class="text-sm font-bold text-slate-700 mb-1 block">Input Data Relawan (Smart Parser)</label>
+                            <p class="text-xs text-slate-500 mb-3"><i class="fa-solid fa-circle-info text-blue-500"></i> Tip: Paste langsung dari Excel. Sistem akan memisahkan kolom Nama, Bidang, dan Asal secara otomatis.</p>
+                            <textarea id="daftarNama" rows="10" placeholder="Paste data excel di sini..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm outline-none resize-y font-mono whitespace-pre"></textarea>
                             <button type="button" onclick="generateStagingGrid()" class="mt-4 w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-sm">Review & Finalisasi Data</button>
                         </div>
 
                         <div id="step-review" class="hidden">
-                            <div class="flex justify-between items-center mb-4">
-                                <label class="text-sm font-bold text-primary"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Data Preview (Auto UPPERCASE)</label>
-                                <button type="button" onclick="cancelStaging()" class="text-sm text-red-600 font-bold hover:bg-red-50 px-3 py-1 rounded">Batal</button>
+                            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+                                <label class="text-sm font-bold text-primary"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Data Preview (Nama otomatis KAPITAL & dapat diedit)</label>
+                                <button type="button" onclick="cancelStaging()" class="text-sm text-red-600 font-bold hover:bg-red-50 px-4 py-2 rounded-lg border border-red-200">Batal / Edit Teks Paste</button>
                             </div>
-                            <!-- Datalists untuk auto-complete Input -->
-                            <datalist id="listBidangData"><option value="Helper"><option value="Tukang Batu"><option value="Tukang Kayu"><option value="Tukang Las"><option value="Scafolding"><option value="GRC"></datalist>
-                            <datalist id="listOrgData"><option value="Deputi ORSHID Mlg Raya"><option value="DPC PLOSO"><option value="DPD MALANG RAYA"></datalist>
                             
                             <div class="border border-slate-200 rounded-xl overflow-hidden mb-6">
                                 <div class="max-h-96 overflow-y-auto custom-scroll">
@@ -164,36 +186,38 @@
                                         <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 shadow-sm z-10">
                                             <tr>
                                                 <th class="px-3 py-3 w-12 text-center">No</th>
-                                                <th class="px-3 py-3 w-48">Nama Relawan</th>
-                                                <th class="px-3 py-3 w-40">Keahlian (Bebas Ketik)</th>
-                                                <th class="px-3 py-3 w-48">Asal Organisasi (Bebas Ketik)</th>
+                                                <th class="px-3 py-3 w-56">Nama Relawan</th>
+                                                <th class="px-3 py-3 w-40">Keahlian</th>
+                                                <th class="px-3 py-3 w-48">Asal Organisasi</th>
                                             </tr>
                                         </thead>
-                                        <tbody id="stagingBody" class="divide-y divide-slate-100 bg-white"></tbody>
+                                        <tbody id="stagingBody" class="divide-y divide-slate-100 bg-white">
+                                            <!-- Data dirender sangat cepat via JS Buffer -->
+                                        </tbody>
                                     </table>
                                 </div>
                             </div>
-                            <button type="button" id="btnSubmitFinal" onclick="submitDataToServer()" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-all shadow-md text-lg"><i class="fa-solid fa-cloud-arrow-up"></i> Sinkronisasi Permanen</button>
+                            <button type="button" id="btnSubmitFinal" onclick="submitDataToServer()" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-all shadow-md text-lg"><i class="fa-solid fa-cloud-arrow-up"></i> Sinkronisasi Permanen ke Database</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- LOGS -->
+            <!-- VIEW: LOGS (Hasil Absensi) -->
             <div id="view-logs" class="view-section max-w-7xl mx-auto space-y-4">
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                    <div class="flex flex-col lg:flex-row justify-between items-center gap-4 mb-4">
-                        <h3 class="font-bold text-xl text-slate-800"><i class="fa-solid fa-clipboard-list text-primary mr-2"></i> Hasil Absensi</h3>
-                        <div class="flex flex-wrap gap-2 w-full lg:w-auto bg-slate-50 p-2 rounded-xl border border-slate-100">
-                            <input type="date" id="filterDate" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" onchange="applyLogFilters()">
-                            <select id="filterSesi" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" onchange="applyLogFilters()">
-                                <option value="">Semua Sesi</option>
-                                <option value="Siang">Siang</option>
-                                <option value="Malam">Malam</option>
-                            </select>
-                            <input type="text" id="searchLog" placeholder="Cari nama/sektor..." class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium w-48" oninput="applyLogFilters()">
-                            <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm"><i class="fa-solid fa-file-excel"></i> Eksport</button>
-                        </div>
+                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4 border-b border-slate-100 pb-4">
+                        <h3 class="font-bold text-xl text-slate-800 shrink-0"><i class="fa-solid fa-clipboard-list text-primary mr-2"></i> Hasil Absensi</h3>
+                        <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm transition-colors w-full md:w-auto justify-center"><i class="fa-solid fa-file-excel"></i> Eksport Excel (Terfilter)</button>
+                    </div>
+                    
+                    <!-- Advanced Filters Box -->
+                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4">
+                        <div><label class="text-xs font-bold text-slate-500 mb-1 block">Pilih Tanggal</label><input type="date" id="filterDate" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" onchange="applyLogFilters()"></div>
+                        <div><label class="text-xs font-bold text-slate-500 mb-1 block">Filter Sesi</label><select id="filterSesi" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" onchange="applyLogFilters()"><option value="">Semua Sesi</option><option value="Siang">Siang</option><option value="Malam">Malam</option></select></div>
+                        <div><label class="text-xs font-bold text-slate-500 mb-1 block">Filter Bidang</label><select id="filterBidang" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" onchange="applyLogFilters()"><option value="">Semua Bidang</option></select></div>
+                        <div><label class="text-xs font-bold text-slate-500 mb-1 block">Filter Organisasi</label><select id="filterOrg" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" onchange="applyLogFilters()"><option value="">Semua Asal</option></select></div>
+                        <div><label class="text-xs font-bold text-slate-500 mb-1 block">Cari Manual</label><input type="text" id="searchLog" placeholder="Ketik nama/lokasi..." class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" oninput="applyLogFilters()"></div>
                     </div>
                     
                     <div id="bulkActionBanner" class="hidden bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex justify-between items-center transition-all">
@@ -205,28 +229,24 @@
                         <div class="overflow-x-auto custom-scroll max-h-[500px]">
                             <table class="w-full text-left text-sm whitespace-nowrap"><thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200 sticky top-0 z-10"><tr>
                                 <th class="px-4 py-3 text-center"><input type="checkbox" id="checkAll" class="bulk-checkbox" onchange="toggleAll(this)"></th>
-                                <th class="px-4 py-3 font-bold">Waktu Rekam</th>
-                                <th class="px-4 py-3 font-bold">Tanggal</th>
-                                <th class="px-4 py-3 font-bold">Sesi</th>
-                                <th class="px-4 py-3 font-bold">Nama</th>
-                                <th class="px-4 py-3 font-bold">Bidang</th>
-                                <th class="px-4 py-3 font-bold">Organisasi</th>
-                                <th class="px-4 py-3 font-bold">Lokasi Proyek</th>
-                                <th class="px-4 py-3 font-bold text-center">Aksi</th>
-                            </tr></thead><tbody id="logTableBody" class="divide-y divide-slate-100 text-slate-700 font-medium"></tbody></table>
+                                <th class="px-4 py-3 font-bold">Waktu Rekam</th><th class="px-4 py-3 font-bold">Tanggal</th><th class="px-4 py-3 font-bold">Sesi</th><th class="px-4 py-3 font-bold">Nama</th><th class="px-4 py-3 font-bold">Bidang</th><th class="px-4 py-3 font-bold">Organisasi</th><th class="px-4 py-3 font-bold">Lokasi Proyek</th><th class="px-4 py-3 font-bold text-center">Aksi</th>
+                            </tr></thead><tbody id="logTableBody" class="divide-y divide-slate-100 text-slate-700 font-medium bg-white"></tbody></table>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- MASTER -->
-            <div id="view-master" class="view-section max-w-5xl mx-auto space-y-4">
-                <div class="flex justify-between items-center bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                    <h3 class="font-bold text-xl text-slate-800">Database Master</h3>
-                    <input type="text" id="searchMaster" placeholder="Cari NIP / Nama..." class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm outline-none w-64 font-medium" oninput="searchMasterData()">
+            <!-- VIEW: MASTER DATA -->
+            <div id="view-master" class="view-section max-w-6xl mx-auto space-y-4">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-5 rounded-2xl shadow-sm border border-slate-200 gap-4">
+                    <h3 class="font-bold text-xl text-slate-800"><i class="fa-solid fa-database text-primary mr-2"></i>Database Master</h3>
+                    <div class="flex flex-wrap md:flex-nowrap gap-3 w-full md:w-auto">
+                        <select id="filterMasterOrg" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium w-full md:w-auto" onchange="searchMasterData()"><option value="">Semua Organisasi</option></select>
+                        <select id="filterMasterBidang" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium w-full md:w-auto" onchange="searchMasterData()"><option value="">Semua Bidang</option></select>
+                        <input type="text" id="searchMaster" placeholder="Cari NIP / Nama..." class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm outline-none w-full md:w-64 font-medium" oninput="searchMasterData()">
+                    </div>
                 </div>
                 
-                <!-- Bulk Delete Banner untuk Master -->
                 <div id="bulkMasterBanner" class="hidden bg-red-50 border border-red-200 rounded-lg p-3 mb-2 flex justify-between items-center transition-all">
                     <span class="text-red-700 font-bold text-sm"><span id="selectedMasterCount">0</span> Master Terpilih</span>
                     <button onclick="deleteBulkMaster()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md text-sm font-bold shadow-sm"><i class="fa-solid fa-trash mr-2"></i> Hapus Massal</button>
@@ -236,25 +256,25 @@
                     <div class="overflow-x-auto custom-scroll max-h-[600px]">
                         <table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-50 border-b border-slate-200 sticky top-0 z-10"><tr>
                             <th class="px-4 py-3 text-center"><input type="checkbox" id="checkAllMaster" class="bulk-checkbox" onchange="toggleAllMaster(this)"></th>
-                            <th class="px-5 py-3 font-bold">NIP</th>
-                            <th class="px-5 py-3 font-bold">Nama</th>
-                            <th class="px-5 py-3 font-bold">Jabatan Terakhir</th>
-                            <th class="px-5 py-3 font-bold">Asal Organisasi</th>
-                            <th class="px-5 py-3 font-bold text-center">Aksi</th>
+                            <th class="px-5 py-3 font-bold text-slate-500 text-xs uppercase">NIP</th>
+                            <th class="px-5 py-3 font-bold text-slate-500 text-xs uppercase">Nama Lengkap</th>
+                            <th class="px-5 py-3 font-bold text-slate-500 text-xs uppercase">Jabatan Aktif</th>
+                            <th class="px-5 py-3 font-bold text-slate-500 text-xs uppercase">Asal Organisasi</th>
+                            <th class="px-5 py-3 font-bold text-center text-slate-500 text-xs uppercase">Aksi</th>
                         </tr></thead><tbody id="masterTableBody" class="divide-y divide-slate-100 font-medium bg-white"></tbody></table>
                     </div>
                 </div>
             </div>
 
         </div>
-        <div id="toastContainer" class="fixed top-20 right-6 z-50 flex flex-col gap-3"></div>
+        <div id="toastContainer" class="fixed top-20 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
     </main>
 
     <script>
-        // ⚠️ TARUH URL DEPLOYMENT BARU DI SINI
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyBuUgZdMRJJZj2eJqrEuK8hDfWUwueujg2o9e0iSRWGuE8pFi4egyT0ObknKJlrhAnXA/exec";
+        // ⚠️ TARUH URL DEPLOYMENT BARU DI SINI ⚠️
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzKmOvyklALtmwj39lAShZeiiAXizaal8L0rzHSeJzKizhtZ_A22ej64JI7FrKkANAyLQ/exec";
         
-        // SECURITY & UI
+        // ================= SECURITY & UI LOGIC =================
         const PIN_ADMIN = "1234";
         function checkPin() {
             if(document.getElementById('pinInput').value === PIN_ADMIN) {
@@ -269,13 +289,11 @@
             document.getElementById('loginScreen').style.display = 'flex'; setTimeout(() => { document.getElementById('loginScreen').style.opacity = '1'; }, 50);
         }
         
-        // SIDEBAR TOGGLE
         let isSidebarCollapsed = false;
         function toggleSidebar() {
             const sb = document.getElementById('sidebar');
             isSidebarCollapsed = !isSidebarCollapsed;
-            if(isSidebarCollapsed) { sb.classList.add('sidebar-collapsed'); } 
-            else { sb.classList.remove('sidebar-collapsed'); }
+            if(isSidebarCollapsed) { sb.classList.add('sidebar-collapsed'); } else { sb.classList.remove('sidebar-collapsed'); }
         }
 
         const views = { 'dashboard': { id: 'view-dashboard', title: 'Dashboard Analytics' }, 'input': { id: 'view-input', title: 'Operasional: Validasi Absensi' }, 'logs': { id: 'view-logs', title: 'Operasional: Hasil Absensi' }, 'master': { id: 'view-master', title: 'Database Master Relawan' } };
@@ -288,14 +306,14 @@
         function showToast(msg, type = 'success') {
             const container = document.getElementById('toastContainer'); const toast = document.createElement('div');
             const config = { success: { b: 'border-green-500', i: '<i class="fa-solid fa-check text-green-500"></i>' }, error: { b: 'border-red-500', i: '<i class="fa-solid fa-xmark text-red-500"></i>' }, loading: { b: 'border-blue-500', i: '<i class="fa-solid fa-spinner fa-spin text-blue-500"></i>' } };
-            toast.className = `toast-enter flex items-center gap-4 w-80 p-4 rounded-xl shadow-lg border-l-4 bg-white ${config[type].b} text-slate-800 z-50`;
+            toast.className = `toast-enter flex items-center gap-4 w-80 p-4 rounded-xl shadow-lg border-l-4 bg-white ${config[type].b} text-slate-800 z-50 pointer-events-auto`;
             toast.innerHTML = `<div>${config[type].i}</div><div class="text-sm font-bold">${msg}</div>`;
             container.appendChild(toast);
             if (type !== 'loading') setTimeout(() => toast.remove(), 4000);
             return toast;
         }
 
-        // CORE DATA
+        // ================= CORE DATA & DYNAMIC DATALISTS =================
         let masterDataCache = []; let logDataCache = []; let filteredLogData = [];
         let chartLokasiPie = null; let chartDPDInst = null;
 
@@ -303,11 +321,16 @@
             if(GOOGLE_SCRIPT_URL === "TARUH_URL_EXEC_DI_SINI") return;
             document.getElementById('loadingOverlay').classList.remove('hidden');
             try {
+                // Cache busting untuk menghindari baca data nyangkut
                 const response = await fetch(GOOGLE_SCRIPT_URL + "?t=" + new Date().getTime());
                 const data = await response.json();
                 if(data.status === "success") {
                     masterDataCache = data.master || []; logDataCache = data.logs || [];
-                    renderMasterTable(masterDataCache); applyLogFilters(); renderCharts(); // Dashboard Render
+                    
+                    populateDatalists(); // Isi Dropdown filter otomatis
+                    searchMasterData(); // Terapkan filter master
+                    applyLogFilters();  // Terapkan filter logs
+                    renderCharts();     // Dashboard Render
                     
                     document.getElementById('checkAll').checked = false; toggleBulkActionBanner();
                     document.getElementById('checkAllMaster').checked = false; toggleMasterBulkAction();
@@ -316,18 +339,33 @@
             finally { document.getElementById('loadingOverlay').classList.add('hidden'); }
         }
 
-        // DASHBOARD FILTERS & CHARTS
+        function populateDatalists() {
+            const orgSet = new Set(); const bidangSet = new Set();
+            masterDataCache.forEach(r => { if(r[3] && r[3] !== '-') orgSet.add(r[3]); if(r[2] && r[2] !== '-') bidangSet.add(r[2]); });
+            
+            const orgHtml = Array.from(orgSet).map(o => `<option value="${o}">`).join('');
+            const bidangHtml = Array.from(bidangSet).map(b => `<option value="${b}">`).join('');
+            
+            // Suggestion DataList
+            document.getElementById('listOrgData').innerHTML = orgHtml;
+            document.getElementById('listBidangData').innerHTML = bidangHtml;
+            
+            // Dropdown Filters
+            const filterOrgHtml = '<option value="">Semua Organisasi</option>' + Array.from(orgSet).map(o => `<option value="${o}">${o}</option>`).join('');
+            const filterBidangHtml = '<option value="">Semua Bidang</option>' + Array.from(bidangSet).map(b => `<option value="${b}">${b}</option>`).join('');
+            
+            document.getElementById('filterOrg').innerHTML = filterOrgHtml;
+            document.getElementById('filterMasterOrg').innerHTML = filterOrgHtml;
+            document.getElementById('filterBidang').innerHTML = filterBidangHtml;
+            document.getElementById('filterMasterBidang').innerHTML = filterBidangHtml;
+        }
+
+        // ================= DASHBOARD CHARTS =================
         function toggleDashFilterInput() {
             const type = document.getElementById('dashFilterType').value;
-            document.getElementById('dashFilterDate').classList.add('hidden');
-            document.getElementById('dashFilterMonth').classList.add('hidden');
-            if(type === 'daily') {
-                document.getElementById('dashFilterDate').classList.remove('hidden');
-                document.getElementById('dashFilterDate').valueAsDate = new Date();
-            } else if (type === 'monthly') {
-                document.getElementById('dashFilterMonth').classList.remove('hidden');
-                document.getElementById('dashFilterMonth').value = new Date().toISOString().slice(0,7);
-            }
+            document.getElementById('dashFilterDate').classList.add('hidden'); document.getElementById('dashFilterMonth').classList.add('hidden');
+            if(type === 'daily') { document.getElementById('dashFilterDate').classList.remove('hidden'); document.getElementById('dashFilterDate').valueAsDate = new Date(); } 
+            else if (type === 'monthly') { document.getElementById('dashFilterMonth').classList.remove('hidden'); document.getElementById('dashFilterMonth').value = new Date().toISOString().slice(0,7); }
             renderCharts();
         }
 
@@ -335,16 +373,9 @@
             const type = document.getElementById('dashFilterType').value;
             let dashData = logDataCache;
             
-            // Filter Dashboard Data
-            if(type === 'daily') {
-                const fDate = document.getElementById('dashFilterDate').value;
-                dashData = logDataCache.filter(r => r[5] && new Date(r[5]).toISOString().slice(0, 10) === fDate);
-            } else if (type === 'monthly') {
-                const fMonth = document.getElementById('dashFilterMonth').value;
-                dashData = logDataCache.filter(r => r[5] && new Date(r[5]).toISOString().slice(0, 7) === fMonth);
-            }
+            if(type === 'daily') { const fDate = document.getElementById('dashFilterDate').value; dashData = logDataCache.filter(r => r[5] && new Date(r[5]).toISOString().slice(0, 10) === fDate); } 
+            else if (type === 'monthly') { const fMonth = document.getElementById('dashFilterMonth').value; dashData = logDataCache.filter(r => r[5] && new Date(r[5]).toISOString().slice(0, 7) === fMonth); }
 
-            // Update KPI Cards
             document.getElementById('kpi-total').innerText = masterDataCache.length;
             document.getElementById('kpi-log').innerText = dashData.length;
             document.getElementById('kpi-siang').innerText = dashData.filter(r=>r[3]==="Siang").length;
@@ -356,37 +387,31 @@
                 locCount[loc] = (locCount[loc] || 0) + 1; orgCount[org] = (orgCount[org] || 0) + 1;
             });
 
-            // CHART 1: Pie Persentase Lokasi
             const ctxPie = document.getElementById('chartLokasiPie').getContext('2d');
             if(chartLokasiPie) chartLokasiPie.destroy();
-            chartLokasiPie = new Chart(ctxPie, { 
-                type: 'doughnut', 
-                data: { labels: Object.keys(locCount), datasets: [{ data: Object.values(locCount), backgroundColor: ['#4F46E5', '#10B981', '#F59E0B', '#F43F5E', '#8B5CF6'] }] }, 
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } } } 
-            });
+            chartLokasiPie = new Chart(ctxPie, { type: 'doughnut', data: { labels: Object.keys(locCount), datasets: [{ data: Object.values(locCount), backgroundColor: ['#4F46E5', '#10B981', '#F59E0B', '#F43F5E', '#8B5CF6'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } } });
 
-            // CHART 2: Bar DPD
             const ctxDPD = document.getElementById('chartDPD').getContext('2d');
             if(chartDPDInst) chartDPDInst.destroy();
-            chartDPDInst = new Chart(ctxDPD, { 
-                type: 'bar', 
-                data: { labels: Object.keys(orgCount), datasets: [{ label: 'Jumlah Relawan', data: Object.values(orgCount), backgroundColor: '#818CF8', borderRadius: 4 }] }, 
-                options: { responsive: true, plugins: { legend: { display: false } } } 
-            });
+            chartDPDInst = new Chart(ctxDPD, { type: 'bar', data: { labels: Object.keys(orgCount), datasets: [{ label: 'Total Relawan', data: Object.values(orgCount), backgroundColor: '#818CF8', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
         }
 
-        // LOG FILTER & RENDER
+        // ================= LOGS: ADVANCED FILTERS & RENDER =================
         function applyLogFilters() {
-            const filterDate = document.getElementById('filterDate').value;
-            const filterSesi = document.getElementById('filterSesi').value.toLowerCase();
-            const keyword = document.getElementById('searchLog').value.toLowerCase();
+            const fDate = document.getElementById('filterDate').value;
+            const fSesi = document.getElementById('filterSesi').value.toLowerCase();
+            const fBidang = document.getElementById('filterBidang').value.toLowerCase();
+            const fOrg = document.getElementById('filterOrg').value.toLowerCase();
+            const key = document.getElementById('searchLog').value.toLowerCase();
             
             filteredLogData = logDataCache.filter(r => {
-                let matchDate = true;
-                if (filterDate && r[5]) { matchDate = new Date(r[5]).toISOString().slice(0, 10) === filterDate; }
-                const matchSesi = filterSesi ? (r[3] && r[3].toString().toLowerCase() === filterSesi) : true;
-                const matchKey = (r[2] && r[2].toString().toLowerCase().includes(keyword)) || (r[4] && r[4].toString().toLowerCase().includes(keyword)) || (r[7] && r[7].toString().toLowerCase().includes(keyword));
-                return matchDate && matchSesi && matchKey;
+                let matchDate = fDate ? (r[5] && new Date(r[5]).toISOString().slice(0, 10) === fDate) : true;
+                const matchSesi = fSesi ? (r[3] && r[3].toString().toLowerCase() === fSesi) : true;
+                const matchBidang = fBidang ? (r[6] && r[6].toString().toLowerCase() === fBidang) : true;
+                const matchOrg = fOrg ? (r[4] && r[4].toString().toLowerCase() === fOrg) : true;
+                const matchKey = key ? ((r[2]&&r[2].toString().toLowerCase().includes(key)) || (r[7]&&r[7].toString().toLowerCase().includes(key))) : true;
+                
+                return matchDate && matchSesi && matchBidang && matchOrg && matchKey;
             });
             renderLogTable(filteredLogData);
         }
@@ -394,9 +419,8 @@
         function renderLogTable(data) {
             const tbody = document.getElementById('logTableBody'); tbody.innerHTML = '';
             [...data].reverse().forEach(row => {
-                const tr = document.createElement('tr'); tr.className = "hover:bg-slate-50";
+                const tr = document.createElement('tr'); tr.className = "hover:bg-slate-50 transition-colors";
                 const timeValueStr = new Date(row[0]).getTime().toString(); 
-                
                 tr.innerHTML = `
                     <td class="px-4 py-2 text-center"><input type="checkbox" class="bulk-checkbox log-checkbox" value="${timeValueStr}" onchange="toggleBulkActionBanner()"></td>
                     <td class="px-4 py-2 text-xs text-slate-400">${new Date(row[0]).toLocaleTimeString('id-ID')}</td>
@@ -406,73 +430,101 @@
                     <td class="px-4 py-2"><span class="bg-slate-200 px-2 py-1 rounded text-xs font-bold">${row[6] || 'Helper'}</span></td>
                     <td class="px-4 py-2 text-xs font-bold text-slate-500">${row[4] || '-'}</td>
                     <td class="px-4 py-2">${row[7] || '-'}</td>
-                    <td class="px-4 py-2 text-center"><button onclick="deleteSingleLog('${timeValueStr}')" class="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><i class="fa-solid fa-trash"></i></button></td>
+                    <td class="px-4 py-2 text-center"><button onclick="deleteSingleLog('${timeValueStr}')" class="text-red-500 hover:bg-red-50 p-2 rounded transition-colors" title="Hapus"><i class="fa-solid fa-trash"></i></button></td>
                 `;
                 tbody.appendChild(tr);
             });
         }
-
-        // HAPUS DATA LOG
+        
         function toggleAll(source) { document.querySelectorAll('.log-checkbox').forEach(cb => cb.checked = source.checked); toggleBulkActionBanner(); }
         function toggleBulkActionBanner() {
             const count = document.querySelectorAll('.log-checkbox:checked').length;
             const banner = document.getElementById('bulkActionBanner');
-            if(count > 0) { banner.classList.remove('hidden'); document.getElementById('selectedCount').innerText = count; } 
-            else { banner.classList.add('hidden'); document.getElementById('checkAll').checked = false; }
+            if(count > 0) { banner.classList.remove('hidden'); document.getElementById('selectedCount').innerText = count; } else { banner.classList.add('hidden'); document.getElementById('checkAll').checked = false; }
         }
-
         async function deleteSingleLog(timestampVal) { if(!confirm("Hapus data absen ini secara permanen?")) return; executeDeleteLogs([timestampVal]); }
         async function deleteBulkLogs() {
             const checked = document.querySelectorAll('.log-checkbox:checked');
-            if(checked.length === 0 || !confirm(`Yakin ingin menghapus ${checked.length} data absen?`)) return;
+            if(checked.length === 0 || !confirm(`Yakin ingin menghapus ${checked.length} data absen terpilih?`)) return;
             executeDeleteLogs(Array.from(checked).map(cb => cb.value));
         }
-
         async function executeDeleteLogs(timestampsArray) {
             let loading = showToast("Menghapus data...", "loading");
             try {
                 const response = await fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: 'delete_bulk_log', timestamps: timestampsArray }) });
                 const result = await response.json();
                 loading.remove();
-                if(result.status === "success") { showToast(`${result.deleted} Data berhasil dihapus!`); fetchServerData(); } 
-                else throw new Error(result.message);
+                if(result.status === "success") { showToast(`${result.deleted} Data berhasil dihapus!`); fetchServerData(); } else throw new Error(result.message);
             } catch (e) { loading.remove(); showToast(e.message, "error"); }
         }
 
-        // MASTER DATA (DENGAN ASAL ORGANISASI & BULK DELETE)
+        // ================= MASTER DATA & EDIT MODAL =================
         function searchMasterData() {
             const key = document.getElementById('searchMaster').value.toLowerCase();
-            renderMasterTable(masterDataCache.filter(r => (r[0]&&r[0].toString().toLowerCase().includes(key)) || (r[1]&&r[1].toString().toLowerCase().includes(key))));
+            const fBidang = document.getElementById('filterMasterBidang').value.toLowerCase();
+            const fOrg = document.getElementById('filterMasterOrg').value.toLowerCase();
+            
+            const filtered = masterDataCache.filter(r => {
+                const matchKey = (r[0]&&r[0].toString().toLowerCase().includes(key)) || (r[1]&&r[1].toString().toLowerCase().includes(key));
+                const matchBidang = fBidang ? (r[2]&&r[2].toString().toLowerCase() === fBidang) : true;
+                const matchOrg = fOrg ? (r[3]&&r[3].toString().toLowerCase() === fOrg) : true;
+                return matchKey && matchBidang && matchOrg;
+            });
+            renderMasterTable(filtered);
         }
         
         function renderMasterTable(data) {
             const tbody = document.getElementById('masterTableBody'); tbody.innerHTML = '';
             data.forEach(row => {
-                const tr = document.createElement('tr'); tr.className = "hover:bg-slate-50";
+                const tr = document.createElement('tr'); tr.className = "hover:bg-slate-50 transition-colors";
                 tr.innerHTML = `
                     <td class="px-4 py-2 text-center"><input type="checkbox" class="bulk-checkbox master-checkbox" value="${row[0]}" onchange="toggleMasterBulkAction()"></td>
-                    <td class="px-5 py-3 text-slate-500">${row[0]}</td>
+                    <td class="px-5 py-3 text-slate-500 font-medium">${row[0]}</td>
                     <td class="px-5 py-3 font-bold">${row[1]}</td>
                     <td class="px-5 py-3"><span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-bold">${row[2]||'Helper'}</span></td>
                     <td class="px-5 py-3 text-slate-600 text-sm font-semibold">${row[3]||'-'}</td>
-                    <td class="px-5 py-3 text-center"><button onclick="deleteSingleMaster('${row[0]}')" class="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><i class="fa-solid fa-trash"></i></button></td>
+                    <td class="px-5 py-3 text-center flex justify-center gap-2">
+                        <button onclick="openEditModal('${row[0]}', '${row[1]}', '${row[2]}', '${row[3]}')" class="text-blue-500 hover:bg-blue-50 p-2 rounded transition-colors" title="Edit Data"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteSingleMaster('${row[0]}')" class="text-red-500 hover:bg-red-50 p-2 rounded transition-colors" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
+        
+        function openEditModal(nip, nama, jabatan, asal) {
+            document.getElementById('editNip').value = nip;
+            document.getElementById('editNama').value = nama;
+            document.getElementById('editJabatan').value = (jabatan === 'undefined' || !jabatan) ? 'Helper' : jabatan;
+            document.getElementById('editAsal').value = (asal === 'undefined' || !asal) ? '-' : asal;
+            
+            const modal = document.getElementById('editModal'); const content = document.getElementById('editModalContent');
+            modal.classList.remove('hidden'); setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
+        }
+        function closeEditModal() {
+            const modal = document.getElementById('editModal'); const content = document.getElementById('editModalContent');
+            modal.classList.add('opacity-0'); content.classList.add('scale-95'); setTimeout(() => { modal.classList.add('hidden'); }, 300);
+        }
+        
+        async function saveEditMaster() {
+            const payload = { action: 'edit_master', nip: document.getElementById('editNip').value, nama: document.getElementById('editNama').value.toUpperCase(), jabatan: document.getElementById('editJabatan').value, asal: document.getElementById('editAsal').value };
+            let btn = document.getElementById('btnSaveEdit'); btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...`; btn.disabled = true;
+            let loading = showToast("Menyimpan Perubahan...", "loading");
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
+                const result = await response.json();
+                loading.remove();
+                if(result.status === "success") { showToast("Data Master Berhasil Diubah!"); closeEditModal(); fetchServerData(); } else throw new Error(result.message);
+            } catch (e) { loading.remove(); showToast(e.message, "error"); }
+            finally { btn.innerHTML = `Simpan Perubahan`; btn.disabled = false; }
+        }
 
         function toggleAllMaster(source) { document.querySelectorAll('.master-checkbox').forEach(cb => cb.checked = source.checked); toggleMasterBulkAction(); }
         function toggleMasterBulkAction() {
-            const count = document.querySelectorAll('.master-checkbox:checked').length;
-            const banner = document.getElementById('bulkMasterBanner');
-            if(count > 0) { banner.classList.remove('hidden'); document.getElementById('selectedMasterCount').innerText = count; } 
-            else { banner.classList.add('hidden'); document.getElementById('checkAllMaster').checked = false; }
+            const count = document.querySelectorAll('.master-checkbox:checked').length; const banner = document.getElementById('bulkMasterBanner');
+            if(count > 0) { banner.classList.remove('hidden'); document.getElementById('selectedMasterCount').innerText = count; } else { banner.classList.add('hidden'); document.getElementById('checkAllMaster').checked = false; }
         }
-
-        async function deleteSingleMaster(nip) {
-            if(!confirm(`Hapus permanen NIP ${nip}?`)) return;
-            executeDeleteMaster([nip]);
-        }
+        async function deleteSingleMaster(nip) { if(!confirm(`Hapus permanen NIP ${nip}?`)) return; executeDeleteMaster([nip]); }
         async function deleteBulkMaster() {
             const checked = document.querySelectorAll('.master-checkbox:checked');
             if(checked.length === 0 || !confirm(`Yakin menghapus ${checked.length} data master terpilih?`)) return;
@@ -484,61 +536,57 @@
                 const res = await fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: 'delete_bulk_master', nips: nipsArray }) });
                 const result = await res.json();
                 loading.remove();
-                if(result.status === "success") { showToast(`${result.deleted || 1} Master dihapus!`); fetchServerData(); } 
-                else throw new Error(result.message);
+                if(result.status === "success") { showToast(`${result.deleted || 1} Master dihapus!`); fetchServerData(); } else throw new Error(result.message);
             } catch (e) { loading.remove(); showToast(e.message, "error"); }
         }
 
-        // INPUT STAGING & SMART EXCEL PARSER
+        // ================= INPUT STAGING (SMART PARSER & EDIT NAMA) =================
         document.getElementById('tanggal').valueAsDate = new Date();
+        
         function generateStagingGrid() {
             const globalOrg = document.getElementById('organisasi').value;
             const rawText = document.getElementById('daftarNama').value;
             const lines = rawText.split('\n').filter(n => n.trim() !== "");
             if(lines.length === 0) { showToast("Data kosong!", "error"); return; }
             
-            const tbody = document.getElementById('stagingBody'); tbody.innerHTML = '';
+            const tbody = document.getElementById('stagingBody'); 
+            let htmlBuffer = '';
             
             lines.forEach((line, idx) => {
                 let nama = ""; let bidang = ""; let org = globalOrg;
                 
-                // SMART PARSER: Cek apakah data ini hasil copy dari Excel/Tabel (ada TAB / \t)
+                // SMART PARSER
                 if (line.includes('\t')) {
                     const cols = line.split('\t').map(c => c.trim());
-                    // Analisis jumlah kolom hasil copy Gemini/Excel
-                    if (cols.length >= 4 && !isNaN(cols[0])) { 
-                        // Jika format: No | Nama | Bidang | Organisasi
-                        nama = cols[1]; bidang = cols[2]; org = cols[3];
-                    } else if (cols.length >= 3) {
-                        // Jika format: Nama | Bidang | Organisasi
-                        nama = cols[0]; bidang = cols[1]; org = cols[2];
-                    } else { nama = cols[0]; }
-                } else {
-                    nama = line; // Input manual biasa
-                }
+                    if (cols.length >= 4 && !isNaN(cols[0])) { nama = cols[1]; bidang = cols[2]; org = cols[3]; } 
+                    else if (cols.length >= 3) { nama = cols[0]; bidang = cols[1]; org = cols[2]; } 
+                    else { nama = cols[0]; }
+                } else { nama = line; }
                 
-                // UPPERCASE AUTO
                 nama = nama.toUpperCase();
                 
-                // AI Deteksi Master Data (Jika Excel kosongkan bidang/org)
+                // Cari Default Sugesti dari Master (Hanya if field kosong)
                 const found = masterDataCache.find(r => r[1].toString().toUpperCase() === nama);
                 if (!bidang) bidang = found ? (found[2] || 'Helper') : 'Helper';
                 if (!org) org = found ? (found[3] || globalOrg) : globalOrg;
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="px-2 py-2 text-center font-bold text-slate-400">${idx + 1}</td>
-                    <td class="px-2 py-2 font-bold text-slate-900">${nama}</td>
-                    <td class="px-2 py-2">
-                        <input list="listBidangData" id="bidang-${idx}" value="${bidang}" placeholder="Bebas ketik..." class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm font-bold text-primary outline-none">
-                    </td>
-                    <td class="px-2 py-2">
-                        <input list="listOrgData" id="org-${idx}" value="${org}" placeholder="Asal..." class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 text-sm font-bold text-slate-700 outline-none">
-                    </td>
-                    <input type="hidden" id="nama-${idx}" value="${nama}">
+                // NAMA DAPAT DI EDIT DI MODE PREVIEW
+                htmlBuffer += `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-2 py-2 text-center font-bold text-slate-400">${idx + 1}</td>
+                        <td class="px-2 py-2">
+                            <input type="text" id="nama-${idx}" value="${nama}" class="w-full bg-slate-50 border border-slate-300 rounded p-2 text-sm font-bold text-slate-900 outline-none uppercase focus:border-primary">
+                        </td>
+                        <td class="px-2 py-2">
+                            <input list="listBidangData" id="bidang-${idx}" value="${bidang}" placeholder="Ketik/Pilih..." class="w-full bg-slate-50 border border-slate-300 rounded p-2 text-sm font-bold text-primary outline-none focus:border-primary">
+                        </td>
+                        <td class="px-2 py-2">
+                            <input list="listOrgData" id="org-${idx}" value="${org}" placeholder="Ketik/Pilih..." class="w-full bg-slate-50 border border-slate-300 rounded p-2 text-sm font-bold text-slate-700 outline-none focus:border-primary">
+                        </td>
+                    </tr>
                 `;
-                tbody.appendChild(tr);
             });
+            tbody.innerHTML = htmlBuffer;
             document.getElementById('step-paste').classList.add('hidden'); document.getElementById('step-review').classList.remove('hidden');
         }
 
@@ -550,12 +598,17 @@
             
             const relawanData = [];
             for(let i=0; i<rowCount; i++) {
+                const valNama = document.getElementById(`nama-${i}`).value.trim();
+                if(valNama === "") continue;
+                
                 relawanData.push({
-                    nama: document.getElementById(`nama-${i}`).value,
+                    nama: valNama.toUpperCase(), // Pastikan uppercase saat submit
                     bidang: document.getElementById(`bidang-${i}`).value,
                     organisasi: document.getElementById(`org-${i}`).value
                 });
             }
+
+            if(relawanData.length === 0) { showToast("Tidak ada data valid untuk disinkronisasi", "error"); return; }
 
             const payload = {
                 action: 'insert', tanggal: document.getElementById('tanggal').value, sesi: document.getElementById('sesi').value,
@@ -563,7 +616,7 @@
             };
 
             const btn = document.getElementById('btnSubmitFinal'); btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyinkronkan...`; btn.disabled = true;
-            let loading = showToast("Menyimpan...", "loading");
+            let loading = showToast("Menyimpan ke Database...", "loading");
 
             try {
                 const response = await fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
@@ -574,9 +627,10 @@
                     document.getElementById('daftarNama').value = ""; cancelStaging(); switchView('logs');
                 } else throw new Error(result.message);
             } catch (e) { loading.remove(); showToast(e.message, "error"); }
-            finally { btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Sinkronisasi Permanen`; btn.disabled = false; }
+            finally { btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Sinkronisasi Permanen ke Database`; btn.disabled = false; }
         }
 
+        // ================= EXPORT EXCEL =================
         function exportToExcel() {
             const dataToExport = filteredLogData.length > 0 ? filteredLogData : logDataCache;
             if(dataToExport.length === 0) return showToast("Data kosong", "error");
@@ -590,7 +644,7 @@
             ws['!cols'] = [{wch:5}, {wch:12}, {wch:10}, {wch:25}, {wch:15}, {wch:25}, {wch:25}];
             ws['!autofilter'] = { ref: XLSX.utils.encode_range(XLSX.utils.decode_range(ws['!ref'])) };
             
-            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Rekap");
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Rekap_Terfilter");
             XLSX.writeFile(wb, `Laporan_Absensi_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
     </script>
