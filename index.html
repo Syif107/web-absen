@@ -272,7 +272,7 @@
 
     <script>
         // ⚠️ TARUH URL DEPLOYMENT BARU DI SINI ⚠️
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzOukKfzIMmPXQg9F6wrZuxHm_rU2DIVsw60U2pzr1Wa53_6wA_QkAy1PrwxTDpdsxbUg/exec";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxuBm-rnvK3ps84idjlPQ9AXtdl9d20PtBfeA7DWDplXNOmSF2wO4XUuiLxXzWRVXk9bA/exec";
         
         // ================= SECURITY & UI LOGIC =================
         const PIN_ADMIN = "1234";
@@ -318,7 +318,7 @@
         let chartLokasiPie = null; let chartDPDInst = null;
 
         async function fetchServerData() {
-            if(GOOGLE_SCRIPT_URL === "https://script.google.com/macros/s/AKfycbzOukKfzIMmPXQg9F6wrZuxHm_rU2DIVsw60U2pzr1Wa53_6wA_QkAy1PrwxTDpdsxbUg/exec") return;
+            if(GOOGLE_SCRIPT_URL === "https://script.google.com/macros/s/AKfycbxuBm-rnvK3ps84idjlPQ9AXtdl9d20PtBfeA7DWDplXNOmSF2wO4XUuiLxXzWRVXk9bA/exec") return;
             document.getElementById('loadingOverlay').classList.remove('hidden');
             try {
                 // Cache busting untuk menghindari baca data nyangkut
