@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ABSENSI RELAWAN OPSHID</title>
-    <!-- BARIS KODE UNTUK ICON TAB (FAVICON) -->
+    
+    <!-- BARIS KODE IKON TAB (FAVICON) -->
     <link rel="icon" type="image/png" href="icon.png">
+
     <!-- CSS & JS Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -79,7 +81,7 @@
         </div>
     </div>
 
-    <!-- SIDEBAR (Dapat Dilipat) -->
+    <!-- SIDEBAR -->
     <aside id="sidebar" class="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col shadow-sm z-10 shrink-0">
         <div class="h-16 flex items-center px-6 border-b border-slate-100 justify-between">
             <div class="flex items-center gap-2 text-primary font-bold text-xl tracking-tight whitespace-nowrap">
@@ -97,7 +99,6 @@
         </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
     <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
         <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0">
             <div class="flex items-center gap-4">
@@ -113,7 +114,7 @@
                 <p class="text-slate-600 font-bold tracking-wide">Menyinkronkan Database...</p>
             </div>
 
-            <!-- GLOBAL DATALISTS UNTUK AUTO-SUGGEST DARI HISTORY (Diisi otomatis via JS) -->
+            <!-- GLOBAL DATALISTS UNTUK AUTO-SUGGEST DARI HISTORY -->
             <datalist id="listBidangData"></datalist>
             <datalist id="listOrgData"></datalist>
 
@@ -164,15 +165,21 @@
                             <div>
                                 <label class="text-xs font-bold text-slate-500 uppercase">Lokasi Proyek</label>
                                 <select id="lokasi" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none">
-                                    <option value="Masjid Raya Fatchan Mubiina">Masjid Raya</option><option value="Monumen Semboyan">Monumen Semboyan</option><option value="Pembesian">Pembesian</option><option value="Kanal Ta'at">Kanal Ta'at</option><option value="Gapuro Syukur">Gapuro Syukur</option>
+                                    <option value="Masjid Raya Fatchan Mubiina">Masjid Raya</option>
+                                    <option value="Monumen Semboyan">Monumen Semboyan</option>
+                                    <option value="Pembesian">Pembesian</option>
+                                    <option value="Kanal Ta'at">Kanal Ta'at</option>
+                                    <option value="Gapuro Syukur">Gapuro Syukur</option>
+                                    <option value="Perpustakaan Tashawwuf">Perpustakaan Tashawwuf</option>
+                                    <option value="Gudang Keramik">Gudang Keramik</option>
                                 </select>
                             </div>
                         </div>
 
                         <div id="step-paste">
                             <label class="text-sm font-bold text-slate-700 mb-1 block">Input Data Relawan (Smart Parser)</label>
-                            <p class="text-xs text-slate-500 mb-3"><i class="fa-solid fa-circle-info text-blue-500"></i> Tip: Paste langsung dari Excel. Sistem akan memisahkan kolom Nama, Bidang, dan Asal secara otomatis.</p>
-                            <textarea id="daftarNama" rows="10" placeholder="Paste data excel di sini..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm outline-none resize-y font-mono whitespace-pre"></textarea>
+                            <p class="text-xs text-slate-500 mb-3"><i class="fa-solid fa-circle-info text-blue-500"></i> Tip: Paste langsung dari WA atau Excel. Sistem akan memisahkan kolom Nama, Bidang, dan Asal secara otomatis.</p>
+                            <textarea id="daftarNama" rows="10" placeholder="Paste data excel / WA di sini..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm outline-none resize-y font-mono whitespace-pre"></textarea>
                             <button type="button" onclick="generateStagingGrid()" class="mt-4 w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-sm">Review & Finalisasi Data</button>
                         </div>
 
@@ -273,7 +280,7 @@
     </main>
 
     <script>
-        // ⚠️ TARUH URL DEPLOYMENT BARU DI SINI ⚠️
+        // ⚠️ LINK API SCRIPT KAMU YANG SUDAH VALID ⚠️
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwjtEtkdWsd_F6wt4YCQIGLYrN5IF_bN9JeP_mNstWM9NrHcq7fqK9nf7UxDvxGz6ertA/exec";
         
         // ================= SECURITY & UI LOGIC =================
@@ -315,28 +322,30 @@
             return toast;
         }
 
-        // ================= CORE DATA & DYNAMIC DATALIsTS =================
+        // ================= CORE DATA & DYNAMIC DATALISTS =================
         let masterDataCache = []; let logDataCache = []; let filteredLogData = [];
         let chartLokasiPie = null; let chartDPDInst = null;
 
         async function fetchServerData() {
             document.getElementById('loadingOverlay').classList.remove('hidden');
             try {
-                // Cache busting untuk menghindari baca data nyangkut
+                // Cache busting untuk memperbarui tarikan data
                 const response = await fetch(GOOGLE_SCRIPT_URL + "?t=" + new Date().getTime());
                 const data = await response.json();
                 if(data.status === "success") {
                     masterDataCache = data.master || []; logDataCache = data.logs || [];
                     
-                    populateDatalists(); // Isi Dropdown filter otomatis
-                    searchMasterData(); // Terapkan filter master
-                    applyLogFilters();  // Terapkan filter logs
-                    renderCharts();     // Dashboard Render
+                    populateDatalists(); 
+                    searchMasterData(); 
+                    applyLogFilters();  
+                    renderCharts();     
                     
                     document.getElementById('checkAll').checked = false; toggleBulkActionBanner();
                     document.getElementById('checkAllMaster').checked = false; toggleMasterBulkAction();
+                } else {
+                    showToast(data.message || "Gagal mengambil data", "error");
                 }
-            } catch (e) { showToast("Gagal menarik data", "error"); } 
+            } catch (e) { showToast("Gagal menarik data dari server", "error"); } 
             finally { document.getElementById('loadingOverlay').classList.add('hidden'); }
         }
 
@@ -541,7 +550,7 @@
             } catch (e) { loading.remove(); showToast(e.message, "error"); }
         }
 
-        // ================= INPUT STAGING (SMART PARSER & EDIT NAMA) =================
+        // ================= INPUT STAGING =================
         document.getElementById('tanggal').valueAsDate = new Date();
         
         function generateStagingGrid() {
@@ -557,36 +566,27 @@
                 let nama = ""; let bidang = ""; let org = globalOrg;
                 
                 // --- SUPER SMART PARSER (EXCEL & WHATSAPP) ---
-                // 1. Bersihkan penomoran di awal baris (misal: "1. ", "12) ", "- ")
                 let cleanLine = line.replace(/^(\d+[\.\-\)]\s*|[\-\*]\s*)/, '').trim();
                 
-                // 2. Deteksi Pemisah Teks
                 if (cleanLine.includes('\t')) {
-                    // Mode Excel (Pemisah TAB)
                     const cols = cleanLine.split('\t').map(c => c.trim()).filter(c=>c);
                     nama = cols[0] || ""; bidang = cols[1] || ""; org = cols[2] || globalOrg;
                 } else if (/\s{2,}/.test(cleanLine)) {
-                    // Mode WA Renggang (Pemisah 2 spasi atau lebih)
                     const cols = cleanLine.split(/\s{2,}/).map(c => c.trim()).filter(c=>c);
                     nama = cols[0] || ""; bidang = cols[1] || ""; org = cols[2] || globalOrg;
                 } else if (/[-,\/;\|]/.test(cleanLine)) {
-                    // Mode WA Manual (Pemisah tanda strip, koma, titik koma, garis miring)
                     const cols = cleanLine.split(/[-,\/;\|]/).map(c => c.trim()).filter(c=>c);
                     nama = cols[0] || ""; bidang = cols[1] || ""; org = cols[2] || globalOrg;
                 } else {
-                    // Murni ketik nama saja (Bidang & Organisasi otomatis default)
                     nama = cleanLine;
                 }
                 
-                // 3. Auto Uppercase
                 nama = nama.toUpperCase();
                 
-                // 4. Cari Default Sugesti dari Master (Jika bidang/org kosong di WA)
                 const found = masterDataCache.find(r => r[1].toString().toUpperCase() === nama);
                 if (!bidang) bidang = found ? (found[2] || 'Helper') : 'Helper';
                 if (!org) org = found ? (found[3] || globalOrg) : globalOrg;
 
-                // 5. Render ke Tabel Preview
                 htmlBuffer += `
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-2 py-2 text-center font-bold text-slate-400">${idx + 1}</td>
@@ -619,13 +619,13 @@
                 if(valNama === "") continue;
                 
                 relawanData.push({
-                    nama: valNama.toUpperCase(), // Pastikan uppercase saat submit
+                    nama: valNama.toUpperCase(),
                     bidang: document.getElementById(`bidang-${i}`).value,
                     organisasi: document.getElementById(`org-${i}`).value
                 });
             }
 
-            if(relawanData.length === 0) { showToast("Tidak ada data valid untuk disinkronisasi", "error"); return; }
+            if(relawanData.length === 0) { showToast("Tidak ada data valid", "error"); return; }
 
             const payload = {
                 action: 'insert', tanggal: document.getElementById('tanggal').value, sesi: document.getElementById('sesi').value,
@@ -665,6 +665,5 @@
             XLSX.writeFile(wb, `Laporan_Absensi_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
     </script>
-
 </body>
 </html>
