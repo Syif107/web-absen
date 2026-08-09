@@ -555,22 +555,37 @@
             lines.forEach((line, idx) => {
                 let nama = ""; let bidang = ""; let org = globalOrg;
                 
-                // SMART PARSER
-                if (line.includes('\t')) {
-                    const cols = line.split('\t').map(c => c.trim());
-                    if (cols.length >= 4 && !isNaN(cols[0])) { nama = cols[1]; bidang = cols[2]; org = cols[3]; } 
-                    else if (cols.length >= 3) { nama = cols[0]; bidang = cols[1]; org = cols[2]; } 
-                    else { nama = cols[0]; }
-                } else { nama = line; }
+                // --- SUPER SMART PARSER (EXCEL & WHATSAPP) ---
+                // 1. Bersihkan penomoran di awal baris (misal: "1. ", "12) ", "- ")
+                let cleanLine = line.replace(/^(\d+[\.\-\)]\s*|[\-\*]\s*)/, '').trim();
                 
+                // 2. Deteksi Pemisah Teks
+                if (cleanLine.includes('\t')) {
+                    // Mode Excel (Pemisah TAB)
+                    const cols = cleanLine.split('\t').map(c => c.trim()).filter(c=>c);
+                    nama = cols[0] || ""; bidang = cols[1] || ""; org = cols[2] || globalOrg;
+                } else if (/\s{2,}/.test(cleanLine)) {
+                    // Mode WA Renggang (Pemisah 2 spasi atau lebih)
+                    const cols = cleanLine.split(/\s{2,}/).map(c => c.trim()).filter(c=>c);
+                    nama = cols[0] || ""; bidang = cols[1] || ""; org = cols[2] || globalOrg;
+                } else if (/[-,\/;\|]/.test(cleanLine)) {
+                    // Mode WA Manual (Pemisah tanda strip, koma, titik koma, garis miring)
+                    const cols = cleanLine.split(/[-,\/;\|]/).map(c => c.trim()).filter(c=>c);
+                    nama = cols[0] || ""; bidang = cols[1] || ""; org = cols[2] || globalOrg;
+                } else {
+                    // Murni ketik nama saja (Bidang & Organisasi otomatis default)
+                    nama = cleanLine;
+                }
+                
+                // 3. Auto Uppercase
                 nama = nama.toUpperCase();
                 
-                // Cari Default Sugesti dari Master (Hanya if field kosong)
+                // 4. Cari Default Sugesti dari Master (Jika bidang/org kosong di WA)
                 const found = masterDataCache.find(r => r[1].toString().toUpperCase() === nama);
                 if (!bidang) bidang = found ? (found[2] || 'Helper') : 'Helper';
                 if (!org) org = found ? (found[3] || globalOrg) : globalOrg;
 
-                // NAMA DAPAT DI EDIT DI MODE PREVIEW
+                // 5. Render ke Tabel Preview
                 htmlBuffer += `
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-2 py-2 text-center font-bold text-slate-400">${idx + 1}</td>
@@ -587,7 +602,8 @@
                 `;
             });
             tbody.innerHTML = htmlBuffer;
-            document.getElementById('step-paste').classList.add('hidden'); document.getElementById('step-review').classList.remove('hidden');
+            document.getElementById('step-paste').classList.add('hidden'); 
+            document.getElementById('step-review').classList.remove('hidden');
         }
 
         function cancelStaging() { document.getElementById('step-review').classList.add('hidden'); document.getElementById('step-paste').classList.remove('hidden'); }
