@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - RelawanSync V2</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4F46E5">
+    <link rel="apple-touch-icon" href="assets/icon.png">
+    <link rel="icon" type="image/png" href="assets/icon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5' } } } }
+    </script>
+</head>
+<body class="bg-slate-100 flex items-center justify-center h-screen font-sans antialiased">
+
+    <div class="bg-white p-8 md:p-10 rounded-2xl shadow-xl border border-slate-200 w-full max-w-md relative overflow-hidden">
+        <!-- Dekorasi Latar -->
+        <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-full -z-10"></div>
+        <div class="absolute bottom-0 left-0 w-24 h-24 bg-blue-50 rounded-tr-full -z-10"></div>
+
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg shadow-indigo-200">
+                <i class="fa-solid fa-fingerprint"></i>
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-800">RelawanSync V2</h1>
+            <p class="text-sm text-slate-500 mt-1 font-medium">Sistem Informasi Operasional</p>
+        </div>
+
+        <form id="loginForm" onsubmit="prosesLogin(event)" class="space-y-5 relative z-10">
+            <div id="pesanError" class="hidden bg-red-50 text-red-600 text-xs font-bold p-3 rounded-lg border border-red-200 text-center">
+                Email atau Password salah!
+            </div>
+
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">Email Admin</label>
+                <div class="relative">
+                    <i class="fa-solid fa-envelope absolute left-3 top-3.5 text-slate-400"></i>
+                    <input type="email" id="email" required class="w-full bg-slate-50 border border-slate-300 text-sm rounded-xl pl-10 pr-4 py-3 outline-none font-semibold focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                </div>
+            </div>
+            
+            <div>
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 block">Password</label>
+                <div class="relative">
+                    <i class="fa-solid fa-lock absolute left-3 top-3.5 text-slate-400"></i>
+                    <input type="password" id="password" required class="w-full bg-slate-50 border border-slate-300 text-sm rounded-xl pl-10 pr-4 py-3 outline-none font-semibold focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                </div>
+            </div>
+
+            <button type="submit" id="btnLogin" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mt-2">
+                <i class="fa-solid fa-right-to-bracket"></i> Masuk Ke Sistem
+            </button>
+        </form>
+        
+        <p class="text-center text-[10px] text-slate-400 font-semibold mt-8">
+            &copy; 2026 Operasional Infrastruktur
+        </p>
+    </div>
+
+    <script src="js/supabase-config.js"></script>
+    <script>
+        // Logika Pemeriksaan Token Awal (Jika sudah login, cegah masuk ke halaman login)
+        if (localStorage.getItem('relawan_token')) {
+            window.location.href = 'index.html';
+        }
+
+        async function prosesLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('btnLogin');
+            const errorMsg = document.getElementById('pesanError');
+
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Memverifikasi...';
+            btn.disabled = true;
+            errorMsg.classList.add('hidden');
+
+            try {
+                // Tembak API Supabase Auth
+                const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+                    method: 'POST',
+                    headers: { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, password: password })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) throw new Error(data.error_description || "Login Gagal");
+
+                // Berhasil Login! Simpan "Kunci Akses" di memori browser
+                localStorage.setItem('relawan_token', data.access_token);
+                
+                // Lempar ke Dashboard
+                window.location.href = 'index.html';
+                
+            } catch (err) {
+                errorMsg.innerText = "Kredensial tidak valid atau akun tidak ditemukan.";
+                errorMsg.classList.remove('hidden');
+                btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk Ke Sistem';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
