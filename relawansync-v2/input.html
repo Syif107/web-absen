@@ -3,42 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Input Absensi - RelawanSync V2</title>
+    <title>Input Absensi Massal - RelawanSync V2</title>
+
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4F46E5">
     <link rel="apple-touch-icon" href="assets/icon.png">
+    
     <link rel="icon" type="image/png" href="assets/icon.png">
-
-    <!-- CSS Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
 
     <script>
-        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5', secondary: '#818CF8' } } } }
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5' } } } }
     </script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased flex h-screen overflow-hidden">
 
-    <!-- SIDEBAR UTAMA -->
-    <aside id="sidebar" class="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col shadow-sm z-10 shrink-0 transition-all duration-300">
+    <div id="mobileOverlay" class="fixed inset-0 bg-slate-900/60 z-40 hidden md:hidden transition-opacity backdrop-blur-sm" onclick="toggleSidebar()"></div>
+
+    <aside id="sidebar" class="w-64 bg-white border-r border-slate-200 fixed md:relative inset-y-0 left-0 transform -translate-x-full md:translate-x-0 z-50 flex flex-col shadow-xl md:shadow-sm shrink-0 transition-transform duration-300">
         <div class="h-16 flex items-center px-6 border-b border-slate-100 justify-between">
             <div class="flex items-center gap-2 text-primary font-bold text-xl tracking-tight whitespace-nowrap">
                 <i class="fa-solid fa-fingerprint nav-icon"></i><span class="sidebar-text">RelawanSync V2</span>
             </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-red-500 text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
         
         <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
             <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left">
-                <i class="fa-solid fa-chart-pie w-6 text-center nav-icon"></i><span class="sidebar-text">Dashboard Analytics</span>
+                <i class="fa-solid fa-chart-pie w-6 text-center nav-icon"></i><span class="sidebar-text">Executive Dashboard</span>
             </a>
-            
-            <!-- Menu Aktif (Warna Biru) pindah ke Validasi Absensi -->
             <a href="input.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 bg-indigo-50 text-primary rounded-xl font-medium transition-colors text-left">
                 <i class="fa-solid fa-users-viewfinder w-6 text-center nav-icon"></i><span class="sidebar-text">Validasi Absensi</span>
             </a>
-            
             <a href="riwayat.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left">
                 <i class="fa-solid fa-clipboard-list w-6 text-center nav-icon"></i><span class="sidebar-text">Riwayat Absen</span>
             </a>
@@ -54,99 +55,107 @@
         </div>
     </aside>
 
-    <!-- KONTEN UTAMA INPUT ABSENSI -->
-    <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0">
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-slate-100/50">
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0 z-10">
             <div class="flex items-center gap-4">
                 <button id="btnToggleSidebar" class="text-slate-500 hover:text-primary hover:bg-slate-100 w-10 h-10 rounded-lg transition-colors flex items-center justify-center">
                     <i class="fa-solid fa-bars text-lg"></i>
                 </button>
-                <h1 class="text-xl font-bold text-slate-800 hidden sm:block">Operasional: Validasi Absensi</h1>
+                <div>
+                    <h1 class="text-lg font-extrabold text-slate-800 hidden sm:block leading-none mt-1">Input Absensi Lapangan</h1>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">Perekaman Massal (Smart Parser)</p>
+                </div>
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-4 lg:p-8 bg-slate-50 custom-scroll relative">
-            <div id="loadingOverlay" class="absolute inset-0 bg-slate-50/90 z-20 flex flex-col items-center justify-center hidden">
-                <i class="fa-solid fa-circle-notch fa-spin text-5xl text-primary mb-4"></i>
-                <p class="text-slate-600 font-bold tracking-wide" id="loadingText">Menyiapkan Data...</p>
-            </div>
-
-            <!-- Datalists untuk Auto-Suggest (Akan diisi oleh JS) -->
-            <datalist id="listBidangData"></datalist>
-            <datalist id="listOrgData"></datalist>
-
+        <div class="flex-1 overflow-y-auto p-4 lg:p-6 custom-scroll">
             <div class="max-w-6xl mx-auto">
+                
+                <!-- DATALISTS GLOBAL -->
+                <datalist id="listBidangData"></datalist>
+                <datalist id="listOrgData"></datalist>
+
                 <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="p-4 md:p-8">
-                        
-                        <!-- Form Atas (Parameter Absen) -->
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-slate-50 p-5 rounded-xl border border-slate-200">
+                    
+                    <div class="p-5 md:p-6 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
+                        <!-- KOLOM KONFIGURASI 4 GRID -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
-                                <label class="text-xs font-bold text-slate-500 uppercase">Tanggal</label>
-                                <input type="date" id="tanggal" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none">
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 block">Tanggal</label>
+                                <input type="date" id="inputTanggal" class="w-full bg-white border border-slate-300 text-sm rounded-xl px-4 py-3 outline-none font-semibold focus:border-primary focus:ring-1 focus:ring-primary">
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-slate-500 uppercase">Sesi</label>
-                                <select id="sesi" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none">
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 block">Sesi Bertugas</label>
+                                <select id="inputSesi" class="w-full bg-white border border-slate-300 text-sm rounded-xl px-4 py-3 outline-none font-semibold focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
                                     <option value="Siang">☀️ Siang</option>
                                     <option value="Malam">🌙 Malam</option>
                                 </select>
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-slate-500 uppercase">Organisasi (Default)</label>
-                                <input list="listOrgData" id="organisasi" placeholder="Pilih/Ketik Organisasi..." class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none">
-                            </div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 uppercase">Lokasi Proyek</label>
-                                <select id="lokasi" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none">
-                                    <option value="Masjid Raya Fatchan Mubiina">Masjid Raya</option>
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 block">Lokasi Proyek</label>
+                                <select id="inputLokasi" class="w-full bg-white border border-slate-300 text-sm rounded-xl px-4 py-3 outline-none font-semibold focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
                                     <option value="Monumen Semboyan">Monumen Semboyan</option>
-                                    <option value="Pembesian">Pembesian</option>
                                     <option value="Kanal Ta'at">Kanal Ta'at</option>
-                                    <option value="Gapuro Syukur">Gapuro Syukur</option>
                                     <option value="Perpustakaan Tashawwuf">Perpustakaan Tashawwuf</option>
-                                    <option value="Pembuatan Keramik">Pembuatan Keramik</option>
+                                    <option value="Pembesian">Pembesian</option>
+                                    <option value="Masjid Raya Fatchan Mubiina">Masjid Raya Fatchan Mubiina</option>
+                                    <option value="Lainnya">Lainnya...</option>
                                 </select>
                             </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 block">Asal Organisasi (Default)</label>
+                                <input list="listOrgData" id="inputOrgDefault" placeholder="Pilih/Ketik Organisasi..." class="w-full bg-white border border-slate-300 text-sm rounded-xl px-4 py-3 outline-none font-semibold focus:border-primary focus:ring-1 focus:ring-primary">
+                            </div>
                         </div>
+                    </div>
 
-                        <!-- Tahap 1: Paste Data -->
+                    <div class="p-6">
+                        <!-- TAHAP 1: PASTE DATA -->
                         <div id="step-paste">
-                            <label class="text-sm font-bold text-slate-700 mb-1 block">Input Data Relawan (Smart Parser Pro)</label>
-                            <p class="text-xs text-slate-500 mb-3"><i class="fa-solid fa-circle-info text-blue-500"></i> Tip: Paste langsung dari WA atau Excel. Sistem akan memisahkan kolom secara otomatis.</p>
-                            <textarea id="daftarNama" rows="10" placeholder="Paste data excel / WA di sini..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm outline-none resize-y font-mono whitespace-pre"></textarea>
-                            <button type="button" onclick="generateStagingGrid()" class="mt-4 w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-sm">Review & Finalisasi Data</button>
+                            <label class="text-sm font-bold text-slate-700 mb-2 block"><i class="fa-solid fa-paste text-primary mr-1"></i> Input Data Relawan (Smart Parser)</label>
+                            <p class="text-xs text-slate-500 mb-4 bg-blue-50 border border-blue-100 p-3 rounded-lg"><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i> <strong>Tip:</strong> Paste langsung dari WA atau Excel. Sistem akan otomatis memisahkan nama, dan mencocokkan jabatannya dari database Master secara otomatis.</p>
+                            
+                            <textarea id="daftarNama" rows="12" placeholder="Paste data absensi (Excel / WA) di sini...&#10;Contoh format bebas:&#10;1. Budi&#10;2. Andi - DPD Surabaya&#10;3. Citra" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm outline-none resize-y font-mono whitespace-pre focus:border-primary focus:ring-1 focus:ring-primary"></textarea>
+                            
+                            <button type="button" onclick="generateStagingGrid()" class="mt-4 w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-list-check"></i> Pratinjau & Finalisasi Data
+                            </button>
                         </div>
 
-                        <!-- Tahap 2: Preview & Edit sebelum kirim -->
+                        <!-- TAHAP 2: REVIEW (Tabel Edit) -->
                         <div id="step-review" class="hidden">
                             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
-                                <label class="text-sm font-bold text-primary"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Data Preview (Dapat diedit manual jika kurang pas)</label>
-                                <button type="button" onclick="cancelStaging()" class="text-sm text-red-600 font-bold hover:bg-red-50 px-4 py-2 rounded-lg border border-red-200">Batal / Edit Teks Paste</button>
+                                <div>
+                                    <h3 class="text-lg font-bold text-primary"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Data Preview</h3>
+                                    <p class="text-xs text-slate-500 mt-1">Nama dikapitalisasi & dicocokkan otomatis. Silakan edit jika ada yang salah sebelum disimpan.</p>
+                                </div>
+                                <button type="button" onclick="cancelStaging()" class="text-sm bg-white text-red-600 font-bold hover:bg-red-50 px-4 py-2 rounded-xl border border-red-200 transition-colors shadow-sm">
+                                    <i class="fa-solid fa-rotate-left mr-1"></i> Kembali Edit Teks
+                                </button>
                             </div>
                             
-                            <div class="border border-slate-200 rounded-xl overflow-hidden mb-6">
+                            <div class="border border-slate-200 rounded-xl overflow-hidden mb-6 shadow-sm">
                                 <div class="max-h-96 overflow-y-auto custom-scroll">
                                     <table class="w-full text-left text-sm whitespace-nowrap">
-                                        <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 shadow-sm z-10">
+                                        <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 shadow-sm z-10 border-b border-slate-200">
                                             <tr>
-                                                <th class="px-3 py-3 w-12 text-center">No</th>
-                                                <th class="px-3 py-3 w-56">Nama Relawan</th>
-                                                <th class="px-3 py-3 w-40">Keahlian</th>
-                                                <th class="px-3 py-3 w-48">Asal Organisasi</th>
+                                                <th class="px-4 py-3 w-12 text-center text-xs uppercase tracking-wide">No</th>
+                                                <th class="px-4 py-3 w-56 text-xs uppercase tracking-wide">Nama Relawan</th>
+                                                <th class="px-4 py-3 w-48 text-xs uppercase tracking-wide">Bidang / Jabatan</th>
+                                                <th class="px-4 py-3 w-48 text-xs uppercase tracking-wide">Asal Organisasi</th>
                                             </tr>
                                         </thead>
                                         <tbody id="stagingBody" class="divide-y divide-slate-100 bg-white">
-                                            <!-- Data hasil parsing akan muncul di sini via JS -->
+                                            <!-- Data dirender otomatis via JS -->
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
-                            <button type="button" id="btnSubmitFinal" onclick="submitDataToServer()" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-all shadow-md text-lg">
-                                <i class="fa-solid fa-cloud-arrow-up"></i> Sinkronisasi ke Database V2
+                            
+                            <button type="button" id="btnSubmitFinal" onclick="submitDataToServer()" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-all shadow-md text-lg flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Simpan Permanen ke Database
                             </button>
                         </div>
-                        
                     </div>
                 </div>
             </div>
@@ -155,11 +164,8 @@
         <div id="toastContainer" class="fixed top-20 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
     </main>
 
-    <!-- MODULE SCRIPTS -->
     <script src="js/supabase-config.js"></script>
     <script src="js/app.js"></script>
-    <!-- Logika Khusus Input & Parsing -->
     <script src="js/input.js"></script>
-
 </body>
 </html>

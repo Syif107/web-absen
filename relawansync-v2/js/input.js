@@ -1,213 +1,185 @@
 // ==========================================
-// LOGIKA INPUT ABSENSI & SMART PARSER (AUTO-REGISTER)
+// LOGIKA SMART PARSER & BULK INPUT ABSENSI
 // ==========================================
 
-let stagingData = []; // Variabel untuk menyimpan data sementara sebelum dikirim
+let masterDataCache = [];
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Set tanggal default ke hari ini
-    document.getElementById('tanggal').valueAsDate = new Date();
+    // 1. Set default tanggal ke hari ini secara dinamis
+    document.getElementById('inputTanggal').valueAsDate = new Date();
     
-    // 2. Ambil data untuk Auto-Suggest (Dropdown Jabatan & Organisasi)
-    fetchSuggestionData();
+    // 2. Tarik Master Data
+    loadMasterDataUntukStaging();
 });
 
-// Mengambil data unik dari Supabase untuk Datalist
-async function fetchSuggestionData() {
+// Tarik Data Master ke Memori untuk Auto-Fill & Suggestion List
+async function loadMasterDataUntukStaging() {
     try {
-        const res = await supabaseFetch('master_relawan?select=jabatan,asal_organisasi', 'GET');
-        if (res.status === 'success') {
-            const listJabatan = [...new Set(res.data.map(item => item.jabatan).filter(Boolean))];
-            const listOrg = [...new Set(res.data.map(item => item.asal_organisasi).filter(Boolean))];
-            
-            document.getElementById('listBidangData').innerHTML = listJabatan.map(j => `<option value="${j}">`).join('');
-            document.getElementById('listOrgData').innerHTML = listOrg.map(o => `<option value="${o}">`).join('');
-        }
-    } catch (error) {
-        console.error("Gagal memuat auto-suggest", error);
-    }
-}
-
-// ------------------------------------------
-// TAHAP 1: SMART PARSER (Memecah Teks WA/Excel)
-// ------------------------------------------
-function generateStagingGrid() {
-    const rawText = document.getElementById('daftarNama').value.trim();
-    if (!rawText) {
-        showToast("Teks paste tidak boleh kosong!", "error");
-        return;
-    }
-
-    const defaultOrg = document.getElementById('organisasi').value.trim();
-    const lines = rawText.split('\n');
-    stagingData = [];
-
-    lines.forEach(line => {
-        if (!line.trim()) return; // Abaikan baris kosong
-
-        // Hapus penomoran di awal otomatis (contoh: "1. Budi", "1) Budi", atau "- Budi")
-        let cleanLine = line.replace(/^\d+[\.\)]\s*/, '').replace(/^-\s*/, '').trim();
-
-        // Pisahkan berdasarkan Tab (dari Excel), koma, strip, atau garis miring
-        let parts = [];
-        if (cleanLine.includes('\t')) {
-            parts = cleanLine.split('\t');
-        } else if (cleanLine.includes(',')) {
-            parts = cleanLine.split(',');
-        } else if (cleanLine.includes('-')) {
-            parts = cleanLine.split('-');
-        } else if (cleanLine.includes('/')) {
-            parts = cleanLine.split('/');
+        const res = await supabaseFetch('master_relawan?select=nip,nama,jabatan,asal_organisasi', 'GET');
+        if (res.status === "success") {
+            masterDataCache = res.data;
+            populateDatalists(); // Panggil fungsi pembuat dropdown
         } else {
-            parts = [cleanLine]; // Jika hanya nama saja
+            showToast("Gagal memuat data master.", "error");
         }
+    } catch (err) {
+        showToast("Terjadi kesalahan jaringan.", "error");
+    }
+}
 
-// Ambil bagian-bagiannya dan ubah otomatis jadi Huruf Kapital (Uppercase)
-        const nama = parts[0] ? parts[0].trim().toUpperCase() : '';
-        const keahlian = parts[1] ? parts[1].trim().toUpperCase() : 'RELAWAN UMUM';
-        const organisasi = parts[2] ? parts[2].trim().toUpperCase() : (defaultOrg ? defaultOrg.toUpperCase() : '-');
-        
-        if (nama) {
-            stagingData.push({ nama, keahlian, organisasi });
-        }
-    });
-
-    renderStagingTable();
+// Mengekstrak daftar unik Bidang & Organisasi untuk disuntik ke elemen <datalist>
+function populateDatalists() {
+    const orgSet = new Set();
+    const bidangSet = new Set();
     
-    // Sembunyikan area Paste, tampilkan area Review Tabel
-    document.getElementById('step-paste').classList.add('hidden');
-    document.getElementById('step-review').classList.remove('hidden');
+    masterDataCache.forEach(r => {
+        if (r.asal_organisasi && r.asal_organisasi !== '-') orgSet.add(r.asal_organisasi);
+        if (r.jabatan && r.jabatan !== '-') bidangSet.add(r.jabatan);
+    });
+    
+    let orgHtml = '';
+    Array.from(orgSet).sort().forEach(org => orgHtml += `<option value="${org}">`);
+    document.getElementById('listOrgData').innerHTML = orgHtml;
+    
+    let bidangHtml = '';
+    Array.from(bidangSet).sort().forEach(b => bidangHtml += `<option value="${b}">`);
+    document.getElementById('listBidangData').innerHTML = bidangHtml;
 }
 
 // ------------------------------------------
-// TAHAP 2: RENDER TABEL PREVIEW
+// ZONA SMART PARSER & STAGING REVIEW
 // ------------------------------------------
-function renderStagingTable() {
-    const tbody = document.getElementById('stagingBody');
-    let html = '';
 
-    stagingData.forEach((row, index) => {
-        html += `
-            <tr class="hover:bg-slate-50 transition-colors">
-                <td class="px-3 py-2 text-center text-slate-500 font-semibold border-b border-slate-100">${index + 1}</td>
-                <td class="px-3 py-2 border-b border-slate-100"><input type="text" id="stage_nama_${index}" value="${row.nama}" class="w-full bg-transparent focus:bg-white border-b border-transparent focus:border-primary outline-none px-1 py-1 rounded"></td>
-                <td class="px-3 py-2 border-b border-slate-100"><input type="text" id="stage_ahli_${index}" list="listBidangData" value="${row.keahlian}" class="w-full bg-transparent focus:bg-white border-b border-transparent focus:border-primary outline-none px-1 py-1 rounded"></td>
-                <td class="px-3 py-2 border-b border-slate-100"><input type="text" id="stage_org_${index}" list="listOrgData" value="${row.organisasi}" class="w-full bg-transparent focus:bg-white border-b border-transparent focus:border-primary outline-none px-1 py-1 rounded"></td>
+function generateStagingGrid() {
+    const globalOrg = document.getElementById('inputOrgDefault').value;
+    const rawText = document.getElementById('daftarNama').value;
+    const lines = rawText.split('\n').filter(n => n.trim() !== ""); 
+    
+    if(lines.length === 0) { 
+        showToast("Teks data masih kosong!", "error"); 
+        return; 
+    }
+    
+    const tbody = document.getElementById('stagingBody'); 
+    let htmlBuffer = '';
+    
+    lines.forEach((line, idx) => {
+        let nama = ""; let bidang = ""; let org = globalOrg;
+        
+        let cleanLine = line.replace(/^(\d+[\.\-\)]\s*|[\-\*]\s*)/, '').trim();
+        
+        if (cleanLine.includes('\t')) {
+            const cols = cleanLine.split('\t').map(c => c.trim()).filter(c=>c);
+            nama = cols[0] || ""; bidang = cols[1] || ""; org = cols[2] || globalOrg;
+        } 
+        else if (/\s{2,}/.test(cleanLine)) {
+            const cols = cleanLine.split(/\s{2,}/).map(c => c.trim()).filter(c=>c);
+            nama = cols[0] || ""; bidang = cols[1] || ""; org = cols[2] || globalOrg;
+        } 
+        else if (/[-,\/;\|]/.test(cleanLine)) {
+            const cols = cleanLine.split(/[-,\/;\|]/).map(c => c.trim()).filter(c=>c);
+            nama = cols[0] || ""; bidang = cols[1] || ""; org = cols[2] || globalOrg;
+        } 
+        else {
+            nama = cleanLine;
+        }
+        
+        nama = nama.toUpperCase();
+        
+        // Cek nama di Master Data
+        const found = masterDataCache.find(r => r.nama === nama);
+        const matchedNip = found ? found.nip : `REL-${nama.replace(/\s+/g, '')}${Math.floor(Math.random()*1000)}`;
+        
+        if (!bidang) bidang = found ? (found.jabatan || 'Helper') : 'Helper';
+        if (!org || org === '') org = found ? (found.asal_organisasi || 'Umum') : org;
+
+        // Render input menggunakan attribut list="" agar nyambung ke <datalist>
+        htmlBuffer += `
+            <tr class="hover:bg-slate-50 transition-colors" data-nip="${matchedNip}">
+                <td class="px-4 py-2 text-center font-bold text-slate-400 bg-slate-50 border-r border-slate-100">${idx + 1}</td>
+                <td class="px-4 py-2">
+                    <input type="text" id="nama-${idx}" value="${nama}" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-primary outline-none uppercase focus:border-primary focus:ring-1 focus:ring-primary shadow-sm">
+                </td>
+                <td class="px-4 py-2">
+                    <input list="listBidangData" id="bidang-${idx}" value="${bidang}" placeholder="Ketik/Pilih Bidang..." class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm">
+                </td>
+                <td class="px-4 py-2">
+                    <input list="listOrgData" id="org-${idx}" value="${org}" placeholder="Ketik/Pilih Organisasi..." class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold text-slate-700 outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm">
+                </td>
             </tr>
         `;
     });
-    tbody.innerHTML = html;
+    
+    tbody.innerHTML = htmlBuffer;
+    document.getElementById('step-paste').classList.add('hidden'); 
+    document.getElementById('step-review').classList.remove('hidden');
 }
 
-function cancelStaging() {
-    document.getElementById('step-review').classList.add('hidden');
-    document.getElementById('step-paste').classList.remove('hidden');
+function cancelStaging() { 
+    document.getElementById('step-review').classList.add('hidden'); 
+    document.getElementById('step-paste').classList.remove('hidden'); 
 }
 
 // ------------------------------------------
-// TAHAP 3: BULK INSERT KE SUPABASE (DENGAN AUTO-REGISTER)
+// ZONA EKSEKUSI MASSAL (BULK INSERT TO SUPABASE)
 // ------------------------------------------
+
 async function submitDataToServer() {
-    const tanggal = document.getElementById('tanggal').value;
-    const sesi = document.getElementById('sesi').value;
-    const lokasi = document.getElementById('lokasi').value;
-
-    if (!tanggal) {
-        showToast("Tanggal wajib diisi!", "error");
+    // Ambil tanggal langsung dari input agar mendukung fitur "mundur/backdate"
+    const inputTanggal = document.getElementById('inputTanggal').value; 
+    const globalSesi = document.getElementById('inputSesi').value;
+    const globalLokasi = document.getElementById('inputLokasi').value;
+    
+    if(!inputTanggal) {
+        showToast("Tanggal absensi tidak boleh kosong!", "error");
         return;
     }
 
-    const overlay = document.getElementById('loadingOverlay');
-    const loadingText = document.getElementById('loadingText');
-    overlay.classList.remove('hidden');
-    loadingText.innerText = "Menganalisis Data Relawan...";
-
-    const finalLogData = [];
-    const candidatesMaster = [];
-
-    // 1. Ekstrak data dari tabel preview
-    stagingData.forEach((_, index) => {
-        const nama = document.getElementById(`stage_nama_${index}`).value.trim().toUpperCase();
-        const jabatan = document.getElementById(`stage_ahli_${index}`).value.trim().toUpperCase();
-        const organisasi = document.getElementById(`stage_org_${index}`).value.trim().toUpperCase();
+    const tbody = document.getElementById('stagingBody');
+    const rows = tbody.querySelectorAll('tr');
+    
+    const arrayDataAbsensi = [];
+    
+    rows.forEach((tr, i) => {
+        const valNama = document.getElementById(`nama-${i}`).value.trim().toUpperCase();
+        if (valNama === "") return; 
         
-        if (nama) {
-            // NIP Cerdas: Gabungan Nama dan Organisasi (Hanya huruf dan angka)
-            const nipRaw = (nama + organisasi).replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-            const nip = "REL-" + nipRaw;
-
-            
-            finalLogData.push({
-                tanggal: tanggal,
-                sesi: sesi,
-                lokasi: lokasi,
-                nip: nip,
-                nama: nama,
-                bidang: jabatan,
-                organisasi: organisasi
-            });
-
-            candidatesMaster.push({
-                nip: nip,
-                nama: nama,
-                jabatan: jabatan,
-                asal_organisasi: organisasi
-            });
-        }
+        arrayDataAbsensi.push({
+            tanggal: inputTanggal, // Gunakan tanggal yang dipilih
+            sesi: globalSesi,
+            lokasi: globalLokasi,
+            nip: tr.getAttribute('data-nip'), 
+            nama: valNama,
+            bidang: document.getElementById(`bidang-${i}`).value,
+            organisasi: document.getElementById(`org-${i}`).value
+        });
     });
 
-    if (finalLogData.length === 0) {
-        showToast("Tidak ada data valid untuk dikirim.", "error");
-        overlay.classList.add('hidden');
-        return;
+    if(arrayDataAbsensi.length === 0) { 
+        showToast("Tidak ada data valid yang bisa dikirim.", "error"); 
+        return; 
     }
 
+    const btn = document.getElementById('btnSubmitFinal'); 
+    const teksAsli = btn.innerHTML;
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyinkronkan ${arrayDataAbsensi.length} Data...`; 
+    btn.disabled = true;
+
     try {
-        // 2. Bersihkan duplikat di dalam satu kali paste (jika ada nama ganda diinput bersamaan)
-        const uniqueMaster = [];
-        const seenNip = new Set();
-        for (const item of candidatesMaster) {
-            if (!seenNip.has(item.nip)) {
-                seenNip.add(item.nip);
-                uniqueMaster.push(item);
-            }
-        }
-
-        // 3. Tarik daftar NIP yang sudah ada di Master Database
-        loadingText.innerText = "Mengecek Database Master...";
-        const resExisting = await supabaseFetch('master_relawan?select=nip', 'GET');
-        let newMasterData = uniqueMaster; 
+        const res = await supabaseFetch('log_absensi', 'POST', arrayDataAbsensi);
         
-        if (resExisting.status === 'success') {
-            const existingNips = new Set(resExisting.data.map(r => r.nip));
-            // Saring: Hanya ambil relawan yang NIP-nya belum terdaftar sama sekali
-            newMasterData = uniqueMaster.filter(m => !existingNips.has(m.nip));
+        if (res.status === "success" || res.status === 204 || res.status === 201) {
+            showToast(`${arrayDataAbsensi.length} data absensi berhasil dicatat!`, "success");
+            
+            document.getElementById('daftarNama').value = ""; 
+            cancelStaging();
+        } else {
+            showToast("Gagal menyimpan data absensi.", "error");
         }
-
-        // 4. Daftarkan Relawan Baru ke Master (Jika ada yang baru)
-        if (newMasterData.length > 0) {
-            loadingText.innerText = `Mendaftarkan ${newMasterData.length} Relawan Baru...`;
-            await supabaseFetch('master_relawan', 'POST', newMasterData);
-        }
-
-        // 5. Simpan semua riwayat absen ke tabel log_absensi
-        loadingText.innerText = "Menyimpan Riwayat Absen...";
-        const resLog = await supabaseFetch('log_absensi', 'POST', finalLogData);
-        
-        if (resLog.status === 'error') throw new Error("Gagal menyimpan data log.");
-
-        // Jika semua sukses
-        showToast(`${finalLogData.length} data absen berhasil disimpan!`, "success");
-        
-        // Reset form
-        document.getElementById('daftarNama').value = '';
-        cancelStaging();
-        fetchSuggestionData(); // Segarkan dropdown (barangkali ada jabatan/organisasi baru)
-
-    } catch (error) {
-        console.error(error);
-        showToast("Gagal memproses data ke server!", "error");
+    } catch (err) {
+        showToast("Terjadi kesalahan jaringan.", "error");
     } finally {
-        overlay.classList.add('hidden');
+        btn.innerHTML = teksAsli;
+        btn.disabled = false;
     }
 }
