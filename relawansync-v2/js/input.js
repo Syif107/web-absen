@@ -5,10 +5,7 @@
 let masterDataCache = [];
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Set default tanggal ke hari ini secara dinamis
     document.getElementById('inputTanggal').valueAsDate = new Date();
-    
-    // 2. Tarik Master Data
     loadMasterDataUntukStaging();
 });
 
@@ -88,14 +85,14 @@ function generateStagingGrid() {
         
         // Cek nama di Master Data
         const found = masterDataCache.find(r => r.nama === nama);
-        const matchedNip = found ? found.nip : `REL-${nama.replace(/\s+/g, '')}${Math.floor(Math.random()*1000)}`;
+        // Jika tidak ketemu (orang baru), buatkan NIP sementara dengan 4 angka acak
+        const matchedNip = found ? found.nip : `REL-${nama.replace(/\s+/g, '').substring(0,10)}${Math.floor(1000 + Math.random() * 9000)}`;
         
         if (!bidang) bidang = found ? (found.jabatan || 'Helper') : 'Helper';
         if (!org || org === '') org = found ? (found.asal_organisasi || 'Umum') : org;
 
-        // Render input menggunakan attribut list="" agar nyambung ke <datalist>
         htmlBuffer += `
-            <tr class="hover:bg-slate-50 transition-colors" data-nip="${matchedNip}">
+            <tr class="hover:bg-slate-50 transition-colors" data-nip="${matchedNip}" data-isnew="${found ? 'false' : 'true'}">
                 <td class="px-4 py-2 text-center font-bold text-slate-400 bg-slate-50 border-r border-slate-100">${idx + 1}</td>
                 <td class="px-4 py-2">
                     <input type="text" id="nama-${idx}" value="${nama}" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-primary outline-none uppercase focus:border-primary focus:ring-1 focus:ring-primary shadow-sm">
@@ -121,11 +118,10 @@ function cancelStaging() {
 }
 
 // ------------------------------------------
-// ZONA EKSEKUSI MASSAL (BULK INSERT TO SUPABASE)
+// ZONA EKSEKUSI MASSAL & AUTO-INSERT MASTER
 // ------------------------------------------
 
 async function submitDataToServer() {
-    // Ambil tanggal langsung dari input agar mendukung fitur "mundur/backdate"
     const inputTanggal = document.getElementById('inputTanggal').value; 
     const globalSesi = document.getElementById('inputSesi').value;
     const globalLokasi = document.getElementById('inputLokasi').value;
@@ -139,19 +135,38 @@ async function submitDataToServer() {
     const rows = tbody.querySelectorAll('tr');
     
     const arrayDataAbsensi = [];
-    
+    const arrayDataMasterBaru = []; // Keranjang untuk relawan yang belum pernah terdaftar
+    const namaSudahDitambahkan = new Set(); // Mencegah nama ganda tersimpan dua kali di satu formulir
+
     rows.forEach((tr, i) => {
         const valNama = document.getElementById(`nama-${i}`).value.trim().toUpperCase();
         if (valNama === "") return; 
         
+        const nip = tr.getAttribute('data-nip');
+        const isNew = tr.getAttribute('data-isnew') === 'true';
+        const bidang = document.getElementById(`bidang-${i}`).value || 'Helper';
+        const organisasi = document.getElementById(`org-${i}`).value || 'Umum';
+
+        // 1. Jika ini relawan baru, masukkan ke keranjang Master Data
+        if (isNew && !namaSudahDitambahkan.has(valNama)) {
+            arrayDataMasterBaru.push({
+                nip: nip,
+                nama: valNama,
+                jabatan: bidang,
+                asal_organisasi: organisasi
+            });
+            namaSudahDitambahkan.add(valNama);
+        }
+        
+        // 2. Masukkan ke keranjang Absensi
         arrayDataAbsensi.push({
-            tanggal: inputTanggal, // Gunakan tanggal yang dipilih
+            tanggal: inputTanggal, 
             sesi: globalSesi,
             lokasi: globalLokasi,
-            nip: tr.getAttribute('data-nip'), 
+            nip: nip, 
             nama: valNama,
-            bidang: document.getElementById(`bidang-${i}`).value,
-            organisasi: document.getElementById(`org-${i}`).value
+            bidang: bidang,
+            organisasi: organisasi
         });
     });
 
@@ -162,17 +177,30 @@ async function submitDataToServer() {
 
     const btn = document.getElementById('btnSubmitFinal'); 
     const teksAsli = btn.innerHTML;
-    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyinkronkan ${arrayDataAbsensi.length} Data...`; 
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyinkronkan...`; 
     btn.disabled = true;
 
     try {
+        // TAHAP 1: Simpan relawan baru ke tabel master_relawan (Jika ada)
+        if (arrayDataMasterBaru.length > 0) {
+            await supabaseFetch('master_relawan', 'POST', arrayDataMasterBaru);
+        }
+
+        // TAHAP 2: Simpan semua riwayat ke tabel log_absensi
         const res = await supabaseFetch('log_absensi', 'POST', arrayDataAbsensi);
         
         if (res.status === "success" || res.status === 204 || res.status === 201) {
-            showToast(`${arrayDataAbsensi.length} data absensi berhasil dicatat!`, "success");
+            let pesanBerhasil = `${arrayDataAbsensi.length} data absensi berhasil dicatat!`;
+            if (arrayDataMasterBaru.length > 0) {
+                pesanBerhasil += ` (${arrayDataMasterBaru.length} Relawan baru otomatis ditambahkan ke Master Data).`;
+            }
+            showToast(pesanBerhasil, "success");
             
             document.getElementById('daftarNama').value = ""; 
             cancelStaging();
+            
+            // Tarik ulang data master agar nama-nama baru tadi masuk ke autocomplete pencarian berikutnya
+            loadMasterDataUntukStaging();
         } else {
             showToast("Gagal menyimpan data absensi.", "error");
         }

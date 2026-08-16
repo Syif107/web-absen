@@ -111,7 +111,10 @@ function renderTabelMaster(data) {
         
         html += `
             <tr class="hover:bg-indigo-50/50 transition-colors">
-                <td class="px-5 py-3 text-center text-slate-400 font-bold bg-slate-50 border-r border-slate-100">${noUrut}</td>
+                <td class="px-4 py-3 text-center bg-slate-50 border-r border-slate-100">
+                    <input type="checkbox" class="master-checkbox w-4 h-4 accent-primary cursor-pointer" value="${r.nip}" onchange="toggleMasterBulkAction()">
+                </td>
+                <td class="px-4 py-3 text-center text-slate-400 font-bold bg-slate-50 border-r border-slate-100">${noUrut}</td>
                 <td class="px-5 py-3 font-mono text-xs text-slate-500">${r.nip}</td>
                 <td class="px-5 py-3 font-bold text-slate-800">${r.nama}</td>
                 <td class="px-5 py-3 text-slate-600"><span class="bg-slate-100 px-2 py-1 rounded-md text-xs font-bold border border-slate-200">${r.jabatan || 'Helper'}</span></td>
@@ -122,7 +125,7 @@ function renderTabelMaster(data) {
                             <i class="fa-solid fa-code-merge"></i> Typo
                         </button>
                         <button onclick="deleteSingleMaster('${r.nip}', '${namaAman}')" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-200 shadow-sm flex items-center gap-1">
-                            <i class="fa-solid fa-trash"></i> Hapus
+                            <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
                 </td>
@@ -135,6 +138,73 @@ function renderTabelMaster(data) {
     btnPrev.disabled = currentPage === 1;
     btnNext.disabled = currentPage === totalPages;
 }
+
+// ------------------------------------------
+// FUNGSI HAPUS MASSAL & TUNGGAL MASTER DATA
+// ------------------------------------------
+
+function toggleAllMaster(source) { 
+    document.querySelectorAll('.master-checkbox').forEach(cb => cb.checked = source.checked); 
+    toggleMasterBulkAction(); 
+}
+
+function toggleMasterBulkAction() {
+    const count = document.querySelectorAll('.master-checkbox:checked').length; 
+    const banner = document.getElementById('bulkMasterBanner');
+    if (count > 0) { 
+        banner.classList.remove('hidden'); 
+        document.getElementById('selectedMasterCount').innerText = count; 
+    } else { 
+        banner.classList.add('hidden'); 
+        document.getElementById('checkAllMaster').checked = false; 
+    }
+}
+
+async function deleteBulkMaster() {
+    const checked = document.querySelectorAll('.master-checkbox:checked');
+    if (checked.length === 0) return;
+    
+    const konfirmasi = confirm(`⚠️ PERINGATAN HAPUS MASSAL\n\nYakin ingin menghapus ${checked.length} data master terpilih secara permanen?`);
+    if (!konfirmasi) return;
+
+    let loading = showToast(`Menghapus ${checked.length} data...`, "loading");
+    
+    try {
+        const nips = Array.from(checked).map(cb => cb.value);
+        // Mengeksekusi hapus paralel untuk keamanan data (Bulk API call)
+        const deletePromises = nips.map(nip => supabaseFetch(`master_relawan?nip=eq.${nip}`, 'DELETE'));
+        await Promise.all(deletePromises);
+        
+        loading.remove();
+        showToast(`${checked.length} data master berhasil dihapus!`, "success");
+        
+        document.getElementById('checkAllMaster').checked = false;
+        toggleMasterBulkAction();
+        loadMasterData(); 
+    } catch (e) {
+        loading.remove();
+        showToast("Gagal menghapus beberapa data.", "error");
+    }
+}
+
+async function deleteSingleMaster(nip, nama) {
+    const konfirmasi = confirm(`⚠️ HAPUS DATA\nApakah Anda yakin ingin menghapus "${nama}"?`);
+    if (!konfirmasi) return;
+
+    let loading = showToast("Menghapus data...", "loading");
+    try {
+        const res = await supabaseFetch(`master_relawan?nip=eq.${nip}`, 'DELETE');
+        loading.remove();
+        if (res.status === "success" || res.status === 204 || res.status === 201) {
+            showToast("Data master berhasil dihapus!", "success");
+            loadMasterData(); 
+        }
+    } catch (err) {
+        if (loading) loading.remove();
+        showToast("Gagal menghapus data.", "error");
+    }
+}
+
 
 // 7. Fungsi Eksekusi Hapus Data Master
 async function deleteSingleMaster(nip, nama) {

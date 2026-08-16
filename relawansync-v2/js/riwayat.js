@@ -1,169 +1,191 @@
 // ==========================================
-// LOGIKA HALAMAN RIWAYAT & EKSPOR DATA
+// LOGIKA RIWAYAT ABSEN & EXPORT V2
 // ==========================================
 
-let logDataLokal = [];
+let riwayatData = [];
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Set default tanggal filter ke hari ini, lalu muat data
     document.getElementById('filterTanggal').valueAsDate = new Date();
     loadRiwayatData();
 });
 
-// 1. Tarik Data dari Supabase berdasarkan Filter
+// 1. Tarik Log Absensi dari Supabase (Diurutkan dari Terbaru)
 async function loadRiwayatData() {
-    const overlay = document.getElementById('loadingOverlay');
-    overlay.classList.remove('hidden');
-
-    const tgl = document.getElementById('filterTanggal').value;
-    const cari = document.getElementById('filterCari').value.toLowerCase();
-
-    // Bangun Query Supabase
-    // Kita filter langsung dari server agar tidak memberatkan browser jika data sudah puluhan ribu
-    let query = 'log_absensi?select=*&order=id.desc';
+    const loading = document.getElementById('loadingOverlay');
+    loading.classList.remove('hidden');
     
-    if (tgl) {
-        query += `&tanggal=eq.${tgl}`; // Filter tanggal SQL
-    }
-
     try {
-        const res = await supabaseFetch(query, 'GET');
-        
-        if (res.status === 'success') {
-            let data = res.data;
-            
-            // Filter pencarian teks (Nama/Organisasi) dilakukan di lokal browser
-            if (cari) {
-                data = data.filter(item => 
-                    (item.nama && item.nama.toLowerCase().includes(cari)) || 
-                    (item.organisasi && item.organisasi.toLowerCase().includes(cari))
-                );
-            }
-
-            logDataLokal = data;
-            renderRiwayatTable();
+        const res = await supabaseFetch('log_absensi?select=*&order=id.desc', 'GET');
+        if (res.status === "success") {
+            riwayatData = res.data;
+            terapkanFilterRiwayat(); 
         } else {
-            showToast("Gagal memuat riwayat", "error");
+            showToast("Gagal mengambil data riwayat.", "error");
         }
-    } catch (error) {
-        showToast("Terjadi kesalahan jaringan", "error");
+    } catch (err) {
+        showToast("Terjadi kesalahan jaringan.", "error");
     } finally {
-        overlay.classList.add('hidden');
+        loading.classList.add('hidden');
     }
+}
+
+// 2. Mesin Pencari & Filter
+function terapkanFilterRiwayat() {
+    const filterTgl = document.getElementById('filterTanggal').value;
+    const keyword = document.getElementById('filterCari').value.toLowerCase();
+
+    let filtered = riwayatData.filter(r => {
+        let matchTgl = filterTgl ? r.tanggal === filterTgl : true;
+        let matchKey = keyword ? 
+            (r.nama && r.nama.toLowerCase().includes(keyword)) ||
+            (r.organisasi && r.organisasi.toLowerCase().includes(keyword)) ||
+            (r.lokasi && r.lokasi.toLowerCase().includes(keyword)) : true;
+        
+        return matchTgl && matchKey;
+    });
+
+    renderTabelRiwayat(filtered);
 }
 
 function resetFilter() {
     document.getElementById('filterTanggal').value = '';
     document.getElementById('filterCari').value = '';
-    loadRiwayatData();
+    terapkanFilterRiwayat();
 }
 
-// 2. Tampilkan Data ke Tabel HTML
-function renderRiwayatTable() {
+// 3. Render Tabel HTML
+function renderTabelRiwayat(data) {
     const tbody = document.getElementById('riwayatBody');
-    const info = document.getElementById('totalDataInfo');
-    let html = '';
+    document.getElementById('totalDataInfo').innerText = `Menampilkan ${data.length.toLocaleString('id-ID')} riwayat absen`;
+    
+    // Reset status CheckAll
+    const checkAllBtn = document.getElementById('checkAll');
+    if (checkAllBtn) checkAllBtn.checked = false;
+    toggleBulkActionBanner();
 
-    if (logDataLokal.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-slate-400 font-semibold"><i class="fa-solid fa-folder-open text-2xl mb-2 block"></i> Tidak ada data log ditemukan.</td></tr>`;
-        info.innerText = `Menampilkan 0 data`;
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-slate-400 font-medium">Tidak ada data absensi yang sesuai filter.</td></tr>';
         return;
     }
 
-    logDataLokal.forEach((row, index) => {
-        // Format jam (waktu_rekam) dari database utc ke waktu lokal
-        const waktuStr = row.waktu_rekam ? new Date(row.waktu_rekam).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-';
-        
+    let html = '';
+    data.forEach((r, idx) => {
+        const noUrut = idx + 1;
+        // Asumsi kolom Primary Key di Supabase kamu adalah 'id'
         html += `
             <tr class="hover:bg-slate-50 transition-colors">
-                <td class="px-4 py-3 text-center text-slate-500 font-semibold">${index + 1}</td>
-                <td class="px-4 py-3 text-slate-500"><span class="bg-slate-100 px-2 py-1 rounded-md text-xs font-bold border border-slate-200">${waktuStr}</span></td>
-                <td class="px-4 py-3 font-bold text-slate-700">${row.nama}</td>
-                <td class="px-4 py-3">
-                    <span class="${row.sesi === 'Siang' ? 'text-orange-600 bg-orange-50 border-orange-200' : 'text-indigo-600 bg-indigo-50 border-indigo-200'} px-2 py-1 rounded-md text-xs font-bold border">
-                        ${row.sesi}
-                    </span>
+                <td class="px-4 py-3 text-center bg-slate-50 border-r border-slate-100">
+                    <input type="checkbox" class="log-checkbox w-4 h-4 accent-primary cursor-pointer" value="${r.id}" onchange="toggleBulkActionBanner()">
                 </td>
-                <td class="px-4 py-3 text-slate-600">${row.lokasi || '-'}</td>
-                <td class="px-4 py-3 text-slate-600">${row.organisasi || '-'}</td>
+                <td class="px-4 py-3 text-center font-bold text-slate-400 bg-slate-50 border-r border-slate-100">${noUrut}</td>
+                <td class="px-4 py-3 text-xs text-slate-500 font-mono">${r.created_at ? new Date(r.created_at).toLocaleTimeString('id-ID') : '-'}</td>
+                <td class="px-4 py-3 font-bold text-slate-800">${r.nama}</td>
+                <td class="px-4 py-3 font-bold ${r.sesi === 'Siang' ? 'text-orange-500' : 'text-indigo-600'}">${r.sesi}</td>
+                <td class="px-4 py-3 text-slate-600 text-xs">${r.lokasi || '-'}</td>
+                <td class="px-4 py-3 text-slate-600 text-xs font-semibold">${r.organisasi || '-'}</td>
                 <td class="px-4 py-3 text-center">
-                    <button onclick="hapusLog(${row.id})" class="text-red-500 hover:text-white hover:bg-red-500 w-8 h-8 rounded-lg transition-colors" title="Hapus Data">
-                        <i class="fa-solid fa-trash-can"></i>
+                    <button onclick="deleteSingleLog('${r.id}')" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Hapus">
+                        <i class="fa-solid fa-trash"></i>
                     </button>
                 </td>
             </tr>
         `;
     });
-
     tbody.innerHTML = html;
-    info.innerText = `Menampilkan ${logDataLokal.length} baris rekapan`;
 }
 
-// 3. Menghapus Log yang Salah
-async function hapusLog(id) {
-    if (!confirm("Yakin ingin menghapus riwayat absen ini?")) return;
+// ------------------------------------------
+// ZONA HAPUS MASSAL & EXPORT CSV
+// ------------------------------------------
 
-    // Munculkan toast loading
-    showToast("Menghapus data...", "loading");
+function toggleAll(source) { 
+    document.querySelectorAll('.log-checkbox').forEach(cb => cb.checked = source.checked); 
+    toggleBulkActionBanner(); 
+}
 
-    try {
-        const query = `log_absensi?id=eq.${id}`;
-        const res = await supabaseFetch(query, 'DELETE');
-        
-        if (res.status === 'success') {
-            showToast("Data log berhasil dihapus!", "success");
-            loadRiwayatData(); // Muat ulang tabel
-        } else {
-            showToast("Gagal menghapus data", "error");
-        }
-    } catch (error) {
-        showToast("Error saat menghapus", "error");
+function toggleBulkActionBanner() {
+    const count = document.querySelectorAll('.log-checkbox:checked').length; 
+    const banner = document.getElementById('bulkActionBanner');
+    if (count > 0) { 
+        banner.classList.remove('hidden'); 
+        document.getElementById('selectedCount').innerText = count; 
+    } else { 
+        banner.classList.add('hidden'); 
+        const checkAllBtn = document.getElementById('checkAll');
+        if(checkAllBtn) checkAllBtn.checked = false; 
     }
 }
 
-// 4. Ekspor ke CSV / Excel
+async function deleteSingleLog(id) {
+    if (!confirm("Hapus data absen ini secara permanen?")) return;
+    
+    let loading = showToast("Menghapus data...", "loading");
+    try {
+        const res = await supabaseFetch(`log_absensi?id=eq.${id}`, 'DELETE');
+        loading.remove();
+        if (res.status === "success" || res.status === 204 || res.status === 201) {
+            showToast("Data absen berhasil dihapus!", "success");
+            loadRiwayatData();
+        }
+    } catch (err) {
+        if(loading) loading.remove();
+        showToast("Terjadi kesalahan jaringan.", "error");
+    }
+}
+
+async function deleteBulkLogs() {
+    const checked = document.querySelectorAll('.log-checkbox:checked');
+    if(checked.length === 0) return;
+    
+    const konfirmasi = confirm(`⚠️ Yakin ingin menghapus ${checked.length} riwayat absen terpilih?`);
+    if(!konfirmasi) return;
+
+    let loading = showToast(`Menghapus ${checked.length} data...`, "loading");
+    
+    try {
+        const ids = Array.from(checked).map(cb => cb.value);
+        const deletePromises = ids.map(id => supabaseFetch(`log_absensi?id=eq.${id}`, 'DELETE'));
+        await Promise.all(deletePromises);
+        
+        loading.remove();
+        showToast(`${checked.length} data berhasil dihapus!`, "success");
+        loadRiwayatData();
+    } catch (e) {
+        loading.remove();
+        showToast("Gagal menghapus beberapa data.", "error");
+    }
+}
+
 function exportToCSV() {
-    if (logDataLokal.length === 0) {
+    const barisTabel = document.querySelectorAll('#riwayatBody tr');
+    if (barisTabel.length === 0 || barisTabel[0].innerText.includes("Tidak ada data")) {
         showToast("Tidak ada data untuk diekspor!", "error");
         return;
     }
 
-    // Header Kolom
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "ID,Waktu Rekam,Tanggal,Sesi,NIP,Nama,Keahlian,Organisasi,Lokasi\n";
-
-    // Isi Baris Data
-    logDataLokal.forEach(r => {
-        // Hilangkan koma pada teks agar tidak merusak format CSV
-        const bersih = (str) => str ? String(str).replace(/,/g, ' ') : '';
-        
-        const row = [
-            r.id, 
-            r.waktu_rekam, 
-            r.tanggal, 
-            r.sesi, 
-            r.nip, 
-            bersih(r.nama), 
-            bersih(r.bidang), 
-            bersih(r.organisasi), 
-            bersih(r.lokasi)
-        ].join(",");
-        
-        csvContent += row + "\n";
+    let csvContent = "data:text/csv;charset=utf-8,No,Waktu Rekam,Nama Relawan,Sesi,Lokasi Proyek,Organisasi\n";
+    
+    barisTabel.forEach(row => {
+        let cols = row.querySelectorAll("td");
+        if(cols.length > 0) {
+            let rowArray = [
+                cols[1].innerText, // No
+                cols[2].innerText, // Waktu
+                `"${cols[3].innerText}"`, // Nama (diapit kutip agar koma nama aman)
+                cols[4].innerText, // Sesi
+                `"${cols[5].innerText}"`, // Lokasi
+                `"${cols[6].innerText}"`  // Organisasi
+            ];
+            csvContent += rowArray.join(",") + "\n";
+        }
     });
 
-    // Proses Download File Otomatis
+    const filterTgl = document.getElementById('filterTanggal').value || 'SemuaTanggal';
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    
-    // Nama file otomatis sesuai tanggal filter
-    const tglFilter = document.getElementById('filterTanggal').value || 'Semua';
-    link.setAttribute("download", `Laporan_Absensi_Relawan_${tglFilter}.csv`);
-    
+    link.setAttribute("download", `Laporan_Absen_${filterTgl}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    showToast("File Laporan berhasil diunduh!", "success");
 }

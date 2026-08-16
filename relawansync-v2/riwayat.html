@@ -104,12 +104,21 @@
                     </div>
                 </div>
 
+<!-- BANNER HAPUS MASSAL RIWAYAT -->
+                <div id="bulkActionBanner" class="hidden bg-red-50 border border-red-200 rounded-xl p-3 flex justify-between items-center transition-all shadow-sm mb-4">
+                    <span class="text-red-700 font-bold text-sm"><span id="selectedCount">0</span> Data Terpilih</span>
+                    <button onclick="deleteBulkLogs()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-trash"></i> Hapus Terpilih
+                    </button>
+                </div>
+
                 <!-- Tabel Data (Dioptimalkan untuk Scroll HP) -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="overflow-auto custom-scroll max-h-[65vh] w-full">
+                    <div class="overflow-auto custom-scroll max-h-[60vh] w-full">
                         <table class="w-full text-left text-sm whitespace-nowrap min-w-max">
                             <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 z-10 shadow-sm border-b border-slate-200">
                                 <tr>
+                                    <th class="px-4 py-3 text-center w-12"><input type="checkbox" id="checkAll" class="w-4 h-4 accent-primary cursor-pointer" onchange="toggleAll(this)"></th>
                                     <th class="px-4 py-3 text-center w-12 text-xs uppercase tracking-wide">No</th>
                                     <th class="px-4 py-3 text-xs uppercase tracking-wide">Waktu Rekam</th>
                                     <th class="px-4 py-3 text-xs uppercase tracking-wide min-w-[180px]">Nama Relawan</th>
