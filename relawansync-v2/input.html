@@ -19,10 +19,12 @@
         tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5' } } } }
     </script>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased flex h-screen overflow-hidden">
+<body class="bg-slate-50 text-slate-800 font-sans antialiased flex h-[100dvh] overflow-hidden">
 
+    <!-- MOBILE OVERLAY -->
     <div id="mobileOverlay" class="fixed inset-0 bg-slate-900/60 z-40 hidden md:hidden transition-opacity backdrop-blur-sm" onclick="toggleSidebar()"></div>
 
+    <!-- SIDEBAR UTAMA -->
     <aside id="sidebar" class="w-64 bg-white border-r border-slate-200 fixed md:relative inset-y-0 left-0 transform -translate-x-full md:translate-x-0 z-50 flex flex-col shadow-xl md:shadow-sm shrink-0 transition-transform duration-300">
         <div class="h-16 flex items-center px-6 border-b border-slate-100 justify-between">
             <div class="flex items-center gap-2 text-primary font-bold text-xl tracking-tight whitespace-nowrap">
@@ -55,10 +57,11 @@
         </div>
     </aside>
 
-    <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-slate-100/50">
+    <main class="flex-1 flex flex-col h-[100dvh] overflow-hidden relative bg-slate-100/50">
         <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0 z-10">
             <div class="flex items-center gap-4">
-                <button id="btnToggleSidebar" class="text-slate-500 hover:text-primary hover:bg-slate-100 w-10 h-10 rounded-lg transition-colors flex items-center justify-center">
+                <!-- FIX: Memastikan tombol sidebar berfungsi di HP -->
+                <button id="btnToggleSidebar" onclick="toggleSidebar()" class="text-slate-500 hover:text-primary hover:bg-slate-100 w-10 h-10 rounded-lg transition-colors flex items-center justify-center">
                     <i class="fa-solid fa-bars text-lg"></i>
                 </button>
                 <div>
@@ -75,9 +78,9 @@
                 <datalist id="listBidangData"></datalist>
                 <datalist id="listOrgData"></datalist>
 
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
                     
-                    <div class="p-5 md:p-6 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
+                    <div class="p-4 md:p-6 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
                         <!-- KOLOM KONFIGURASI 4 GRID -->
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
@@ -109,13 +112,14 @@
                         </div>
                     </div>
 
-                    <div class="p-6">
+                    <div class="p-4 md:p-6">
                         <!-- TAHAP 1: PASTE DATA -->
                         <div id="step-paste">
                             <label class="text-sm font-bold text-slate-700 mb-2 block"><i class="fa-solid fa-paste text-primary mr-1"></i> Input Data Relawan (Smart Parser)</label>
                             <p class="text-xs text-slate-500 mb-4 bg-blue-50 border border-blue-100 p-3 rounded-lg"><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i> <strong>Tip:</strong> Paste langsung dari WA atau Excel. Sistem akan otomatis memisahkan nama, dan mencocokkan jabatannya dari database Master secara otomatis.</p>
                             
-                            <textarea id="daftarNama" rows="12" placeholder="Paste data absensi (Excel / WA) di sini...&#10;Contoh format bebas:&#10;1. Budi&#10;2. Andi - DPD Surabaya&#10;3. Citra" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm outline-none resize-y font-mono whitespace-pre focus:border-primary focus:ring-1 focus:ring-primary"></textarea>
+                            <!-- FIX: Mengurangi rows menjadi 8 agar tidak memakan seluruh layar HP -->
+                            <textarea id="daftarNama" rows="8" placeholder="Paste data absensi (Excel / WA) di sini...&#10;Contoh format bebas:&#10;1. Budi&#10;2. Andi - DPD Surabaya&#10;3. Citra" class="w-full bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm outline-none resize-y font-mono whitespace-pre focus:border-primary focus:ring-1 focus:ring-primary"></textarea>
                             
                             <button type="button" onclick="generateStagingGrid()" class="mt-4 w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-list-check"></i> Pratinjau & Finalisasi Data
@@ -127,22 +131,23 @@
                             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
                                 <div>
                                     <h3 class="text-lg font-bold text-primary"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Data Preview</h3>
-                                    <p class="text-xs text-slate-500 mt-1">Nama dikapitalisasi & dicocokkan otomatis. Silakan edit jika ada yang salah sebelum disimpan.</p>
+                                    <p class="text-[11px] md:text-xs text-slate-500 mt-1">Geser tabel ke kanan-kiri (scroll) untuk mengedit bidang dan organisasi.</p>
                                 </div>
-                                <button type="button" onclick="cancelStaging()" class="text-sm bg-white text-red-600 font-bold hover:bg-red-50 px-4 py-2 rounded-xl border border-red-200 transition-colors shadow-sm">
+                                <button type="button" onclick="cancelStaging()" class="text-sm bg-white text-red-600 font-bold hover:bg-red-50 px-4 py-2 rounded-xl border border-red-200 transition-colors shadow-sm w-full md:w-auto text-center">
                                     <i class="fa-solid fa-rotate-left mr-1"></i> Kembali Edit Teks
                                 </button>
                             </div>
                             
                             <div class="border border-slate-200 rounded-xl overflow-hidden mb-6 shadow-sm">
-                                <div class="max-h-96 overflow-y-auto custom-scroll">
-                                    <table class="w-full text-left text-sm whitespace-nowrap">
+                                <!-- FIX: Menambahkan overflow-auto dan mematok min-w pada tabel agar bisa di-scroll horizontal di HP -->
+                                <div class="max-h-[60vh] overflow-auto custom-scroll w-full">
+                                    <table class="w-full text-left text-sm whitespace-nowrap min-w-max">
                                         <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 shadow-sm z-10 border-b border-slate-200">
                                             <tr>
-                                                <th class="px-4 py-3 w-12 text-center text-xs uppercase tracking-wide">No</th>
-                                                <th class="px-4 py-3 w-56 text-xs uppercase tracking-wide">Nama Relawan</th>
-                                                <th class="px-4 py-3 w-48 text-xs uppercase tracking-wide">Bidang / Jabatan</th>
-                                                <th class="px-4 py-3 w-48 text-xs uppercase tracking-wide">Asal Organisasi</th>
+                                                <th class="px-4 py-3 w-12 min-w-[50px] text-center text-xs uppercase tracking-wide">No</th>
+                                                <th class="px-4 py-3 min-w-[200px] text-xs uppercase tracking-wide">Nama Relawan</th>
+                                                <th class="px-4 py-3 min-w-[180px] text-xs uppercase tracking-wide">Bidang / Jabatan</th>
+                                                <th class="px-4 py-3 min-w-[200px] text-xs uppercase tracking-wide">Asal Organisasi</th>
                                             </tr>
                                         </thead>
                                         <tbody id="stagingBody" class="divide-y divide-slate-100 bg-white">
@@ -152,7 +157,7 @@
                                 </div>
                             </div>
                             
-                            <button type="button" id="btnSubmitFinal" onclick="submitDataToServer()" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-all shadow-md text-lg flex items-center justify-center gap-2">
+                            <button type="button" id="btnSubmitFinal" onclick="submitDataToServer()" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-all shadow-md text-base flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-cloud-arrow-up"></i> Simpan Permanen ke Database
                             </button>
                         </div>
