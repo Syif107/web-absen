@@ -3,667 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ABSENSI RELAWAN OPSHID</title>
-    
-    <!-- BARIS KODE IKON TAB (FAVICON) -->
-    <link rel="icon" type="image/png" href="icon.png">
-
-    <!-- CSS & JS Libraries -->
+    <title>Executive Dashboard - RelawanSync V2</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4F46E5">
+    <link rel="apple-touch-icon" href="assets/icon.png">
+    <link rel="icon" type="image/png" href="assets/icon.png">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5', secondary: '#818CF8', dark: '#0F172A' } } } }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5', secondary: '#818CF8' } } } }</script>
-    <style>
-        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 4px; }
-        
-        .view-section { display: none; animation: fadeIn 0.3s ease-in-out; }
-        .view-active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .toast-enter { animation: slideInRight 0.3s ease-out forwards; }
-        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        
-        .bulk-checkbox { width: 1.25rem; height: 1.25rem; cursor: pointer; accent-color: #4F46E5; }
-        
-        /* Animasi Sidebar Lipat */
-        #sidebar { transition: width 0.3s ease; overflow-x: hidden; }
-        .sidebar-collapsed { width: 5rem !important; }
-        .sidebar-collapsed .sidebar-text { opacity: 0; display: none; }
-        .sidebar-collapsed .nav-btn { justify-content: center; padding-left: 0; padding-right: 0; }
-        .sidebar-collapsed .nav-icon { margin-right: 0; font-size: 1.25rem; }
-    </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased flex h-screen overflow-hidden">
 
-    <!-- LOGIN SCREEN -->
-    <div id="loginScreen" class="fixed inset-0 bg-slate-900 z-[100] flex flex-col items-center justify-center transition-opacity duration-500">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl w-96 text-center">
-            <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-lock text-primary text-2xl"></i></div>
-            <h2 class="text-2xl font-bold text-slate-800 mb-2">Akses Operasional</h2>
-            <p class="text-sm text-slate-500 mb-6">Masukkan PIN Admin untuk mengakses sistem.</p>
-            <input type="password" id="pinInput" placeholder="PIN..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-4 text-center text-xl tracking-[0.5em] font-bold outline-none focus:border-primary mb-4" onkeypress="if(event.key === 'Enter') checkPin()">
-            <button onclick="checkPin()" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-md">Buka Kunci Sistem</button>
-            <p id="loginError" class="text-red-500 text-sm font-bold mt-3 hidden">PIN Salah!</p>
-        </div>
-    </div>
+<!-- MOBILE OVERLAY (Latar gelap) -->
+    <div id="mobileOverlay" class="fixed inset-0 bg-slate-900/60 z-40 hidden md:hidden transition-opacity backdrop-blur-sm" onclick="toggleSidebar()"></div>
 
-    <!-- MODAL EDIT MASTER DATA -->
-    <div id="editModal" class="fixed inset-0 bg-slate-900/60 z-[110] flex items-center justify-center hidden opacity-0 transition-opacity">
-        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md transform scale-95 transition-transform" id="editModalContent">
-            <h3 class="text-xl font-bold text-slate-800 mb-4 border-b pb-2"><i class="fa-solid fa-pen-to-square text-primary mr-2"></i>Edit Master Data</h3>
-            <div class="space-y-4">
-                <div>
-                    <label class="text-xs font-bold text-slate-500 uppercase">NIP (Permanen)</label>
-                    <input type="text" id="editNip" readonly class="w-full bg-slate-100 border border-slate-300 rounded-lg p-2.5 text-sm font-bold text-slate-500 mt-1 cursor-not-allowed">
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-slate-500 uppercase">Nama Lengkap</label>
-                    <input type="text" id="editNama" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-bold mt-1 uppercase outline-none focus:border-primary">
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-slate-500 uppercase">Jabatan / Keahlian</label>
-                    <input list="listBidangData" id="editJabatan" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-bold mt-1 outline-none focus:border-primary">
-                </div>
-                <div>
-                    <label class="text-xs font-bold text-slate-500 uppercase">Asal Organisasi</label>
-                    <input list="listOrgData" id="editAsal" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-bold mt-1 outline-none focus:border-primary">
-                </div>
-            </div>
-            <div class="flex gap-3 mt-6">
-                <button onclick="closeEditModal()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl transition-colors">Batal</button>
-                <button onclick="saveEditMaster()" id="btnSaveEdit" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition-colors shadow-md">Simpan Perubahan</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- SIDEBAR -->
-    <aside id="sidebar" class="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col shadow-sm z-10 shrink-0">
+    <!-- SIDEBAR UTAMA (Responsif Mobile) -->
+    <aside id="sidebar" class="w-64 bg-white border-r border-slate-200 fixed md:relative inset-y-0 left-0 transform -translate-x-full md:translate-x-0 z-50 flex flex-col shadow-xl md:shadow-sm shrink-0 transition-transform duration-300">
         <div class="h-16 flex items-center px-6 border-b border-slate-100 justify-between">
             <div class="flex items-center gap-2 text-primary font-bold text-xl tracking-tight whitespace-nowrap">
-                <i class="fa-solid fa-fingerprint nav-icon"></i><span class="sidebar-text">RelawanSync</span>
+                <i class="fa-solid fa-fingerprint nav-icon"></i><span class="sidebar-text">RelawanSync V2</span>
             </div>
+            <!-- Tombol Tutup (Khusus HP) -->
+            <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-red-500 text-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
+        
         <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            <button onclick="switchView('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 bg-indigo-50 text-primary rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-chart-pie w-6 text-center nav-icon"></i><span class="sidebar-text">Dashboard Analytics</span></button>
-            <button onclick="switchView('input')" id="nav-input" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-users-viewfinder w-6 text-center nav-icon"></i><span class="sidebar-text">Validasi Absensi</span></button>
-            <button onclick="switchView('logs')" id="nav-logs" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-clipboard-list w-6 text-center nav-icon"></i><span class="sidebar-text">Riwayat Absen</span></button>
-            <button onclick="switchView('master')" id="nav-master" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left"><i class="fa-solid fa-database w-6 text-center nav-icon"></i><span class="sidebar-text">Master Data</span></button>
+            <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 bg-indigo-50 text-primary rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-chart-pie w-6 text-center nav-icon"></i><span class="sidebar-text">Executive Dashboard</span>
+            </a>
+            <a href="input.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-users-viewfinder w-6 text-center nav-icon"></i><span class="sidebar-text">Validasi Absensi</span>
+            </a>
+            <a href="riwayat.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-clipboard-list w-6 text-center nav-icon"></i><span class="sidebar-text">Riwayat Absen</span>
+            </a>
+            <a href="master.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-database w-6 text-center nav-icon"></i><span class="sidebar-text">Master Data</span>
+            </a>
         </nav>
+        
         <div class="p-4 bg-slate-50 m-2 rounded-xl border border-slate-100">
-            <button onclick="lockSystem()" class="nav-btn w-full flex items-center justify-center gap-2 text-red-600 font-bold text-sm hover:bg-red-50 py-2 rounded-lg transition-colors"><i class="fa-solid fa-power-off nav-icon"></i><span class="sidebar-text whitespace-nowrap">Kunci Sistem</span></button>
+            <button onclick="logoutSystem()" class="w-full flex items-center justify-center gap-2 text-red-600 font-bold text-sm hover:bg-red-50 py-2 rounded-lg transition-colors">
+                <i class="fa-solid fa-power-off"></i><span class="sidebar-text">Keluar (Lock)</span>
+            </button>
         </div>
     </aside>
-
-    <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0">
+        
+    <!-- KONTEN UTAMA DASHBOARD -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-slate-100/50">
+        <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0 z-10">
             <div class="flex items-center gap-4">
-                <button onclick="toggleSidebar()" class="text-slate-500 hover:text-primary hover:bg-slate-100 w-10 h-10 rounded-lg transition-colors flex items-center justify-center"><i class="fa-solid fa-bars text-lg"></i></button>
-                <h1 class="text-xl font-bold text-slate-800 hidden sm:block" id="headerTitle">Dashboard Analytics</h1>
+                <button id="btnToggleSidebar" class="text-slate-500 hover:text-primary hover:bg-slate-100 w-10 h-10 rounded-lg transition-colors flex items-center justify-center">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+                <div>
+                    <h1 class="text-lg font-extrabold text-slate-800 hidden sm:block leading-none mt-1">Executive Overview</h1>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block" id="headerDateText">Memuat tanggal...</p>
+                </div>
             </div>
-            <button onclick="fetchServerData()" class="text-sm text-primary hover:bg-indigo-50 px-4 py-2 rounded-lg font-bold transition-colors border border-indigo-100 flex items-center gap-2"><i class="fa-solid fa-rotate"></i> Sync Server</button>
+            <button onclick="loadDashboardData()" class="text-sm bg-white text-primary hover:bg-indigo-50 px-4 py-2 rounded-lg font-bold transition-colors border border-indigo-100 flex items-center gap-2 shadow-sm">
+                <i class="fa-solid fa-rotate"></i> Segarkan Data
+            </button>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-4 lg:p-8 bg-slate-50 custom-scroll relative">
-            <div id="loadingOverlay" class="absolute inset-0 bg-slate-50/90 z-20 flex flex-col items-center justify-center hidden">
+        <div class="flex-1 overflow-y-auto p-4 lg:p-6 custom-scroll relative">
+            
+            <div id="loadingOverlay" class="absolute inset-0 bg-slate-50/90 z-20 flex flex-col items-center justify-center">
                 <i class="fa-solid fa-circle-notch fa-spin text-5xl text-primary mb-4"></i>
-                <p class="text-slate-600 font-bold tracking-wide">Menyinkronkan Database...</p>
+                <p class="text-slate-600 font-bold tracking-wide">Menghitung Kalkulasi Data...</p>
             </div>
 
-            <!-- GLOBAL DATALISTS UNTUK AUTO-SUGGEST DARI HISTORY -->
-            <datalist id="listBidangData"></datalist>
-            <datalist id="listOrgData"></datalist>
+            <div class="max-w-[1400px] mx-auto space-y-6">
 
-            <!-- VIEW: DASHBOARD -->
-            <div id="view-dashboard" class="view-section view-active max-w-7xl mx-auto space-y-6">
-                <!-- Filter Dashboard -->
+                <!-- KONTROL FILTER WAKTU -->
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center gap-4">
-                    <span class="font-bold text-slate-700 text-sm"><i class="fa-solid fa-filter text-primary mr-2"></i>Filter Visual:</span>
-                    <select id="dashFilterType" class="bg-slate-50 border border-slate-300 text-sm rounded-lg px-3 py-2 outline-none font-semibold" onchange="toggleDashFilterInput()">
-                        <option value="all">Keseluruhan Waktu</option><option value="daily">Harian (Per Tanggal)</option><option value="monthly">Bulanan</option>
-                    </select>
-                    <input type="date" id="dashFilterDate" class="hidden bg-slate-50 border border-slate-300 text-sm rounded-lg px-3 py-2 outline-none font-semibold" onchange="renderCharts()">
-                    <input type="month" id="dashFilterMonth" class="hidden bg-slate-50 border border-slate-300 text-sm rounded-lg px-3 py-2 outline-none font-semibold" onchange="renderCharts()">
-                </div>
-
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-slate-400"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Total Relawan</p><h3 class="text-3xl font-black text-slate-800" id="kpi-total">-</h3></div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-primary"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Log (Sesuai Filter)</p><h3 class="text-3xl font-black text-primary" id="kpi-log">-</h3></div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-orange-400"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Hadir Siang</p><h3 class="text-3xl font-black text-orange-500" id="kpi-siang">-</h3></div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-indigo-800"><p class="text-xs font-bold text-slate-400 uppercase mb-1">Hadir Malam</p><h3 class="text-3xl font-black text-indigo-900" id="kpi-malam">-</h3></div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-1">
-                        <h3 class="font-bold text-slate-800 mb-1">Distribusi Lokasi Kerja</h3>
-                        <p class="text-xs text-slate-500 mb-4">Persentase sebaran relawan per proyek.</p>
-                        <div class="w-full max-w-[250px] mx-auto h-64"><canvas id="chartLokasiPie"></canvas></div>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-2">
-                        <h3 class="font-bold text-slate-800 mb-1">Kehadiran Berdasarkan Organisasi</h3>
-                        <p class="text-xs text-slate-500 mb-4">Volume relawan dari masing-masing instansi.</p>
-                        <div class="h-64"><canvas id="chartDPD"></canvas></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: INPUT (Validasi Absensi) -->
-            <div id="view-input" class="view-section max-w-6xl mx-auto">
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="p-4 md:p-8">
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-slate-50 p-5 rounded-xl border border-slate-200">
-                            <div><label class="text-xs font-bold text-slate-500 uppercase">Tanggal</label><input type="date" id="tanggal" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none"></div>
-                            <div><label class="text-xs font-bold text-slate-500 uppercase">Sesi</label><select id="sesi" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none"><option value="Siang">☀️ Siang</option><option value="Malam">🌙 Malam</option></select></div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 uppercase">Organisasi (Default)</label>
-                                <input list="listOrgData" id="organisasi" placeholder="Pilih/Ketik Organisasi..." class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none">
-                            </div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 uppercase">Lokasi Proyek</label>
-                                <select id="lokasi" class="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-sm font-semibold mt-1 outline-none">
-                                    <option value="Masjid Raya Fatchan Mubiina">Masjid Raya</option>
-                                    <option value="Monumen Semboyan">Monumen Semboyan</option>
-                                    <option value="Pembesian">Pembesian</option>
-                                    <option value="Kanal Ta'at">Kanal Ta'at</option>
-                                    <option value="Gapuro Syukur">Gapuro Syukur</option>
-                                    <option value="Perpustakaan Tashawwuf">Perpustakaan Tashawwuf</option>
-                                    <option value="Gudang Keramik">Gudang Keramik</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div id="step-paste">
-                            <label class="text-sm font-bold text-slate-700 mb-1 block">Input Data Relawan (Smart Parser)</label>
-                            <p class="text-xs text-slate-500 mb-3"><i class="fa-solid fa-circle-info text-blue-500"></i> Tip: Paste langsung dari WA atau Excel. Sistem akan memisahkan kolom Nama, Bidang, dan Asal secara otomatis.</p>
-                            <textarea id="daftarNama" rows="10" placeholder="Paste data excel / WA di sini..." class="w-full bg-slate-50 border border-slate-300 rounded-xl p-4 text-sm outline-none resize-y font-mono whitespace-pre"></textarea>
-                            <button type="button" onclick="generateStagingGrid()" class="mt-4 w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-sm">Review & Finalisasi Data</button>
-                        </div>
-
-                        <div id="step-review" class="hidden">
-                            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
-                                <label class="text-sm font-bold text-primary"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Data Preview (Nama otomatis KAPITAL & dapat diedit)</label>
-                                <button type="button" onclick="cancelStaging()" class="text-sm text-red-600 font-bold hover:bg-red-50 px-4 py-2 rounded-lg border border-red-200">Batal / Edit Teks Paste</button>
-                            </div>
-                            
-                            <div class="border border-slate-200 rounded-xl overflow-hidden mb-6">
-                                <div class="max-h-96 overflow-y-auto custom-scroll">
-                                    <table class="w-full text-left text-sm whitespace-nowrap">
-                                        <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 shadow-sm z-10">
-                                            <tr>
-                                                <th class="px-3 py-3 w-12 text-center">No</th>
-                                                <th class="px-3 py-3 w-56">Nama Relawan</th>
-                                                <th class="px-3 py-3 w-40">Keahlian</th>
-                                                <th class="px-3 py-3 w-48">Asal Organisasi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="stagingBody" class="divide-y divide-slate-100 bg-white">
-                                            <!-- Data dirender sangat cepat via JS Buffer -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <button type="button" id="btnSubmitFinal" onclick="submitDataToServer()" class="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-all shadow-md text-lg"><i class="fa-solid fa-cloud-arrow-up"></i> Sinkronisasi Permanen ke Database</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: LOGS (Hasil Absensi) -->
-            <div id="view-logs" class="view-section max-w-7xl mx-auto space-y-4">
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4 border-b border-slate-100 pb-4">
-                        <h3 class="font-bold text-xl text-slate-800 shrink-0"><i class="fa-solid fa-clipboard-list text-primary mr-2"></i> Hasil Absensi</h3>
-                        <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-sm transition-colors w-full md:w-auto justify-center"><i class="fa-solid fa-file-excel"></i> Eksport Excel (Terfilter)</button>
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-filter text-primary"></i>
+                        <span class="font-bold text-slate-700 text-sm">Analisis Berdasarkan:</span>
                     </div>
                     
-                    <!-- Advanced Filters Box -->
-                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4">
-                        <div><label class="text-xs font-bold text-slate-500 mb-1 block">Pilih Tanggal</label><input type="date" id="filterDate" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" onchange="applyLogFilters()"></div>
-                        <div><label class="text-xs font-bold text-slate-500 mb-1 block">Filter Sesi</label><select id="filterSesi" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" onchange="applyLogFilters()"><option value="">Semua Sesi</option><option value="Siang">Siang</option><option value="Malam">Malam</option></select></div>
-                        <div><label class="text-xs font-bold text-slate-500 mb-1 block">Filter Bidang</label><select id="filterBidang" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" onchange="applyLogFilters()"><option value="">Semua Bidang</option></select></div>
-                        <div><label class="text-xs font-bold text-slate-500 mb-1 block">Filter Organisasi</label><select id="filterOrg" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" onchange="applyLogFilters()"><option value="">Semua Asal</option></select></div>
-                        <div><label class="text-xs font-bold text-slate-500 mb-1 block">Cari Manual</label><input type="text" id="searchLog" placeholder="Ketik nama/lokasi..." class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium" oninput="applyLogFilters()"></div>
+                    <div class="flex items-center gap-3 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                        <select id="filterBulan" onchange="terapkanFilterDashboard()" class="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer">
+                            <option value="01">Januari</option><option value="02">Februari</option>
+                            <option value="03">Maret</option><option value="04">April</option>
+                            <option value="05">Mei</option><option value="06">Juni</option>
+                            <option value="07">Juli</option><option value="08">Agustus</option>
+                            <option value="09">September</option><option value="10">Oktober</option>
+                            <option value="11">November</option><option value="12">Desember</option>
+                        </select>
+                        <div class="w-px h-4 bg-slate-300"></div>
+                        <select id="filterTahun" onchange="terapkanFilterDashboard()" class="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer">
+                            <!-- Diisi oleh JS -->
+                        </select>
                     </div>
                     
-                    <div id="bulkActionBanner" class="hidden bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex justify-between items-center transition-all">
-                        <span class="text-red-700 font-bold text-sm"><span id="selectedCount">0</span> Data Terpilih</span>
-                        <button onclick="deleteBulkLogs()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md text-sm font-bold shadow-sm"><i class="fa-solid fa-trash mr-2"></i> Hapus Terpilih</button>
-                    </div>
-
-                    <div class="border border-slate-200 rounded-xl overflow-hidden">
-                        <div class="overflow-x-auto custom-scroll max-h-[500px]">
-                            <table class="w-full text-left text-sm whitespace-nowrap"><thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200 sticky top-0 z-10"><tr>
-                                <th class="px-4 py-3 text-center"><input type="checkbox" id="checkAll" class="bulk-checkbox" onchange="toggleAll(this)"></th>
-                                <th class="px-4 py-3 font-bold">Waktu Rekam</th><th class="px-4 py-3 font-bold">Tanggal</th><th class="px-4 py-3 font-bold">Sesi</th><th class="px-4 py-3 font-bold">Nama</th><th class="px-4 py-3 font-bold">Bidang</th><th class="px-4 py-3 font-bold">Organisasi</th><th class="px-4 py-3 font-bold">Lokasi Proyek</th><th class="px-4 py-3 font-bold text-center">Aksi</th>
-                            </tr></thead><tbody id="logTableBody" class="divide-y divide-slate-100 text-slate-700 font-medium bg-white"></tbody></table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIEW: MASTER DATA -->
-            <div id="view-master" class="view-section max-w-6xl mx-auto space-y-4">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-5 rounded-2xl shadow-sm border border-slate-200 gap-4">
-                    <h3 class="font-bold text-xl text-slate-800"><i class="fa-solid fa-database text-primary mr-2"></i>Database Master</h3>
-                    <div class="flex flex-wrap md:flex-nowrap gap-3 w-full md:w-auto">
-                        <select id="filterMasterOrg" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium w-full md:w-auto" onchange="searchMasterData()"><option value="">Semua Organisasi</option></select>
-                        <select id="filterMasterBidang" class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none font-medium w-full md:w-auto" onchange="searchMasterData()"><option value="">Semua Bidang</option></select>
-                        <input type="text" id="searchMaster" placeholder="Cari NIP / Nama..." class="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm outline-none w-full md:w-64 font-medium" oninput="searchMasterData()">
+                    <button onclick="resetFilterDashboard()" class="text-xs font-bold text-slate-400 hover:text-primary transition-colors underline">Kembali ke Hari Ini</button>
+                    
+                    <div class="ml-auto text-xs font-semibold text-slate-400 hidden md:block">
+                        <i class="fa-solid fa-circle-info mr-1 text-blue-400"></i> Klik metrik atau grafik untuk melihat rincian data.
                     </div>
                 </div>
                 
-                <div id="bulkMasterBanner" class="hidden bg-red-50 border border-red-200 rounded-lg p-3 mb-2 flex justify-between items-center transition-all">
-                    <span class="text-red-700 font-bold text-sm"><span id="selectedMasterCount">0</span> Master Terpilih</span>
-                    <button onclick="deleteBulkMaster()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md text-sm font-bold shadow-sm"><i class="fa-solid fa-trash mr-2"></i> Hapus Massal</button>
-                </div>
+                <!-- ZONA 1: KPI CARD (Multi-Dimensi) -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Ditambahkan cursor-pointer dan hover border agar terlihat bisa diklik -->
+                    <div onclick="bukaModalRincian('master', 'Semua Data Master', 'Seluruh relawan yang pernah terdaftar.')" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group cursor-pointer hover:border-blue-400 hover:shadow-md transition-all">
+                        <div class="absolute right-0 top-0 w-16 h-16 bg-blue-50 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
+                        <i class="fa-solid fa-database text-blue-500 absolute right-4 top-4 text-xl z-10"></i>
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 z-10 relative group-hover:text-blue-600 transition-colors">Total Database</p>
+                        <h3 class="text-3xl font-black text-slate-800 tracking-tight z-10 relative" id="kpi-master">-</h3>
+                        <p class="text-[10px] text-slate-400 font-semibold mt-1 flex justify-between items-center">
+                            Seluruh Relawan Terdaftar <i class="fa-solid fa-arrow-up-right-from-square text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                        </p>
+                    </div>
 
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="overflow-x-auto custom-scroll max-h-[600px]">
-                        <table class="w-full text-left text-sm whitespace-nowrap"><thead class="bg-slate-50 border-b border-slate-200 sticky top-0 z-10"><tr>
-                            <th class="px-4 py-3 text-center"><input type="checkbox" id="checkAllMaster" class="bulk-checkbox" onchange="toggleAllMaster(this)"></th>
-                            <th class="px-5 py-3 font-bold text-slate-500 text-xs uppercase">NIP</th>
-                            <th class="px-5 py-3 font-bold text-slate-500 text-xs uppercase">Nama Lengkap</th>
-                            <th class="px-5 py-3 font-bold text-slate-500 text-xs uppercase">Jabatan Aktif</th>
-                            <th class="px-5 py-3 font-bold text-slate-500 text-xs uppercase">Asal Organisasi</th>
-                            <th class="px-5 py-3 font-bold text-center text-slate-500 text-xs uppercase">Aksi</th>
-                        </tr></thead><tbody id="masterTableBody" class="divide-y divide-slate-100 font-medium bg-white"></tbody></table>
+                    <div onclick="bukaModalRincian('hari_ini', 'Kehadiran Lapangan Hari Ini', 'Relawan yang bertugas pada hari ini.')" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all">
+                        <div class="absolute right-0 top-0 w-16 h-16 bg-emerald-50 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
+                        <i class="fa-solid fa-street-view text-emerald-500 absolute right-4 top-4 text-xl z-10"></i>
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 z-10 relative group-hover:text-emerald-600 transition-colors">Kehadiran Hari Ini</p>
+                        <h3 class="text-3xl font-black text-emerald-600 tracking-tight z-10 relative" id="kpi-today">-</h3>
+                        <p class="text-[10px] text-slate-400 font-semibold mt-1 flex justify-between items-center">
+                            Total Siang & Malam <i class="fa-solid fa-arrow-up-right-from-square text-emerald-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                        </p>
+                    </div>
+
+                    <div onclick="bukaModalRincian('bulan_ini', 'Akumulasi Bulan Terpilih', 'Seluruh log absen pada bulan ini.')" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all">
+                        <div class="absolute right-0 top-0 w-16 h-16 bg-indigo-50 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
+                        <i class="fa-solid fa-calendar-check text-indigo-500 absolute right-4 top-4 text-xl z-10"></i>
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 z-10 relative group-hover:text-indigo-600 transition-colors">Akumulasi Sebulan</p>
+                        <h3 class="text-3xl font-black text-primary tracking-tight z-10 relative" id="kpi-month">-</h3>
+                        <p class="text-[10px] text-slate-400 font-semibold mt-1 flex justify-between items-center">
+                            Sesuai Filter Bulan & Tahun <i class="fa-solid fa-arrow-up-right-from-square text-indigo-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                        </p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 w-16 h-16 bg-orange-50 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
+                        <i class="fa-solid fa-chart-line text-orange-500 absolute right-4 top-4 text-xl z-10"></i>
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 z-10 relative">Rata-Rata Harian</p>
+                        <h3 class="text-3xl font-black text-orange-500 tracking-tight z-10 relative" id="kpi-avg">-</h3>
+                        <p class="text-[10px] text-slate-400 font-semibold mt-1">Rasio Relawan per Hari</p>
                     </div>
                 </div>
-            </div>
 
+                <!-- ZONA 2: TREN WAKTU (GRAFIK AREA) -->
+                <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-end mb-4">
+                        <div>
+                            <h3 class="font-extrabold text-slate-800 text-lg">Tren Kehadiran Lapangan</h3>
+                            <p class="text-xs font-semibold text-slate-500">Pergerakan aktivitas pada bulan terpilih. Klik titik pada grafik untuk melihat rincian tanggal.</p>
+                        </div>
+                    </div>
+                    <div class="w-full h-72 cursor-pointer"><canvas id="chartTrend"></canvas></div>
+                </div>
+
+                <!-- ZONA 3: KOMPOSISI & LIVE FEED -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Top 10 Organisasi (Horizontal Bar) -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-ranking-star text-amber-400 mr-2"></i>Top 10 Instansi</h3>
+                        <p class="text-xs text-slate-500 mb-4">Klik batang grafik untuk melihat rincian personel instansi pada bulan ini.</p>
+                        <div class="h-64 cursor-pointer"><canvas id="chartOrg"></canvas></div>
+                    </div>
+
+                    <!-- Distribusi Lokasi (Doughnut) -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-map-location-dot text-emerald-500 mr-2"></i>Konsentrasi Lokasi</h3>
+                        <p class="text-xs text-slate-500 mb-4">Klik potongan diagram untuk melacak siapa saja yang bertugas di proyek ini.</p>
+                        <div class="w-full h-64 max-w-[260px] mx-auto cursor-pointer"><canvas id="chartLokasi"></canvas></div>
+                    </div>
+
+                    <!-- Live Feed (Aktivitas Terakhir KHUSUS HARI INI) -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+                            <div>
+                                <h3 class="font-bold text-slate-800"><i class="fa-solid fa-satellite-dish text-blue-500 mr-2 animate-pulse"></i>Live Feed Harian</h3>
+                                <p class="text-xs text-slate-500 mt-1" id="liveFeedStatus">Log kehadiran khusus hari ini.</p>
+                            </div>
+                            <span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-1 rounded font-bold uppercase">Hari Ini</span>
+                        </div>
+                        <div class="p-5 flex-1 overflow-y-auto custom-scroll" style="max-height: 270px;">
+                            <ul id="liveFeedContainer" class="space-y-4">
+                                <!-- Disisipkan oleh JS -->
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
         </div>
+        
         <div id="toastContainer" class="fixed top-20 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+        <!-- MODAL DRILL-DOWN (Rincian Data) -->
+        <div id="modalRincian" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex flex-col items-center justify-center backdrop-blur-sm p-4 sm:p-8 transition-opacity">
+            <div class="bg-white w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col h-[85vh] transform transition-all">
+                <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl shrink-0">
+                    <div>
+                        <h3 class="font-black text-xl text-slate-800" id="modalRincianJudul">Detail Data</h3>
+                        <p class="text-xs text-slate-500 font-medium mt-1" id="modalRincianSub">Deskripsi data...</p>
+                    </div>
+                    <button onclick="tutupModalRincian()" class="w-10 h-10 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 shadow-sm transition-all flex items-center justify-center">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="flex-1 overflow-auto bg-white p-0 custom-scroll">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 z-10 shadow-sm" id="modalThead">
+                            <!-- Header Tabel dinamis -->
+                        </thead>
+                        <tbody id="modalTbody" class="divide-y divide-slate-100">
+                            <!-- Isi data dinamis -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-between items-center shrink-0">
+                    <span class="text-xs font-bold text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200" id="modalTotalBaris">Total: 0 Data</span>
+                    <button onclick="tutupModalRincian()" class="text-sm bg-slate-800 hover:bg-slate-900 text-white font-bold px-6 py-2 rounded-lg transition-colors shadow-sm">Tutup Rincian</button>
+                </div>
+            </div>
+        </div>
+
     </main>
 
-    <script>
-        // ⚠️ LINK API SCRIPT KAMU YANG SUDAH VALID ⚠️
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwjtEtkdWsd_F6wt4YCQIGLYrN5IF_bN9JeP_mNstWM9NrHcq7fqK9nf7UxDvxGz6ertA/exec";
-        
-        // ================= SECURITY & UI LOGIC =================
-        const PIN_ADMIN = "1234";
-        function checkPin() {
-            if(document.getElementById('pinInput').value === PIN_ADMIN) {
-                document.getElementById('loginScreen').style.opacity = '0';
-                setTimeout(() => { document.getElementById('loginScreen').style.display = 'none'; fetchServerData(); }, 500);
-            } else {
-                document.getElementById('loginError').classList.remove('hidden'); document.getElementById('pinInput').value = '';
-            }
-        }
-        function lockSystem() {
-            document.getElementById('pinInput').value = ''; document.getElementById('loginError').classList.add('hidden');
-            document.getElementById('loginScreen').style.display = 'flex'; setTimeout(() => { document.getElementById('loginScreen').style.opacity = '1'; }, 50);
-        }
-        
-        let isSidebarCollapsed = false;
-        function toggleSidebar() {
-            const sb = document.getElementById('sidebar');
-            isSidebarCollapsed = !isSidebarCollapsed;
-            if(isSidebarCollapsed) { sb.classList.add('sidebar-collapsed'); } else { sb.classList.remove('sidebar-collapsed'); }
-        }
-
-        const views = { 'dashboard': { id: 'view-dashboard', title: 'Dashboard Analytics' }, 'input': { id: 'view-input', title: 'Operasional: Validasi Absensi' }, 'logs': { id: 'view-logs', title: 'Operasional: Hasil Absensi' }, 'master': { id: 'view-master', title: 'Database Master Relawan' } };
-        function switchView(targetView) {
-            Object.keys(views).forEach(key => { document.getElementById(views[key].id).classList.remove('view-active'); document.getElementById(`nav-${key}`).classList.remove('bg-indigo-50', 'text-primary'); document.getElementById(`nav-${key}`).classList.add('text-slate-500'); });
-            document.getElementById(views[targetView].id).classList.add('view-active'); document.getElementById(`nav-${targetView}`).classList.remove('text-slate-500'); document.getElementById(`nav-${targetView}`).classList.add('bg-indigo-50', 'text-primary'); document.getElementById('headerTitle').innerText = views[targetView].title;
-            if(targetView !== 'input') fetchServerData();
-        }
-
-        function showToast(msg, type = 'success') {
-            const container = document.getElementById('toastContainer'); const toast = document.createElement('div');
-            const config = { success: { b: 'border-green-500', i: '<i class="fa-solid fa-check text-green-500"></i>' }, error: { b: 'border-red-500', i: '<i class="fa-solid fa-xmark text-red-500"></i>' }, loading: { b: 'border-blue-500', i: '<i class="fa-solid fa-spinner fa-spin text-blue-500"></i>' } };
-            toast.className = `toast-enter flex items-center gap-4 w-80 p-4 rounded-xl shadow-lg border-l-4 bg-white ${config[type].b} text-slate-800 z-50 pointer-events-auto`;
-            toast.innerHTML = `<div>${config[type].i}</div><div class="text-sm font-bold">${msg}</div>`;
-            container.appendChild(toast);
-            if (type !== 'loading') setTimeout(() => toast.remove(), 4000);
-            return toast;
-        }
-
-        // ================= CORE DATA & DYNAMIC DATALISTS =================
-        let masterDataCache = []; let logDataCache = []; let filteredLogData = [];
-        let chartLokasiPie = null; let chartDPDInst = null;
-
-        async function fetchServerData() {
-            document.getElementById('loadingOverlay').classList.remove('hidden');
-            try {
-                // Cache busting untuk memperbarui tarikan data
-                const response = await fetch(GOOGLE_SCRIPT_URL + "?t=" + new Date().getTime());
-                const data = await response.json();
-                if(data.status === "success") {
-                    masterDataCache = data.master || []; logDataCache = data.logs || [];
-                    
-                    populateDatalists(); 
-                    searchMasterData(); 
-                    applyLogFilters();  
-                    renderCharts();     
-                    
-                    document.getElementById('checkAll').checked = false; toggleBulkActionBanner();
-                    document.getElementById('checkAllMaster').checked = false; toggleMasterBulkAction();
-                } else {
-                    showToast(data.message || "Gagal mengambil data", "error");
-                }
-            } catch (e) { showToast("Gagal menarik data dari server", "error"); } 
-            finally { document.getElementById('loadingOverlay').classList.add('hidden'); }
-        }
-
-        function populateDatalists() {
-            const orgSet = new Set(); const bidangSet = new Set();
-            masterDataCache.forEach(r => { if(r[3] && r[3] !== '-') orgSet.add(r[3]); if(r[2] && r[2] !== '-') bidangSet.add(r[2]); });
-            
-            const orgHtml = Array.from(orgSet).map(o => `<option value="${o}">`).join('');
-            const bidangHtml = Array.from(bidangSet).map(b => `<option value="${b}">`).join('');
-            
-            // Suggestion DataList
-            document.getElementById('listOrgData').innerHTML = orgHtml;
-            document.getElementById('listBidangData').innerHTML = bidangHtml;
-            
-            // Dropdown Filters
-            const filterOrgHtml = '<option value="">Semua Organisasi</option>' + Array.from(orgSet).map(o => `<option value="${o}">${o}</option>`).join('');
-            const filterBidangHtml = '<option value="">Semua Bidang</option>' + Array.from(bidangSet).map(b => `<option value="${b}">${b}</option>`).join('');
-            
-            document.getElementById('filterOrg').innerHTML = filterOrgHtml;
-            document.getElementById('filterMasterOrg').innerHTML = filterOrgHtml;
-            document.getElementById('filterBidang').innerHTML = filterBidangHtml;
-            document.getElementById('filterMasterBidang').innerHTML = filterBidangHtml;
-        }
-
-        // ================= DASHBOARD CHARTS =================
-        function toggleDashFilterInput() {
-            const type = document.getElementById('dashFilterType').value;
-            document.getElementById('dashFilterDate').classList.add('hidden'); document.getElementById('dashFilterMonth').classList.add('hidden');
-            if(type === 'daily') { document.getElementById('dashFilterDate').classList.remove('hidden'); document.getElementById('dashFilterDate').valueAsDate = new Date(); } 
-            else if (type === 'monthly') { document.getElementById('dashFilterMonth').classList.remove('hidden'); document.getElementById('dashFilterMonth').value = new Date().toISOString().slice(0,7); }
-            renderCharts();
-        }
-
-        function renderCharts() {
-            const type = document.getElementById('dashFilterType').value;
-            let dashData = logDataCache;
-            
-            if(type === 'daily') { const fDate = document.getElementById('dashFilterDate').value; dashData = logDataCache.filter(r => r[5] && new Date(r[5]).toISOString().slice(0, 10) === fDate); } 
-            else if (type === 'monthly') { const fMonth = document.getElementById('dashFilterMonth').value; dashData = logDataCache.filter(r => r[5] && new Date(r[5]).toISOString().slice(0, 7) === fMonth); }
-
-            document.getElementById('kpi-total').innerText = masterDataCache.length;
-            document.getElementById('kpi-log').innerText = dashData.length;
-            document.getElementById('kpi-siang').innerText = dashData.filter(r=>r[3]==="Siang").length;
-            document.getElementById('kpi-malam').innerText = dashData.filter(r=>r[3]==="Malam").length;
-
-            const locCount = {}; const orgCount = {};
-            dashData.forEach(r => {
-                const loc = r[7] || 'Lainnya'; const org = r[4] || 'Lainnya';
-                locCount[loc] = (locCount[loc] || 0) + 1; orgCount[org] = (orgCount[org] || 0) + 1;
-            });
-
-            const ctxPie = document.getElementById('chartLokasiPie').getContext('2d');
-            if(chartLokasiPie) chartLokasiPie.destroy();
-            chartLokasiPie = new Chart(ctxPie, { type: 'doughnut', data: { labels: Object.keys(locCount), datasets: [{ data: Object.values(locCount), backgroundColor: ['#4F46E5', '#10B981', '#F59E0B', '#F43F5E', '#8B5CF6'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12 } } } } });
-
-            const ctxDPD = document.getElementById('chartDPD').getContext('2d');
-            if(chartDPDInst) chartDPDInst.destroy();
-            chartDPDInst = new Chart(ctxDPD, { type: 'bar', data: { labels: Object.keys(orgCount), datasets: [{ label: 'Total Relawan', data: Object.values(orgCount), backgroundColor: '#818CF8', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
-        }
-
-        // ================= LOGS: ADVANCED FILTERS & RENDER =================
-        function applyLogFilters() {
-            const fDate = document.getElementById('filterDate').value;
-            const fSesi = document.getElementById('filterSesi').value.toLowerCase();
-            const fBidang = document.getElementById('filterBidang').value.toLowerCase();
-            const fOrg = document.getElementById('filterOrg').value.toLowerCase();
-            const key = document.getElementById('searchLog').value.toLowerCase();
-            
-            filteredLogData = logDataCache.filter(r => {
-                let matchDate = fDate ? (r[5] && new Date(r[5]).toISOString().slice(0, 10) === fDate) : true;
-                const matchSesi = fSesi ? (r[3] && r[3].toString().toLowerCase() === fSesi) : true;
-                const matchBidang = fBidang ? (r[6] && r[6].toString().toLowerCase() === fBidang) : true;
-                const matchOrg = fOrg ? (r[4] && r[4].toString().toLowerCase() === fOrg) : true;
-                const matchKey = key ? ((r[2]&&r[2].toString().toLowerCase().includes(key)) || (r[7]&&r[7].toString().toLowerCase().includes(key))) : true;
-                
-                return matchDate && matchSesi && matchBidang && matchOrg && matchKey;
-            });
-            renderLogTable(filteredLogData);
-        }
-
-        function renderLogTable(data) {
-            const tbody = document.getElementById('logTableBody'); tbody.innerHTML = '';
-            [...data].reverse().forEach(row => {
-                const tr = document.createElement('tr'); tr.className = "hover:bg-slate-50 transition-colors";
-                const timeValueStr = new Date(row[0]).getTime().toString(); 
-                tr.innerHTML = `
-                    <td class="px-4 py-2 text-center"><input type="checkbox" class="bulk-checkbox log-checkbox" value="${timeValueStr}" onchange="toggleBulkActionBanner()"></td>
-                    <td class="px-4 py-2 text-xs text-slate-400">${new Date(row[0]).toLocaleTimeString('id-ID')}</td>
-                    <td class="px-4 py-2">${row[5] ? new Date(row[5]).toLocaleDateString('id-ID') : '-'}</td>
-                    <td class="px-4 py-2 font-bold ${row[3]==='Siang'?'text-orange-500':'text-indigo-700'}">${row[3]}</td>
-                    <td class="px-4 py-2 font-bold">${row[2]}</td>
-                    <td class="px-4 py-2"><span class="bg-slate-200 px-2 py-1 rounded text-xs font-bold">${row[6] || 'Helper'}</span></td>
-                    <td class="px-4 py-2 text-xs font-bold text-slate-500">${row[4] || '-'}</td>
-                    <td class="px-4 py-2">${row[7] || '-'}</td>
-                    <td class="px-4 py-2 text-center"><button onclick="deleteSingleLog('${timeValueStr}')" class="text-red-500 hover:bg-red-50 p-2 rounded transition-colors" title="Hapus"><i class="fa-solid fa-trash"></i></button></td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-        
-        function toggleAll(source) { document.querySelectorAll('.log-checkbox').forEach(cb => cb.checked = source.checked); toggleBulkActionBanner(); }
-        function toggleBulkActionBanner() {
-            const count = document.querySelectorAll('.log-checkbox:checked').length;
-            const banner = document.getElementById('bulkActionBanner');
-            if(count > 0) { banner.classList.remove('hidden'); document.getElementById('selectedCount').innerText = count; } else { banner.classList.add('hidden'); document.getElementById('checkAll').checked = false; }
-        }
-        async function deleteSingleLog(timestampVal) { if(!confirm("Hapus data absen ini secara permanen?")) return; executeDeleteLogs([timestampVal]); }
-        async function deleteBulkLogs() {
-            const checked = document.querySelectorAll('.log-checkbox:checked');
-            if(checked.length === 0 || !confirm(`Yakin ingin menghapus ${checked.length} data absen terpilih?`)) return;
-            executeDeleteLogs(Array.from(checked).map(cb => cb.value));
-        }
-        async function executeDeleteLogs(timestampsArray) {
-            let loading = showToast("Menghapus data...", "loading");
-            try {
-                const response = await fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: 'delete_bulk_log', timestamps: timestampsArray }) });
-                const result = await response.json();
-                loading.remove();
-                if(result.status === "success") { showToast(`${result.deleted} Data berhasil dihapus!`); fetchServerData(); } else throw new Error(result.message);
-            } catch (e) { loading.remove(); showToast(e.message, "error"); }
-        }
-
-        // ================= MASTER DATA & EDIT MODAL =================
-        function searchMasterData() {
-            const key = document.getElementById('searchMaster').value.toLowerCase();
-            const fBidang = document.getElementById('filterMasterBidang').value.toLowerCase();
-            const fOrg = document.getElementById('filterMasterOrg').value.toLowerCase();
-            
-            const filtered = masterDataCache.filter(r => {
-                const matchKey = (r[0]&&r[0].toString().toLowerCase().includes(key)) || (r[1]&&r[1].toString().toLowerCase().includes(key));
-                const matchBidang = fBidang ? (r[2]&&r[2].toString().toLowerCase() === fBidang) : true;
-                const matchOrg = fOrg ? (r[3]&&r[3].toString().toLowerCase() === fOrg) : true;
-                return matchKey && matchBidang && matchOrg;
-            });
-            renderMasterTable(filtered);
-        }
-        
-        function renderMasterTable(data) {
-            const tbody = document.getElementById('masterTableBody'); tbody.innerHTML = '';
-            data.forEach(row => {
-                const tr = document.createElement('tr'); tr.className = "hover:bg-slate-50 transition-colors";
-                tr.innerHTML = `
-                    <td class="px-4 py-2 text-center"><input type="checkbox" class="bulk-checkbox master-checkbox" value="${row[0]}" onchange="toggleMasterBulkAction()"></td>
-                    <td class="px-5 py-3 text-slate-500 font-medium">${row[0]}</td>
-                    <td class="px-5 py-3 font-bold">${row[1]}</td>
-                    <td class="px-5 py-3"><span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-bold">${row[2]||'Helper'}</span></td>
-                    <td class="px-5 py-3 text-slate-600 text-sm font-semibold">${row[3]||'-'}</td>
-                    <td class="px-5 py-3 text-center flex justify-center gap-2">
-                        <button onclick="openEditModal('${row[0]}', '${row[1]}', '${row[2]}', '${row[3]}')" class="text-blue-500 hover:bg-blue-50 p-2 rounded transition-colors" title="Edit Data"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="deleteSingleMaster('${row[0]}')" class="text-red-500 hover:bg-red-50 p-2 rounded transition-colors" title="Hapus"><i class="fa-solid fa-trash"></i></button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-        
-        function openEditModal(nip, nama, jabatan, asal) {
-            document.getElementById('editNip').value = nip;
-            document.getElementById('editNama').value = nama;
-            document.getElementById('editJabatan').value = (jabatan === 'undefined' || !jabatan) ? 'Helper' : jabatan;
-            document.getElementById('editAsal').value = (asal === 'undefined' || !asal) ? '-' : asal;
-            
-            const modal = document.getElementById('editModal'); const content = document.getElementById('editModalContent');
-            modal.classList.remove('hidden'); setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
-        }
-        function closeEditModal() {
-            const modal = document.getElementById('editModal'); const content = document.getElementById('editModalContent');
-            modal.classList.add('opacity-0'); content.classList.add('scale-95'); setTimeout(() => { modal.classList.add('hidden'); }, 300);
-        }
-        
-        async function saveEditMaster() {
-            const payload = { action: 'edit_master', nip: document.getElementById('editNip').value, nama: document.getElementById('editNama').value.toUpperCase(), jabatan: document.getElementById('editJabatan').value, asal: document.getElementById('editAsal').value };
-            let btn = document.getElementById('btnSaveEdit'); btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...`; btn.disabled = true;
-            let loading = showToast("Menyimpan Perubahan...", "loading");
-            try {
-                const response = await fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
-                const result = await response.json();
-                loading.remove();
-                if(result.status === "success") { showToast("Data Master Berhasil Diubah!"); closeEditModal(); fetchServerData(); } else throw new Error(result.message);
-            } catch (e) { loading.remove(); showToast(e.message, "error"); }
-            finally { btn.innerHTML = `Simpan Perubahan`; btn.disabled = false; }
-        }
-
-        function toggleAllMaster(source) { document.querySelectorAll('.master-checkbox').forEach(cb => cb.checked = source.checked); toggleMasterBulkAction(); }
-        function toggleMasterBulkAction() {
-            const count = document.querySelectorAll('.master-checkbox:checked').length; const banner = document.getElementById('bulkMasterBanner');
-            if(count > 0) { banner.classList.remove('hidden'); document.getElementById('selectedMasterCount').innerText = count; } else { banner.classList.add('hidden'); document.getElementById('checkAllMaster').checked = false; }
-        }
-        async function deleteSingleMaster(nip) { if(!confirm(`Hapus permanen NIP ${nip}?`)) return; executeDeleteMaster([nip]); }
-        async function deleteBulkMaster() {
-            const checked = document.querySelectorAll('.master-checkbox:checked');
-            if(checked.length === 0 || !confirm(`Yakin menghapus ${checked.length} data master terpilih?`)) return;
-            executeDeleteMaster(Array.from(checked).map(cb => cb.value));
-        }
-        async function executeDeleteMaster(nipsArray) {
-            let loading = showToast("Menghapus master...", "loading");
-            try {
-                const res = await fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify({ action: 'delete_bulk_master', nips: nipsArray }) });
-                const result = await res.json();
-                loading.remove();
-                if(result.status === "success") { showToast(`${result.deleted || 1} Master dihapus!`); fetchServerData(); } else throw new Error(result.message);
-            } catch (e) { loading.remove(); showToast(e.message, "error"); }
-        }
-
-        // ================= INPUT STAGING =================
-        document.getElementById('tanggal').valueAsDate = new Date();
-        
-        function generateStagingGrid() {
-            const globalOrg = document.getElementById('organisasi').value;
-            const rawText = document.getElementById('daftarNama').value;
-            const lines = rawText.split('\n').filter(n => n.trim() !== "");
-            if(lines.length === 0) { showToast("Data kosong!", "error"); return; }
-            
-            const tbody = document.getElementById('stagingBody'); 
-            let htmlBuffer = '';
-            
-            lines.forEach((line, idx) => {
-                let nama = ""; let bidang = ""; let org = globalOrg;
-                
-                // --- SUPER SMART PARSER (EXCEL & WHATSAPP) ---
-                let cleanLine = line.replace(/^(\d+[\.\-\)]\s*|[\-\*]\s*)/, '').trim();
-                
-                if (cleanLine.includes('\t')) {
-                    const cols = cleanLine.split('\t').map(c => c.trim()).filter(c=>c);
-                    nama = cols[0] || ""; bidang = cols[1] || ""; org = cols[2] || globalOrg;
-                } else if (/\s{2,}/.test(cleanLine)) {
-                    const cols = cleanLine.split(/\s{2,}/).map(c => c.trim()).filter(c=>c);
-                    nama = cols[0] || ""; bidang = cols[1] || ""; org = cols[2] || globalOrg;
-                } else if (/[-,\/;\|]/.test(cleanLine)) {
-                    const cols = cleanLine.split(/[-,\/;\|]/).map(c => c.trim()).filter(c=>c);
-                    nama = cols[0] || ""; bidang = cols[1] || ""; org = cols[2] || globalOrg;
-                } else {
-                    nama = cleanLine;
-                }
-                
-                nama = nama.toUpperCase();
-                
-                const found = masterDataCache.find(r => r[1].toString().toUpperCase() === nama);
-                if (!bidang) bidang = found ? (found[2] || 'Helper') : 'Helper';
-                if (!org) org = found ? (found[3] || globalOrg) : globalOrg;
-
-                htmlBuffer += `
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-2 py-2 text-center font-bold text-slate-400">${idx + 1}</td>
-                        <td class="px-2 py-2">
-                            <input type="text" id="nama-${idx}" value="${nama}" class="w-full bg-slate-50 border border-slate-300 rounded p-2 text-sm font-bold text-slate-900 outline-none uppercase focus:border-primary">
-                        </td>
-                        <td class="px-2 py-2">
-                            <input list="listBidangData" id="bidang-${idx}" value="${bidang}" placeholder="Ketik/Pilih..." class="w-full bg-slate-50 border border-slate-300 rounded p-2 text-sm font-bold text-primary outline-none focus:border-primary">
-                        </td>
-                        <td class="px-2 py-2">
-                            <input list="listOrgData" id="org-${idx}" value="${org}" placeholder="Ketik/Pilih..." class="w-full bg-slate-50 border border-slate-300 rounded p-2 text-sm font-bold text-slate-700 outline-none focus:border-primary">
-                        </td>
-                    </tr>
-                `;
-            });
-            tbody.innerHTML = htmlBuffer;
-            document.getElementById('step-paste').classList.add('hidden'); 
-            document.getElementById('step-review').classList.remove('hidden');
-        }
-
-        function cancelStaging() { document.getElementById('step-review').classList.add('hidden'); document.getElementById('step-paste').classList.remove('hidden'); }
-
-        async function submitDataToServer() {
-            const globalLokasi = document.getElementById('lokasi').value;
-            const rowCount = document.getElementById('stagingBody').children.length;
-            
-            const relawanData = [];
-            for(let i=0; i<rowCount; i++) {
-                const valNama = document.getElementById(`nama-${i}`).value.trim();
-                if(valNama === "") continue;
-                
-                relawanData.push({
-                    nama: valNama.toUpperCase(),
-                    bidang: document.getElementById(`bidang-${i}`).value,
-                    organisasi: document.getElementById(`org-${i}`).value
-                });
-            }
-
-            if(relawanData.length === 0) { showToast("Tidak ada data valid", "error"); return; }
-
-            const payload = {
-                action: 'insert', tanggal: document.getElementById('tanggal').value, sesi: document.getElementById('sesi').value,
-                lokasi: globalLokasi, relawan: relawanData
-            };
-
-            const btn = document.getElementById('btnSubmitFinal'); btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Menyinkronkan...`; btn.disabled = true;
-            let loading = showToast("Menyimpan ke Database...", "loading");
-
-            try {
-                const response = await fetch(GOOGLE_SCRIPT_URL, { method: "POST", body: JSON.stringify(payload) });
-                const result = await response.json();
-                loading.remove();
-                if(result.status === "success") {
-                    showToast(`Selesai! ${result.logCount} absen dicatat.`);
-                    document.getElementById('daftarNama').value = ""; cancelStaging(); switchView('logs');
-                } else throw new Error(result.message);
-            } catch (e) { loading.remove(); showToast(e.message, "error"); }
-            finally { btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Sinkronisasi Permanen ke Database`; btn.disabled = false; }
-        }
-
-        // ================= EXPORT EXCEL =================
-        function exportToExcel() {
-            const dataToExport = filteredLogData.length > 0 ? filteredLogData : logDataCache;
-            if(dataToExport.length === 0) return showToast("Data kosong", "error");
-            
-            const exportData = dataToExport.map((r, idx) => ({
-                "No": idx + 1, "Tanggal": r[5]?new Date(r[5]).toLocaleDateString('id-ID'):'',
-                "Sesi": r[3], "Nama Relawan": r[2], "Bidang": r[6] || 'Helper',
-                "Ditugaskan Oleh": r[4], "Lokasi Proyek": r[7] || '-'
-            }));
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            ws['!cols'] = [{wch:5}, {wch:12}, {wch:10}, {wch:25}, {wch:15}, {wch:25}, {wch:25}];
-            ws['!autofilter'] = { ref: XLSX.utils.encode_range(XLSX.utils.decode_range(ws['!ref'])) };
-            
-            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Rekap_Terfilter");
-            XLSX.writeFile(wb, `Laporan_Absensi_${new Date().toISOString().slice(0,10)}.xlsx`);
-        }
-    </script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/dashboard.js"></script>
 </body>
 </html>
