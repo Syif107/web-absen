@@ -15,8 +15,6 @@ document.addEventListener("DOMContentLoaded", () => {
 // 1. Tarik Data Master Sekali di Awal
 async function loadMasterData() {
     try {
-        // Kita tidak memakai order=nama.asc dari database lagi,
-        // karena kita ingin menyortirnya secara dinamis di Client-Side (JS)
         const res = await supabaseFetch('master_relawan?select=*', 'GET');
         if (res.status === "success") {
             masterData = res.data;
@@ -37,18 +35,18 @@ function gantiBatasData() {
     const val = document.getElementById('limitData').value;
     if(val === 'newest') {
         isNewestFilter = true;
-        rowsPerPage = 50; // Khusus Terbaru, pangkas 50 data teratas
+        rowsPerPage = 50; 
     } else {
         isNewestFilter = false;
         rowsPerPage = parseInt(val);
     }
-    currentPage = 1; // Reset halaman ke 1 setiap kali filter ganti
+    currentPage = 1; 
     terapkanFilterDanPaginasi();
 }
 
 // 3. Fungsi Saat Mengetik di Kolom Pencarian
 function filterTabelMaster() {
-    currentPage = 1; // Kembali ke halaman 1 saat sedang mencari
+    currentPage = 1; 
     terapkanFilterDanPaginasi();
 }
 
@@ -56,19 +54,15 @@ function filterTabelMaster() {
 function terapkanFilterDanPaginasi() {
     const keyword = document.getElementById('cariData').value.toLowerCase();
     
-    // A. Saring berdasarkan kata kunci pencarian
     filteredData = masterData.filter(r => 
         (r.nama && r.nama.toLowerCase().includes(keyword)) || 
         (r.asal_organisasi && r.asal_organisasi.toLowerCase().includes(keyword)) ||
         (r.nip && r.nip.toLowerCase().includes(keyword))
     );
 
-    // B. Logika Pengurutan (Sorting)
     if (isNewestFilter && keyword === "") {
-        // Mode "Terbaru": Balik urutan array asli (data terakhir di-insert menjadi di atas)
         filteredData = [...masterData].reverse();
     } else {
-        // Mode Normal: Urutkan berdasarkan Abjad Nama (A-Z)
         filteredData.sort((a, b) => a.nama.localeCompare(b.nama));
     }
 
@@ -81,7 +75,7 @@ function ubahHalaman(arah) {
     renderTabelMaster(filteredData);
 }
 
-// 6. Mesin Render HTML & Kalkulasi Baris (Dilengkapi Tombol Hapus)
+// 6. Mesin Render HTML & Kalkulasi Baris (Dilengkapi Tombol Edit, Merge, Hapus)
 function renderTabelMaster(data) {
     const tbody = document.getElementById('tabelMasterBody');
     const info = document.getElementById('infoPaginasi');
@@ -89,7 +83,7 @@ function renderTabelMaster(data) {
     const btnNext = document.getElementById('btnNext');
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-slate-400 font-medium">Data tidak ditemukan.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-slate-400 font-medium">Data tidak ditemukan.</td></tr>';
         info.innerText = "Menampilkan 0 data";
         btnPrev.disabled = true;
         btnNext.disabled = true;
@@ -108,6 +102,8 @@ function renderTabelMaster(data) {
     dataPaginated.forEach((r, idx) => {
         const noUrut = startIndex + idx + 1;
         const namaAman = r.nama ? r.nama.replace(/'/g, "\\'") : '';
+        const bidangAman = r.jabatan ? r.jabatan.replace(/'/g, "\\'") : '';
+        const orgAman = r.asal_organisasi ? r.asal_organisasi.replace(/'/g, "\\'") : '';
         
         html += `
             <tr class="hover:bg-indigo-50/50 transition-colors">
@@ -121,10 +117,16 @@ function renderTabelMaster(data) {
                 <td class="px-5 py-3 text-slate-600 font-medium">${r.asal_organisasi || '-'}</td>
                 <td class="px-5 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
-                        <button onclick="bukaModalMerge('${r.nip}', '${namaAman}')" class="bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-amber-200 shadow-sm flex items-center gap-1">
-                            <i class="fa-solid fa-code-merge"></i> Typo
+                        <!-- TOMBOL EDIT -->
+                        <button onclick="bukaModalEdit('${r.nip}', '${namaAman}', '${bidangAman}', '${orgAman}')" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
+                            <i class="fa-solid fa-pen-to-square"></i> Edit
                         </button>
-                        <button onclick="deleteSingleMaster('${r.nip}', '${namaAman}')" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-200 shadow-sm flex items-center gap-1">
+                        <!-- TOMBOL TYPO/MERGE -->
+                        <button onclick="bukaModalMerge('${r.nip}', '${namaAman}')" class="bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-amber-200 shadow-sm flex items-center gap-1" title="Merge/Typo">
+                            <i class="fa-solid fa-code-merge"></i>
+                        </button>
+                        <!-- TOMBOL HAPUS -->
+                        <button onclick="deleteSingleMaster('${r.nip}', '${namaAman}')" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-200 shadow-sm flex items-center gap-1" title="Hapus">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
@@ -171,7 +173,6 @@ async function deleteBulkMaster() {
     
     try {
         const nips = Array.from(checked).map(cb => cb.value);
-        // Mengeksekusi hapus paralel untuk keamanan data (Bulk API call)
         const deletePromises = nips.map(nip => supabaseFetch(`master_relawan?nip=eq.${nip}`, 'DELETE'));
         await Promise.all(deletePromises);
         
@@ -188,26 +189,6 @@ async function deleteBulkMaster() {
 }
 
 async function deleteSingleMaster(nip, nama) {
-    const konfirmasi = confirm(`⚠️ HAPUS DATA\nApakah Anda yakin ingin menghapus "${nama}"?`);
-    if (!konfirmasi) return;
-
-    let loading = showToast("Menghapus data...", "loading");
-    try {
-        const res = await supabaseFetch(`master_relawan?nip=eq.${nip}`, 'DELETE');
-        loading.remove();
-        if (res.status === "success" || res.status === 204 || res.status === 201) {
-            showToast("Data master berhasil dihapus!", "success");
-            loadMasterData(); 
-        }
-    } catch (err) {
-        if (loading) loading.remove();
-        showToast("Gagal menghapus data.", "error");
-    }
-}
-
-
-// 7. Fungsi Eksekusi Hapus Data Master
-async function deleteSingleMaster(nip, nama) {
     const konfirmasi = confirm(`⚠️ PERINGATAN HAPUS DATA\n\nApakah Anda yakin ingin menghapus personel "${nama}" (NIP: ${nip}) dari Master Data secara permanen?`);
     if (!konfirmasi) return;
 
@@ -218,7 +199,7 @@ async function deleteSingleMaster(nip, nama) {
         
         if (res.status === "success" || res.status === 204 || res.status === 201) {
             showToast("Data master berhasil dihapus!", "success");
-            loadMasterData(); // Muat ulang tabel secara otomatis
+            loadMasterData(); 
         } else {
             throw new Error(res.message || "Gagal menghapus data");
         }
@@ -229,7 +210,71 @@ async function deleteSingleMaster(nip, nama) {
 }
 
 // ------------------------------------------
-// ZONA MERGE ENGINE (PENGGABUNGAN DATA) - SEARCHABLE
+// ZONA EDIT MASTER DATA
+// ------------------------------------------
+
+let currentEditNip = "";
+
+function bukaModalEdit(nip, nama, bidang, org) {
+    currentEditNip = nip;
+    
+    // Isi data ke form modal
+    document.getElementById('editNip').value = nip;
+    document.getElementById('editNama').value = nama;
+    document.getElementById('editBidang').value = bidang;
+    document.getElementById('editOrg').value = org;
+    
+    document.getElementById('modalEdit').classList.remove('hidden');
+}
+
+function tutupModalEdit() {
+    document.getElementById('modalEdit').classList.add('hidden');
+}
+
+async function simpanEditMaster() {
+    const namaBaru = document.getElementById('editNama').value.trim().toUpperCase();
+    const bidangBaru = document.getElementById('editBidang').value.trim();
+    const orgBaru = document.getElementById('editOrg').value.trim();
+    
+    if(!namaBaru) {
+        showToast("Nama Relawan tidak boleh kosong!", "error");
+        return;
+    }
+
+    const btn = document.getElementById('btnSimpanEdit');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+    btn.disabled = true;
+
+    const payloadUpdate = {
+        nama: namaBaru,
+        jabatan: bidangBaru,
+        asal_organisasi: orgBaru
+    };
+
+    try {
+        const res = await supabaseFetch(`master_relawan?nip=eq.${currentEditNip}`, 'PATCH', payloadUpdate);
+        
+        if (res.status === "success" || res.status === 204 || res.status === 201) {
+            showToast("Data profil berhasil diperbarui!", "success");
+            tutupModalEdit();
+            
+            // Muat ulang tabel untuk melihat perubahan
+            document.getElementById('cariData').value = ""; // opsional: reset pencarian
+            loadMasterData(); 
+        } else {
+            throw new Error("Gagal mengupdate ke database.");
+        }
+    } catch (err) {
+        showToast("Terjadi kesalahan saat mengupdate data.", "error");
+    } finally {
+        btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan';
+        btn.disabled = false;
+    }
+}
+
+
+// ------------------------------------------
+// ZONA MERGE ENGINE (PENGGABUNGAN DATA)
 // ------------------------------------------
 
 let currentSourceNip = "";
@@ -239,7 +284,6 @@ function siapkanDropdownMerge() {
     const list = document.getElementById('dropdownMergeList');
     let html = '';
     
-    // Urutkan dropdown A-Z
     const sortedMaster = [...masterData].sort((a, b) => a.nama.localeCompare(b.nama));
     
     sortedMaster.forEach(r => {

@@ -93,9 +93,10 @@
                                     <option value="Malam">🌙 Malam</option>
                                 </select>
                             </div>
-                            <div>
+                            <!-- KONTROL LOKASI (MODIFIKASI CUSTOM LAINNYA) -->
+                            <div class="flex flex-col">
                                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 block">Lokasi Proyek</label>
-                                <select id="inputLokasi" class="w-full bg-white border border-slate-300 text-sm rounded-xl px-4 py-3 outline-none font-semibold focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
+                                <select id="inputLokasi" onchange="toggleCustomLokasi()" class="w-full bg-white border border-slate-300 text-sm rounded-xl px-4 py-3 outline-none font-semibold focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
                                     <option value="Monumen Semboyan">Monumen Semboyan</option>
                                     <option value="Kanal Ta'at">Kanal Ta'at</option>
                                     <option value="Perpustakaan Tashawwuf">Perpustakaan Tashawwuf</option>
@@ -103,9 +104,10 @@
                                     <option value="Masjid Raya Fatchan Mubiina Chaddun 'Adhiima">Masjid Raya Fatchan Mubiina Chaddun 'Adhiima</option>
                                     <option value="Gapuro Syukur">Gapuro Syukur</option>
                                     <option value="Gudang Keramik">Gudang Keramik</option>
-                                    <option value="Lainnya">Lainnya...</option>
+                                    <option value="Lainnya">Lainnya... (Ketik Manual)</option>
                                 </select>
-                            </div>
+                                <!-- Field Teks Tambahan (Hidden secara Default) -->
+                                <input type="text" id="inputLokasiCustom" style="text-transform: none !important;" placeholder="Ketik lokasi spesifik..." class="hidden w-full bg-amber-50 border border-amber-300 text-sm rounded-xl px-4 py-3 outline-none font-semibold focus:border-amber-500 focus:ring-1 focus:ring-amber-500 mt-2 transition-all placeholder-amber-400">                            </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 block">Asal Organisasi (Default)</label>
                                 <input list="listOrgData" id="inputOrgDefault" placeholder="Pilih/Ketik Organisasi..." class="w-full bg-white border border-slate-300 text-sm rounded-xl px-4 py-3 outline-none font-semibold focus:border-primary focus:ring-1 focus:ring-primary">
@@ -172,4 +174,4 @@
     <script src="js/app.js"></script>
     <script src="js/input.js"></script>
 </body>
-</html> 
+</html>

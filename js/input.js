@@ -44,6 +44,24 @@ function populateDatalists() {
 }
 
 // ------------------------------------------
+// ZONA INTERAKSI LOKASI CUSTOM
+// ------------------------------------------
+
+function toggleCustomLokasi() {
+    const dropdown = document.getElementById('inputLokasi');
+    const customInput = document.getElementById('inputLokasiCustom');
+    
+    if (dropdown.value === 'Lainnya') {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+    } else {
+        customInput.classList.add('hidden');
+        customInput.value = ''; // Kosongkan agar tidak ada sisa ketikan lama
+    }
+}
+
+
+// ------------------------------------------
 // ZONA SMART PARSER & STAGING REVIEW
 // ------------------------------------------
 
@@ -124,7 +142,19 @@ function cancelStaging() {
 async function submitDataToServer() {
     const inputTanggal = document.getElementById('inputTanggal').value; 
     const globalSesi = document.getElementById('inputSesi').value;
-    const globalLokasi = document.getElementById('inputLokasi').value;
+    
+    // Logika Penarikan Nilai Lokasi (Dropdown vs Custom Text)
+    const dropdownLokasi = document.getElementById('inputLokasi').value;
+    const customLokasi = document.getElementById('inputLokasiCustom').value.trim();
+    
+    // Jika user memilih "Lainnya" tapi tidak mengetik apa-apa, cegah pengiriman
+    if (dropdownLokasi === 'Lainnya' && customLokasi === '') {
+        showToast("Tuliskan spesifik lokasi proyeknya jika memilih 'Lainnya'!", "error");
+        document.getElementById('inputLokasiCustom').focus();
+        return;
+    }
+    
+    const globalLokasi = (dropdownLokasi === 'Lainnya') ? customLokasi : dropdownLokasi;
     
     if(!inputTanggal) {
         showToast("Tanggal absensi tidak boleh kosong!", "error");
@@ -135,8 +165,8 @@ async function submitDataToServer() {
     const rows = tbody.querySelectorAll('tr');
     
     const arrayDataAbsensi = [];
-    const arrayDataMasterBaru = []; // Keranjang untuk relawan yang belum pernah terdaftar
-    const namaSudahDitambahkan = new Set(); // Mencegah nama ganda tersimpan dua kali di satu formulir
+    const arrayDataMasterBaru = [];
+    const namaSudahDitambahkan = new Set(); 
 
     rows.forEach((tr, i) => {
         const valNama = document.getElementById(`nama-${i}`).value.trim().toUpperCase();
@@ -147,7 +177,6 @@ async function submitDataToServer() {
         const bidang = document.getElementById(`bidang-${i}`).value || 'Helper';
         const organisasi = document.getElementById(`org-${i}`).value || 'Umum';
 
-        // 1. Jika ini relawan baru, masukkan ke keranjang Master Data
         if (isNew && !namaSudahDitambahkan.has(valNama)) {
             arrayDataMasterBaru.push({
                 nip: nip,
@@ -158,7 +187,6 @@ async function submitDataToServer() {
             namaSudahDitambahkan.add(valNama);
         }
         
-        // 2. Masukkan ke keranjang Absensi
         arrayDataAbsensi.push({
             tanggal: inputTanggal, 
             sesi: globalSesi,
@@ -181,12 +209,10 @@ async function submitDataToServer() {
     btn.disabled = true;
 
     try {
-        // TAHAP 1: Simpan relawan baru ke tabel master_relawan (Jika ada)
         if (arrayDataMasterBaru.length > 0) {
             await supabaseFetch('master_relawan', 'POST', arrayDataMasterBaru);
         }
 
-        // TAHAP 2: Simpan semua riwayat ke tabel log_absensi
         const res = await supabaseFetch('log_absensi', 'POST', arrayDataAbsensi);
         
         if (res.status === "success" || res.status === 204 || res.status === 201) {
@@ -198,8 +224,6 @@ async function submitDataToServer() {
             
             document.getElementById('daftarNama').value = ""; 
             cancelStaging();
-            
-            // Tarik ulang data master agar nama-nama baru tadi masuk ke autocomplete pencarian berikutnya
             loadMasterDataUntukStaging();
         } else {
             showToast("Gagal menyimpan data absensi.", "error");
