@@ -44,26 +44,53 @@ function gantiBatasData() {
     terapkanFilterDanPaginasi();
 }
 
-// 3. Fungsi Saat Mengetik di Kolom Pencarian
+// 3. Fungsi Saat Mengetik di Kolom Pencarian Global
 function filterTabelMaster() {
     currentPage = 1; 
     terapkanFilterDanPaginasi();
 }
 
-// 4. Inti Mesin Penyaringan & Pengurutan Data
+// 4. Inti Mesin Penyaringan, Excel Filter, & Pengurutan Data
 function terapkanFilterDanPaginasi() {
     const keyword = document.getElementById('cariData').value.toLowerCase();
     
+    // Filter Pencarian Global
     filteredData = masterData.filter(r => 
         (r.nama && r.nama.toLowerCase().includes(keyword)) || 
         (r.asal_organisasi && r.asal_organisasi.toLowerCase().includes(keyword)) ||
         (r.nip && r.nip.toLowerCase().includes(keyword))
     );
 
-    if (isNewestFilter && keyword === "") {
-        filteredData = [...masterData].reverse();
+    // Filter berdasarkan pop-up Excel (Checkbox kolom aktif)
+    Object.keys(activeExcelFilters).forEach(col => {
+        const allowedVals = activeExcelFilters[col];
+        if (allowedVals && allowedVals.length > 0) {
+            filteredData = filteredData.filter(item => {
+                const val = (item[col] !== null && item[col] !== undefined && item[col] !== "") ? String(item[col]) : '-';
+                return allowedVals.includes(val);
+            });
+        }
+    });
+
+    // Sorting Kolom (A-Z / Z-A) atau Default Nama
+    if (activeSortColumn) {
+        filteredData.sort((a, b) => {
+            let valA = (a[activeSortColumn] !== null && a[activeSortColumn] !== undefined) ? String(a[activeSortColumn]).toLowerCase() : '';
+            let valB = (b[activeSortColumn] !== null && b[activeSortColumn] !== undefined) ? String(b[activeSortColumn]).toLowerCase() : '';
+            if (valA < valB) return activeSortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return activeSortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
     } else {
-        filteredData.sort((a, b) => a.nama.localeCompare(b.nama));
+        if (isNewestFilter && keyword === "") {
+            filteredData = [...masterData].reverse();
+        } else {
+            filteredData.sort((a, b) => {
+                let namaA = a.nama || '';
+                let namaB = b.nama || '';
+                return namaA.localeCompare(namaB);
+            });
+        }
     }
 
     renderTabelMaster(filteredData);
@@ -75,7 +102,7 @@ function ubahHalaman(arah) {
     renderTabelMaster(filteredData);
 }
 
-// 6. Mesin Render HTML & Kalkulasi Baris (Dilengkapi Tombol Edit, Merge, Hapus)
+// 6. Mesin Render HTML & Kalkulasi Baris
 function renderTabelMaster(data) {
     const tbody = document.getElementById('tabelMasterBody');
     const info = document.getElementById('infoPaginasi');
@@ -111,10 +138,10 @@ function renderTabelMaster(data) {
                     <input type="checkbox" class="master-checkbox w-4 h-4 accent-primary cursor-pointer" value="${r.nip}" onchange="toggleMasterBulkAction()">
                 </td>
                 <td class="px-4 py-3 text-center text-slate-400 font-bold bg-slate-50 border-r border-slate-100">${noUrut}</td>
-                <td class="px-5 py-3 font-mono text-xs text-slate-500">${r.nip}</td>
-                <td class="px-5 py-3 font-bold text-slate-800">${r.nama}</td>
-                <td class="px-5 py-3 text-slate-600"><span class="bg-slate-100 px-2 py-1 rounded-md text-xs font-bold border border-slate-200">${r.jabatan || 'Helper'}</span></td>
+                <td class="px-5 py-3 font-mono text-xs text-slate-500">${r.nip || '-'}</td>
+                <td class="px-5 py-3 font-bold text-slate-800">${r.nama || '-'}</td>
                 <td class="px-5 py-3 text-slate-600 font-medium">${r.asal_organisasi || '-'}</td>
+                <td class="px-5 py-3 text-slate-600"><span class="bg-slate-100 px-2 py-1 rounded-md text-xs font-bold border border-slate-200">${r.jabatan || 'Helper'}</span></td>
                 <td class="px-5 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
                         <!-- TOMBOL EDIT -->
@@ -139,6 +166,128 @@ function renderTabelMaster(data) {
     info.innerText = `Baris ${startIndex + 1}-${endIndex} dari ${data.length.toLocaleString('id-ID')} Data (Hal ${currentPage}/${totalPages})`;
     btnPrev.disabled = currentPage === 1;
     btnNext.disabled = currentPage === totalPages;
+}
+
+// ==========================================
+// FUNGSI KHUSUS POP-UP EXCEL FILTER MASTER (DENGAN SEARCH & SELECT/DESELECT ALL)
+// ==========================================
+
+function bukaExcelFilterMaster(columnKey, event) {
+    event.stopPropagation();
+    const popup = document.getElementById('excelFilterPopup');
+    if (!popup) return;
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    popup.style.top = `${rect.bottom + window.scrollY + 5}px`;
+    popup.style.left = `${rect.left + window.scrollX - 180}px`;
+    popup.style.width = '280px';
+
+    // Ambil nilai unik dari seluruh masterData berdasarkan key kolom
+    const uniqueValues = [...new Set(masterData.map(item => {
+        let val = item[columnKey];
+        return (val !== null && val !== undefined && val !== "") ? String(val) : '-';
+    }))].sort();
+
+    const currentSelected = activeExcelFilters[columnKey] || [];
+
+    let html = `
+        <div class="font-bold text-slate-700 mb-2 pb-1 border-b border-slate-100 flex justify-between items-center text-xs">
+            <span>Filter & Urutkan</span>
+            <span class="text-primary cursor-pointer underline hover:text-indigo-700" onclick="resetFilterKolomMaster('${columnKey}')">Reset</span>
+        </div>
+        
+        <div class="space-y-1 mb-2 text-xs">
+            <button onclick="sortDataKolomMaster('${columnKey}', 'asc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded font-semibold text-slate-600 flex items-center gap-2"><i class="fa-solid fa-arrow-down-a-z text-primary"></i> Urutkan A ke Z</button>
+            <button onclick="sortDataKolomMaster('${columnKey}', 'desc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded font-semibold text-slate-600 flex items-center gap-2"><i class="fa-solid fa-arrow-up-z-a text-primary"></i> Urutkan Z ke A</button>
+        </div>
+
+        <!-- KOTAK PENCARIAN DI DALAM FILTER MASTER -->
+        <div class="mb-2 relative">
+            <i class="fa-solid fa-search absolute left-2.5 top-2 text-slate-400 text-[10px]"></i>
+            <input type="text" id="searchPopupInput" onkeyup="filterListPopupMaster(this)" placeholder="Cari data..." class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-7 pr-3 py-1.5 text-xs outline-none focus:border-primary">
+        </div>
+
+        <!-- TOMBOL PILIH SEMUA / HAPUS SEMUA MASTER -->
+        <div class="flex justify-between items-center mb-1 text-[11px] font-bold text-indigo-600 px-1">
+            <span class="cursor-pointer hover:underline" onclick="toggleAllPopupCheckboxMaster(true)">Pilih Semua</span>
+            <span class="text-slate-300">|</span>
+            <span class="cursor-pointer hover:underline text-red-500" onclick="toggleAllPopupCheckboxMaster(false)">Hapus Semua</span>
+        </div>
+
+        <div class="max-h-44 overflow-y-auto space-y-1 pr-1 custom-scroll border border-slate-100 p-1 rounded-lg bg-slate-50/50" id="excelCheckboxList">
+    `;
+
+    uniqueValues.forEach(val => {
+        const isChecked = currentSelected.length === 0 || currentSelected.includes(val) ? 'checked' : '';
+        html += `
+            <label class="popup-item-label-master flex items-center gap-2 p-1 hover:bg-white rounded cursor-pointer text-xs">
+                <input type="checkbox" value="${val}" data-col="${columnKey}" class="excel-filter-chk-master w-3.5 h-3.5 accent-primary rounded shrink-0" ${isChecked} onchange="terapkanExcelFilterMaster()">
+                <span class="truncate text-slate-700 font-medium">${val}</span>
+            </label>
+        `;
+    });
+
+    html += `</div>`;
+    popup.innerHTML = html;
+    popup.classList.remove('hidden');
+}
+
+// FUNGSI PENDUKUNG PENCARIAN DI POP-UP MASTER
+function filterListPopupMaster(input) {
+    const keyword = input.value.toLowerCase();
+    const labels = document.querySelectorAll('.popup-item-label-master');
+    
+    labels.forEach(lbl => {
+        const text = lbl.innerText.toLowerCase();
+        if (text.includes(keyword)) {
+            lbl.style.display = "flex";
+        } else {
+            lbl.style.display = "none";
+        }
+    });
+}
+
+// FUNGSI PENDUKUNG PILIH/HAPUS SEMUA DI POP-UP MASTER
+function toggleAllPopupCheckboxMaster(status) {
+    const checkboxes = document.querySelectorAll('.excel-filter-chk-master');
+    checkboxes.forEach(chk => {
+        if (chk.closest('label').style.display !== 'none') {
+            chk.checked = status;
+        }
+    });
+    terapkanExcelFilterMaster();
+}
+
+function terapkanExcelFilterMaster() {
+    const checkboxes = document.querySelectorAll('.excel-filter-chk-master');
+    if (checkboxes.length === 0) return;
+    const colKey = checkboxes[0].dataset.col;
+
+    let selectedVals = [];
+    checkboxes.forEach(chk => {
+        if (chk.checked) selectedVals.push(chk.value);
+    });
+
+    activeExcelFilters[colKey] = selectedVals;
+    currentPage = 1;
+    terapkanFilterDanPaginasi();
+}
+
+function sortDataKolomMaster(columnKey, direction) {
+    activeSortColumn = columnKey;
+    activeSortDirection = direction;
+    currentPage = 1;
+    terapkanFilterDanPaginasi();
+    const popup = document.getElementById('excelFilterPopup');
+    if (popup) popup.classList.add('hidden');
+}
+
+function resetFilterKolomMaster(columnKey) {
+    delete activeExcelFilters[columnKey];
+    currentPage = 1;
+    terapkanFilterDanPaginasi();
+    const popup = document.getElementById('excelFilterPopup');
+    if (popup) popup.classList.add('hidden');
 }
 
 // ------------------------------------------
@@ -218,7 +367,6 @@ let currentEditNip = "";
 function bukaModalEdit(nip, nama, bidang, org) {
     currentEditNip = nip;
     
-    // Isi data ke form modal
     document.getElementById('editNip').value = nip;
     document.getElementById('editNama').value = nama;
     document.getElementById('editBidang').value = bidang;
@@ -257,9 +405,6 @@ async function simpanEditMaster() {
         if (res.status === "success" || res.status === 204 || res.status === 201) {
             showToast("Data profil berhasil diperbarui!", "success");
             tutupModalEdit();
-            
-            // Muat ulang tabel untuk melihat perubahan
-            document.getElementById('cariData').value = ""; // opsional: reset pencarian
             loadMasterData(); 
         } else {
             throw new Error("Gagal mengupdate ke database.");
@@ -272,7 +417,6 @@ async function simpanEditMaster() {
     }
 }
 
-
 // ------------------------------------------
 // ZONA MERGE ENGINE (PENGGABUNGAN DATA)
 // ------------------------------------------
@@ -282,9 +426,10 @@ let currentSourceName = "";
 
 function siapkanDropdownMerge() {
     const list = document.getElementById('dropdownMergeList');
+    if (!list) return;
     let html = '';
     
-    const sortedMaster = [...masterData].sort((a, b) => a.nama.localeCompare(b.nama));
+    const sortedMaster = [...masterData].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
     
     sortedMaster.forEach(r => {
         const namaAman = r.nama ? r.nama.replace(/'/g, "\\'") : ''; 
@@ -321,6 +466,7 @@ function filterDropdownMerge() {
 
 function toggleDropdownMerge(show) {
     const list = document.getElementById('dropdownMergeList');
+    if (!list) return;
     if (show) list.classList.remove('hidden');
     else list.classList.add('hidden');
 }
@@ -360,7 +506,7 @@ function tutupModalMerge() {
 document.addEventListener('click', function(event) {
     const input = document.getElementById('searchInputMerge');
     const list = document.getElementById('dropdownMergeList');
-    if (event.target !== input && !list.contains(event.target)) {
+    if (input && list && event.target !== input && !list.contains(event.target)) {
         toggleDropdownMerge(false);
     }
 });

@@ -120,11 +120,42 @@
                                 <tr>
                                     <th class="px-4 py-3 text-center w-12"><input type="checkbox" id="checkAll" class="w-4 h-4 accent-primary cursor-pointer" onchange="toggleAll(this)"></th>
                                     <th class="px-4 py-3 text-center w-12 text-xs uppercase tracking-wide">No</th>
-                                    <th class="px-4 py-3 text-xs uppercase tracking-wide">Waktu Rekam</th>
-                                    <th class="px-4 py-3 text-xs uppercase tracking-wide min-w-[180px]">Nama Relawan</th>
-                                    <th class="px-4 py-3 text-xs uppercase tracking-wide">Sesi</th>
-                                    <th class="px-4 py-3 text-xs uppercase tracking-wide min-w-[150px]">Lokasi Proyek</th>
-                                    <th class="px-4 py-3 text-xs uppercase tracking-wide min-w-[150px]">Organisasi</th>
+                                    
+                                    <th class="px-4 py-3 text-xs uppercase tracking-wide relative">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span>Tanggal</span>
+                                            <button onclick="bukaExcelFilter('tanggal', event)" class="text-slate-400 hover:text-primary p-1 rounded transition-colors"><i class="fa-solid fa-filter text-xs"></i></button>
+                                        </div>
+                                    </th>
+                                    
+                                    <th class="px-4 py-3 text-xs uppercase tracking-wide min-w-[180px] relative">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span>Nama Relawan</span>
+                                            <button onclick="bukaExcelFilter('nama', event)" class="text-slate-400 hover:text-primary p-1 rounded transition-colors"><i class="fa-solid fa-filter text-xs"></i></button>
+                                        </div>
+                                    </th>
+                                    
+                                    <th class="px-4 py-3 text-xs uppercase tracking-wide relative">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span>Sesi</span>
+                                            <button onclick="bukaExcelFilter('sesi', event)" class="text-slate-400 hover:text-primary p-1 rounded transition-colors"><i class="fa-solid fa-filter text-xs"></i></button>
+                                        </div>
+                                    </th>
+                                    
+                                    <th class="px-4 py-3 text-xs uppercase tracking-wide min-w-[150px] relative">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span>Lokasi Proyek</span>
+                                            <button onclick="bukaExcelFilter('lokasi', event)" class="text-slate-400 hover:text-primary p-1 rounded transition-colors"><i class="fa-solid fa-filter text-xs"></i></button>
+                                        </div>
+                                    </th>
+                                    
+                                    <th class="px-4 py-3 text-xs uppercase tracking-wide min-w-[150px] relative">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <span>Organisasi</span>
+                                            <button onclick="bukaExcelFilter('organisasi', event)" class="text-slate-400 hover:text-primary p-1 rounded transition-colors"><i class="fa-solid fa-filter text-xs"></i></button>
+                                        </div>
+                                    </th>
+                                    
                                     <th class="px-4 py-3 text-center w-20 text-xs uppercase tracking-wide">Aksi</th>
                                 </tr>
                             </thead>

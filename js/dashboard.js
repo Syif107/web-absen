@@ -1,16 +1,15 @@
 // ==========================================
-// LOGIKA EXECUTIVE DASHBOARD DENGAN DRILL-DOWN (INTERAKTIF)
+// LOGIKA EXECUTIVE DASHBOARD DENGAN DRILL-DOWN & LEADERBOARD
 // ==========================================
 
 let chartTrendInst = null;
 let chartOrgInst = null;
 let chartLokasiInst = null;
 
-// Cache data global agar saat filter tidak perlu tarik database lagi
 let globalMasterData = [];
 let globalLogData = [];
+let logsThisMonth = []; 
 
-// Variabel Waktu
 let currentTodayStr = "";
 let selectedYear = "";
 let selectedMonth = "";
@@ -24,7 +23,6 @@ document.addEventListener("DOMContentLoaded", () => {
     loadDashboardData();
 });
 
-// A. Siapkan Opsi Tahun dan Tetapkan Waktu "Hari Ini"
 function siapkanFilterWaktu() {
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -33,14 +31,12 @@ function siapkanFilterWaktu() {
     
     currentTodayStr = `${yyyy}-${mm}-${dd}`;
     
-    // Set Tahun ke Dropdown (Contoh: 5 tahun ke belakang)
     const elTahun = document.getElementById('filterTahun');
     for(let i = 0; i <= 5; i++) {
         let y = yyyy - i;
         elTahun.innerHTML += `<option value="${y}">${y}</option>`;
     }
 
-    // Set Default Filter ke Bulan & Tahun Saat ini
     document.getElementById('filterBulan').value = mm;
     document.getElementById('filterTahun').value = yyyy;
 }
@@ -52,7 +48,6 @@ function resetFilterDashboard() {
     terapkanFilterDashboard();
 }
 
-// B. Tarik Data Database
 async function loadDashboardData() {
     const overlay = document.getElementById('loadingOverlay');
     overlay.classList.remove('hidden');
@@ -68,7 +63,7 @@ async function loadDashboardData() {
             globalLogData = logRes.data;
             terapkanFilterDashboard();
         } else {
-            showToast("Gagal menarik data visualisasi", "error");
+            showToast("Gagal menarik data", "error");
         }
     } catch (error) {
         showToast("Terjadi kesalahan jaringan", "error");
@@ -77,20 +72,17 @@ async function loadDashboardData() {
     }
 }
 
-// C. Proses Data berdasarkan Filter Bulan & Tahun
 function terapkanFilterDashboard() {
     selectedMonth = document.getElementById('filterBulan').value;
     selectedYear = document.getElementById('filterTahun').value;
-    const filterPrefix = `${selectedYear}-${selectedMonth}`; // Contoh: "2026-08"
+    const filterPrefix = `${selectedYear}-${selectedMonth}`; 
 
     const namaBulan = document.getElementById('filterBulan').options[document.getElementById('filterBulan').selectedIndex].text;
     document.getElementById('headerDateText').innerText = `DATA UPDATE TERAKHIR: ${currentTodayStr} | TAMPILAN: ${namaBulan.toUpperCase()} ${selectedYear}`;
 
-    // Filter data log sesuai bulan terpilih
-    const logsThisMonth = globalLogData.filter(r => r.tanggal && r.tanggal.startsWith(filterPrefix));
+    logsThisMonth = globalLogData.filter(r => r.tanggal && r.tanggal.startsWith(filterPrefix));
     const logsToday = globalLogData.filter(r => r.tanggal === currentTodayStr);
 
-    // Update KPI Angka
     const uniqueDaysThisMonth = new Set(logsThisMonth.map(r => r.tanggal)).size;
     const avgDaily = uniqueDaysThisMonth > 0 ? Math.round(logsThisMonth.length / uniqueDaysThisMonth) : 0;
 
@@ -99,17 +91,133 @@ function terapkanFilterDashboard() {
     document.getElementById('kpi-month').innerText = logsThisMonth.length.toLocaleString('id-ID');
     document.getElementById('kpi-avg').innerText = avgDaily.toLocaleString('id-ID');
 
-    // Render ulang grafik menggunakan data bulan terpilih
     renderTrendChart(logsThisMonth);
     renderOrgChart(logsThisMonth);
     renderLokasiChart(logsThisMonth);
-    
-    // Live feed selalu menggunakan data murni HARI INI
     renderLiveFeed(logsToday);
+
+    setupFilterTopLokasi();
+    renderTopRelawan();
 }
 
 // ------------------------------------------
-// ZONA RENDER CHART & INTERAKSI KLIK (DRILL-DOWN)
+// ZONA LEADERBOARD TOP RELAWAN
+// ------------------------------------------
+
+function setupFilterTopLokasi() {
+    const filterEl = document.getElementById('filterTopLokasi');
+    if (!filterEl) return; 
+    
+    const uniqueLocations = [...new Set(logsThisMonth.map(r => r.lokasi).filter(Boolean))].sort();
+    
+    let html = `<option value="Semua">Semua Lokasi Proyek</option>`;
+    uniqueLocations.forEach(loc => {
+        html += `<option value="${loc}">${loc}</option>`;
+    });
+    
+    filterEl.innerHTML = html;
+}
+
+// Variabel penyimpan data relawan teraktif yang sedang difilter
+let cachedTopRelawanList = [];
+
+function renderTopRelawan() {
+    const filterEl = document.getElementById('filterTopLokasi');
+    const container = document.getElementById('containerTopRelawan');
+    if (!filterEl || !container) return;
+
+    const selectedLoc = filterEl.value;
+    
+    let filteredLogs = logsThisMonth;
+    if (selectedLoc !== "Semua") {
+        filteredLogs = logsThisMonth.filter(r => r.lokasi === selectedLoc);
+    }
+
+    if (filteredLogs.length === 0) {
+        container.innerHTML = `<div class="col-span-full p-6 text-center text-slate-400 font-medium">Belum ada data kehadiran pada pilihan ini.</div>`;
+        cachedTopRelawanList = [];
+        return;
+    }
+
+    const countMap = {};
+    filteredLogs.forEach(r => {
+        const key = r.nama;
+        if (!countMap[key]) countMap[key] = { nama: r.nama, org: r.organisasi, total: 0 };
+        countMap[key].total += 1;
+    });
+
+    // Urutkan dari yang terbanyak secara menyeluruh
+    cachedTopRelawanList = Object.values(countMap).sort((a, b) => b.total - a.total);
+    
+    // Ambil top 9 untuk ditampilkan di halaman utama dashboard
+    const topRelawanTampil = cachedTopRelawanList.slice(0, 9);
+    
+    let html = '';
+    const warnaMedali = ['text-yellow-400', 'text-slate-300', 'text-amber-600']; 
+    
+    topRelawanTampil.forEach((item, index) => {
+        let badgeIcon = index < 3 
+            ? `<i class="fa-solid fa-medal text-xl ${warnaMedali[index]}"></i>` 
+            : `<div class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-200">#${index+1}</div>`;
+
+        html += `
+            <div class="bg-slate-50 border border-slate-100 p-4 rounded-xl flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center gap-3 w-full min-w-0">
+                    <div class="shrink-0 flex items-center justify-center w-8">
+                        ${badgeIcon}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-bold text-sm text-slate-800 truncate">${item.nama}</p>
+                        <p class="text-[10px] text-slate-500 font-semibold truncate uppercase">${item.org || '-'}</p>
+                    </div>
+                </div>
+                <div class="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-sm font-black text-center shrink-0 border border-primary/20">
+                    ${item.total} <span class="text-[10px] font-bold opacity-70">x</span>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+// Fungsi untuk Membuka Modal Daftar Peringkat Menyeluruh
+function bukaModalLeaderboardSemua() {
+    const tbody = document.getElementById('tbodyLeaderboardSemua');
+    document.getElementById('totalRelawanLeaderboard').innerText = `Total: ${cachedTopRelawanList.length} Relawan`;
+
+    if (cachedTopRelawanList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium">Belum ada data peringkat untuk ditampilkan.</td></tr>`;
+    } else {
+        let html = '';
+        cachedTopRelawanList.forEach((item, index) => {
+            const rank = index + 1;
+            let rankBadge = `<span class="font-bold text-slate-600">#${rank}</span>`;
+            if (rank === 1) rankBadge = `<span class="bg-yellow-100 text-yellow-700 font-black px-2.5 py-1 rounded-lg text-xs"><i class="fa-solid fa-medal mr-1"></i> #1 Emas</span>`;
+            else if (rank === 2) rankBadge = `<span class="bg-slate-100 text-slate-700 font-black px-2.5 py-1 rounded-lg text-xs"><i class="fa-solid fa-medal mr-1"></i> #2 Perak</span>`;
+            else if (rank === 3) rankBadge = `<span class="bg-amber-50 text-amber-700 font-black px-2.5 py-1 rounded-lg text-xs"><i class="fa-solid fa-medal mr-1"></i> #3 Perunggu</span>`;
+
+            html += `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="px-4 py-3 text-center">${rankBadge}</td>
+                    <td class="px-4 py-3 font-bold text-slate-800">${item.nama}</td>
+                    <td class="px-4 py-3 text-slate-600 uppercase text-xs font-semibold">${item.org || '-'}</td>
+                    <td class="px-4 py-3 text-center"><span class="bg-indigo-50 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-100">${item.total} Hadir</span></td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    }
+
+    document.getElementById('modalLeaderboardSemua').classList.remove('hidden');
+}
+
+function tutupModalLeaderboardSemua() {
+    document.getElementById('modalLeaderboardSemua').classList.add('hidden');
+}
+
+// ------------------------------------------
+// ZONA RENDER CHART & DRILL DOWN
 // ------------------------------------------
 
 function renderTrendChart(logsThisMonth) {
@@ -117,8 +225,8 @@ function renderTrendChart(logsThisMonth) {
     logsThisMonth.forEach(r => { dailyCount[r.tanggal] = (dailyCount[r.tanggal] || 0) + 1; });
     const sortedDates = Object.keys(dailyCount).sort();
     
-    const chartLabels = sortedDates; // Simpan format penuh "YYYY-MM-DD"
-    const chartLabelsTampil = sortedDates.map(d => d.slice(-2)); // Tampilkan cuma tanggalnya saja
+    const chartLabels = sortedDates; 
+    const chartLabelsTampil = sortedDates.map(d => d.slice(-2)); 
     const chartData = sortedDates.map(d => dailyCount[d]);
 
     const ctx = document.getElementById('chartTrend').getContext('2d');
@@ -132,7 +240,7 @@ function renderTrendChart(logsThisMonth) {
         type: 'line',
         data: {
             labels: chartLabelsTampil,
-            fullDates: chartLabels, // Custom property untuk menyimpan tanggal utuh
+            fullDates: chartLabels, 
             datasets: [{
                 label: 'Total Kehadiran', data: chartData,
                 borderColor: '#4F46E5', backgroundColor: gradient, borderWidth: 3,
@@ -208,11 +316,7 @@ function renderLokasiChart(logsThisMonth) {
             responsive: true, maintainAspectRatio: false, cutout: '65%',
             plugins: {
                 legend: { position: 'bottom', labels: { boxWidth: 10, padding: 15, font: { size: 11 } } },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) { return ` ${context.label}: ${context.raw} Total Kehadiran`; } // Penjelasan Tooltip
-                    }
-                }
+                tooltip: { callbacks: { label: function(context) { return ` ${context.label}: ${context.raw} Total Kehadiran`; } } }
             },
             onClick: (event, elements, chart) => {
                 if (elements.length > 0) {
@@ -230,7 +334,6 @@ function renderLiveFeed(logsToday) {
     document.getElementById('liveFeedStatus').innerText = logsToday.length === 0 ? "Belum ada yang absen hari ini." : `Total ${logsToday.length} kehadiran hari ini.`;
     
     let html = '';
-    // Tampilkan log hari ini, batasi 50 terakhir agar tidak berat saat scroll
     logsToday.slice(0, 50).forEach(row => {
         const isSiang = row.sesi === 'Siang';
         const icon = isSiang ? '<i class="fa-solid fa-sun text-orange-500"></i>' : '<i class="fa-solid fa-moon text-indigo-500"></i>';
@@ -253,10 +356,6 @@ function renderLiveFeed(logsToday) {
     container.innerHTML = html || '<p class="text-xs text-slate-400 text-center py-4">Papan feed kosong.</p>';
 }
 
-// ------------------------------------------
-// ZONA DRILL-DOWN (LOGIKA MODAL POP-UP)
-// ------------------------------------------
-
 function bukaModalRincian(tipe, judul, sub, parameter = null) {
     document.getElementById('modalRincianJudul').innerText = judul;
     document.getElementById('modalRincianSub').innerText = sub;
@@ -268,7 +367,6 @@ function bukaModalRincian(tipe, judul, sub, parameter = null) {
     
     const filterPrefix = `${selectedYear}-${selectedMonth}`;
 
-    // Logika Pemilahan Data berdasarkan Tipe yang di-klik
     if (tipe === 'master') {
         dataSumber = globalMasterData;
         htmlHead = `<tr><th class="px-4 py-3 w-12 text-center">No</th><th class="px-4 py-3">NIP / ID</th><th class="px-4 py-3">Nama Relawan</th><th class="px-4 py-3">Organisasi Terdaftar</th><th class="px-4 py-3">Bidang Utama</th></tr>`;
@@ -276,7 +374,6 @@ function bukaModalRincian(tipe, judul, sub, parameter = null) {
             htmlBody += `<tr class="hover:bg-slate-50"><td class="px-4 py-2 text-center text-slate-500">${i+1}</td><td class="px-4 py-2 font-mono text-xs text-slate-400">${r.nip}</td><td class="px-4 py-2 font-bold">${r.nama}</td><td class="px-4 py-2 text-slate-600">${r.asal_organisasi}</td><td class="px-4 py-2 text-slate-600">${r.jabatan}</td></tr>`;
         });
     } else {
-        // Tipe terkait Log Absensi
         if (tipe === 'hari_ini') {
             dataSumber = globalLogData.filter(r => r.tanggal === currentTodayStr);
         } else if (tipe === 'bulan_ini') {
