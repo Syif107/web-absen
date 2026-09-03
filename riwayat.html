@@ -142,6 +142,47 @@
         </div>
         
         <div id="toastContainer" class="fixed top-20 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+        <!-- MODAL EDIT RIWAYAT ABSEN -->
+        <div id="modalEditLog" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex flex-col items-center justify-center backdrop-blur-sm p-4 sm:p-8 transition-opacity">
+            <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col transform transition-all overflow-hidden border border-slate-200">
+                <div class="p-6 border-b border-slate-100 bg-blue-50">
+                    <h3 class="font-black text-xl text-blue-700"><i class="fa-solid fa-pen-to-square mr-2"></i>Edit Riwayat Kehadiran</h3>
+                    <p class="text-xs text-blue-600 font-medium mt-1">Ubah rincian log absen jika terjadi kesalahan input.</p>
+                </div>
+                
+                <div class="p-6 space-y-4">
+                    <input type="hidden" id="editLogId">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Tanggal</label>
+                        <input type="date" id="editLogTanggal" class="w-full bg-white border border-slate-300 text-sm rounded-xl px-4 py-2.5 font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Sesi</label>
+                        <select id="editLogSesi" class="w-full bg-white border border-slate-300 text-sm rounded-xl px-4 py-2.5 font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
+                            <option value="Siang">☀️ Siang</option>
+                            <option value="Malam">🌙 Malam</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Lokasi Proyek</label>
+                        <input type="text" id="editLogLokasi" class="w-full bg-white border border-slate-300 text-sm rounded-xl px-4 py-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Organisasi</label>
+                        <input type="text" id="editLogOrg" class="w-full bg-white border border-slate-300 text-sm rounded-xl px-4 py-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
+                    </div>
+                </div>
+                
+                <div class="p-5 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
+                    <button onclick="tutupModalEditLog()" class="text-sm bg-white border border-slate-300 text-slate-600 hover:bg-slate-100 font-bold px-5 py-2.5 rounded-xl transition-colors shadow-sm">Batal</button>
+                    <button id="btnSimpanEditLog" onclick="simpanEditLog()" class="text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-xl transition-colors shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <!-- MODULE SCRIPTS -->

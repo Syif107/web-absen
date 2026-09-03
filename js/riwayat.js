@@ -1,5 +1,5 @@
 // ==========================================
-// LOGIKA RIWAYAT ABSEN & EXPORT V2
+// LOGIKA RIWAYAT ABSEN, EXPORT & EDIT V2
 // ==========================================
 
 let riwayatData = [];
@@ -9,7 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
     loadRiwayatData();
 });
 
-// 1. Tarik Log Absensi dari Supabase (Diurutkan dari Terbaru)
 async function loadRiwayatData() {
     const loading = document.getElementById('loadingOverlay');
     loading.classList.remove('hidden');
@@ -29,7 +28,6 @@ async function loadRiwayatData() {
     }
 }
 
-// 2. Mesin Pencari & Filter
 function terapkanFilterRiwayat() {
     const filterTgl = document.getElementById('filterTanggal').value;
     const keyword = document.getElementById('filterCari').value.toLowerCase();
@@ -53,12 +51,10 @@ function resetFilter() {
     terapkanFilterRiwayat();
 }
 
-// 3. Render Tabel HTML
 function renderTabelRiwayat(data) {
     const tbody = document.getElementById('riwayatBody');
     document.getElementById('totalDataInfo').innerText = `Menampilkan ${data.length.toLocaleString('id-ID')} riwayat absen`;
     
-    // Reset status CheckAll
     const checkAllBtn = document.getElementById('checkAll');
     if (checkAllBtn) checkAllBtn.checked = false;
     toggleBulkActionBanner();
@@ -71,7 +67,9 @@ function renderTabelRiwayat(data) {
     let html = '';
     data.forEach((r, idx) => {
         const noUrut = idx + 1;
-        // Asumsi kolom Primary Key di Supabase kamu adalah 'id'
+        const lokasiAman = r.lokasi ? r.lokasi.replace(/'/g, "\\'") : '';
+        const orgAman = r.organisasi ? r.organisasi.replace(/'/g, "\\'") : '';
+        
         html += `
             <tr class="hover:bg-slate-50 transition-colors">
                 <td class="px-4 py-3 text-center bg-slate-50 border-r border-slate-100">
@@ -84,14 +82,67 @@ function renderTabelRiwayat(data) {
                 <td class="px-4 py-3 text-slate-600 text-xs">${r.lokasi || '-'}</td>
                 <td class="px-4 py-3 text-slate-600 text-xs font-semibold">${r.organisasi || '-'}</td>
                 <td class="px-4 py-3 text-center">
-                    <button onclick="deleteSingleLog('${r.id}')" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Hapus">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
+                    <div class="flex items-center justify-center gap-2">
+                        <button onclick="bukaModalEditLog('${r.id}', '${r.tanggal}', '${r.sesi}', '${lokasiAman}', '${orgAman}')" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Edit">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="deleteSingleLog('${r.id}')" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Hapus">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>
         `;
     });
     tbody.innerHTML = html;
+}
+
+// ------------------------------------------
+// ZONA EDIT DATA RIWAYAT
+// ------------------------------------------
+
+function bukaModalEditLog(id, tgl, sesi, lokasi, org) {
+    document.getElementById('editLogId').value = id;
+    document.getElementById('editLogTanggal').value = tgl;
+    document.getElementById('editLogSesi').value = sesi;
+    document.getElementById('editLogLokasi').value = lokasi;
+    document.getElementById('editLogOrg').value = org;
+    
+    document.getElementById('modalEditLog').classList.remove('hidden');
+}
+
+function tutupModalEditLog() {
+    document.getElementById('modalEditLog').classList.add('hidden');
+}
+
+async function simpanEditLog() {
+    const id = document.getElementById('editLogId').value;
+    const tgl = document.getElementById('editLogTanggal').value;
+    const sesi = document.getElementById('editLogSesi').value;
+    const lokasi = document.getElementById('editLogLokasi').value;
+    const org = document.getElementById('editLogOrg').value;
+
+    const btn = document.getElementById('btnSimpanEditLog');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+    btn.disabled = true;
+
+    const payload = { tanggal: tgl, sesi: sesi, lokasi: lokasi, organisasi: org };
+
+    try {
+        const res = await supabaseFetch(`log_absensi?id=eq.${id}`, 'PATCH', payload);
+        if (res.status === "success" || res.status === 204 || res.status === 201) {
+            showToast("Riwayat absen berhasil diperbarui!", "success");
+            tutupModalEditLog();
+            loadRiwayatData();
+        } else {
+            throw new Error("Gagal update");
+        }
+    } catch (err) {
+        showToast("Terjadi kesalahan saat mengupdate.", "error");
+    } finally {
+        btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan';
+        btn.disabled = false;
+    }
 }
 
 // ------------------------------------------
@@ -118,7 +169,6 @@ function toggleBulkActionBanner() {
 
 async function deleteSingleLog(id) {
     if (!confirm("Hapus data absen ini secara permanen?")) return;
-    
     let loading = showToast("Menghapus data...", "loading");
     try {
         const res = await supabaseFetch(`log_absensi?id=eq.${id}`, 'DELETE');
@@ -136,17 +186,14 @@ async function deleteSingleLog(id) {
 async function deleteBulkLogs() {
     const checked = document.querySelectorAll('.log-checkbox:checked');
     if(checked.length === 0) return;
-    
     const konfirmasi = confirm(`⚠️ Yakin ingin menghapus ${checked.length} riwayat absen terpilih?`);
     if(!konfirmasi) return;
 
     let loading = showToast(`Menghapus ${checked.length} data...`, "loading");
-    
     try {
         const ids = Array.from(checked).map(cb => cb.value);
         const deletePromises = ids.map(id => supabaseFetch(`log_absensi?id=eq.${id}`, 'DELETE'));
         await Promise.all(deletePromises);
-        
         loading.remove();
         showToast(`${checked.length} data berhasil dihapus!`, "success");
         loadRiwayatData();
@@ -162,24 +209,17 @@ function exportToCSV() {
         showToast("Tidak ada data untuk diekspor!", "error");
         return;
     }
-
     let csvContent = "data:text/csv;charset=utf-8,No,Waktu Rekam,Nama Relawan,Sesi,Lokasi Proyek,Organisasi\n";
-    
     barisTabel.forEach(row => {
         let cols = row.querySelectorAll("td");
         if(cols.length > 0) {
             let rowArray = [
-                cols[1].innerText, // No
-                cols[2].innerText, // Waktu
-                `"${cols[3].innerText}"`, // Nama (diapit kutip agar koma nama aman)
-                cols[4].innerText, // Sesi
-                `"${cols[5].innerText}"`, // Lokasi
-                `"${cols[6].innerText}"`  // Organisasi
+                cols[1].innerText, cols[2].innerText, `"${cols[3].innerText}"`, 
+                cols[4].innerText, `"${cols[5].innerText}"`, `"${cols[6].innerText}"`
             ];
             csvContent += rowArray.join(",") + "\n";
         }
     });
-
     const filterTgl = document.getElementById('filterTanggal').value || 'SemuaTanggal';
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
