@@ -1,4 +1,4 @@
-const CACHE_NAME = "relawansync-v2-cache";
+const CACHE_NAME = "relawansync-v3-cache"; // Naikkan jadi v3
 const urlsToCache = [
     "./",
     "./index.html",

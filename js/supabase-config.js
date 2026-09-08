@@ -1,5 +1,5 @@
 // ==========================================
-// KONFIGURASI DATABASE SUPABASE (V2)
+// KONFIGURASI DATABASE SUPABASE (V3)
 // ==========================================
 
 const SUPABASE_URL = "https://tyqgudaesaiygpsxzdiv.supabase.co";
