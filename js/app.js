@@ -2,11 +2,36 @@
 // LOGIKA UI GLOBAL & SECURITY CHECK
 // ==========================================
 
-// 1. PROTEKSI HALAMAN (SECURITY GUARD)
-// Jika tidak ada token login di memori, dan sedang tidak berada di halaman login, lemparkan keluar!
+// ==========================================
+// 1. PROTEKSI HALAMAN & VALIDASI TOKEN (SECURITY GUARD)
+// ==========================================
 if (!window.location.pathname.includes('login.html')) {
-    if (!localStorage.getItem('relawan_token')) {
+    const token = localStorage.getItem('relawan_token');
+    
+    if (!token) {
         window.location.replace('login.html');
+    } else {
+        // Cek apakah struktur token JWT valid dan belum kedaluwarsa secara lokal
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            
+            const payload = JSON.parse(jsonPayload);
+            const currentTime = Math.floor(Date.now() / 1000);
+            
+            // Jika waktu sekarang sudah melewati waktu exp token
+            if (payload.exp && payload.exp < currentTime) {
+                localStorage.removeItem('relawan_token');
+                window.location.replace('login.html');
+            }
+        } catch (e) {
+            // Jika token korup atau tidak valid formatnya
+            localStorage.removeItem('relawan_token');
+            window.location.replace('login.html');
+        }
     }
 }
 
@@ -270,13 +295,15 @@ function sortDataKolomMaster(columnKey, direction) {
     activeSortColumn = columnKey;
     activeSortDirection = direction;
     jalankanFilterDanSortMaster();
-    document.getElementById('excelFilterPopup').classList.add('hidden');
+    const popup = document.getElementById('excelFilterPopup');
+    if (popup) popup.classList.add('hidden');
 }
 
 function resetFilterKolomMaster(columnKey) {
     delete activeExcelFilters[columnKey];
     jalankanFilterDanSortMaster();
-    document.getElementById('excelFilterPopup').classList.add('hidden');
+    const popup = document.getElementById('excelFilterPopup');
+    if (popup) popup.classList.add('hidden');
 }
 
 function jalankanFilterDanSortMaster() {
@@ -286,51 +313,76 @@ function jalankanFilterDanSortMaster() {
     }
 }
 
-// EKSEKUSI FILTER MASTER
-function terapkanExcelFilterMaster() {
-    const checkboxes = document.querySelectorAll('.excel-filter-chk-master');
-    const colKey = checkboxes[0]?.dataset.col;
-    if (!colKey) return;
+// ==========================================
+// FITUR 1-KLIK BACKUP DATA (JSON)
+// ==========================================
+async function backupEverything() {
+    let loading = showToast("Menyiapkan file backup, mohon tunggu...", "loading");
 
-    let selectedVals = [];
-    checkboxes.forEach(chk => {
-        if (chk.checked) selectedVals.push(chk.value);
-    });
+    try {
+        // Tarik seluruh data dari database secara paralel
+        const [masterRes, logRes] = await Promise.all([
+            supabaseFetch('master_relawan?select=*', 'GET'),
+            supabaseFetch('log_absensi?select=*', 'GET')
+        ]);
 
-    activeExcelFilters[colKey] = selectedVals;
-    jalankanFilterDanSortMaster();
-}
+        if (masterRes.status !== "success" || logRes.status !== "success") {
+            throw new Error("Gagal mengambil data dari server.");
+        }
 
-function sortDataKolomMaster(columnKey, direction) {
-    activeSortColumn = columnKey;
-    activeSortDirection = direction;
-    jalankanFilterDanSortMaster();
-    document.getElementById('excelFilterPopup').classList.add('hidden');
-}
+        // Susun struktur data JSON yang rapi
+        const backupData = {
+            app_name: "RelawanSync V2",
+            backup_date: new Date().toISOString(),
+            total_master: masterRes.data.length,
+            total_log: logRes.data.length,
+            data: {
+                master_relawan: masterRes.data,
+                log_absensi: logRes.data
+            }
+        };
 
-function resetFilterKolomMaster(columnKey) {
-    delete activeExcelFilters[columnKey];
-    jalankanFilterDanSortMaster();
-    document.getElementById('excelFilterPopup').classList.add('hidden');
-}
+        // Konversi menjadi file Blob JSON
+        const jsonString = JSON.stringify(backupData, null, 2);
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        
+        // Buat nama file berdasarkan tanggal hari ini
+        const today = new Date();
+        const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+        
+        // Picu unduhan otomatis di browser
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Backup_RelawanSync_${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        
+        // Bersihkan memori DOM
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }, 0);
 
-function jalankanFilterDanSortMaster() {
-    let filtered = [...masterDataList];
+        loading.remove();
+        showToast("Backup berhasil diunduh!", "success");
 
-    Object.keys(activeExcelFilters).forEach(col => {
-        const allowedVals = activeExcelFilters[col];
-        filtered = filtered.filter(item => allowedVals.includes(item[col] || '-'));
-    });
-
-    if (activeSortColumn) {
-        filtered.sort((a, b) => {
-            let valA = (a[activeSortColumn] || '').toString().toLowerCase();
-            let valB = (b[activeSortColumn] || '').toString().toLowerCase();
-            if (valA < valB) return activeSortDirection === 'asc' ? -1 : 1;
-            if (valA > valB) return activeSortDirection === 'asc' ? 1 : -1;
-            return 0;
-        });
+    } catch (error) {
+        if (loading) loading.remove();
+        showToast("Gagal melakukan backup data.", "error");
+        console.error("Backup Error:", error);
     }
+}
 
-    renderTabelMaster(filtered);
+// ==========================================
+// UTILITAS KEAMANAN (ANTI-XSS)
+// ==========================================
+function escapeHTML(str) {
+    if (str === null || str === undefined || str === '') return '-';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }

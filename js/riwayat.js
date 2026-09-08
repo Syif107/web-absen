@@ -7,6 +7,11 @@ let riwayatData = [];
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('filterTanggal').valueAsDate = new Date();
     loadRiwayatData();
+
+    // Tambahkan event listener change agar otomatis memfilter saat tanggal diubah
+    document.getElementById('filterTanggal').addEventListener('change', () => {
+        jalankanFilterDanSortRiwayat();
+    });
 });
 
 async function loadRiwayatData() {
@@ -18,11 +23,14 @@ async function loadRiwayatData() {
         if (res.status === "success") {
             riwayatData = res.data;
             jalankanFilterDanSortRiwayat(); 
+            return true;
         } else {
             showToast("Gagal mengambil data riwayat.", "error");
+            return false;
         }
     } catch (err) {
         showToast("Terjadi kesalahan jaringan.", "error");
+        return false;
     } finally {
         loading.classList.add('hidden');
     }
@@ -89,23 +97,29 @@ function renderTabelRiwayat(data) {
     let html = '';
     data.forEach((r, idx) => {
         const noUrut = idx + 1;
-        const lokasiAman = r.lokasi ? r.lokasi.replace(/'/g, "\\'") : '';
-        const orgAman = r.organisasi ? r.organisasi.replace(/'/g, "\\'") : '';
+        // Escape data untuk atribut HTML (onclick)
+        const lokasiAmanAttr = r.lokasi ? r.lokasi.replace(/'/g, "\\'") : '';
+        const orgAmanAttr = r.organisasi ? r.organisasi.replace(/'/g, "\\'") : '';
+        
+        // Escape data untuk tampilan teks (Mencegah XSS)
+        const namaTampil = escapeHTML(r.nama);
+        const lokasiTampil = escapeHTML(r.lokasi);
+        const orgTampil = escapeHTML(r.organisasi);
         
         html += `
             <tr class="hover:bg-slate-50 transition-colors">
-                <td class="px-4 py-3 text-center bg-slate-50 border-r border-slate-100">
+                <td class="no-print px-4 py-3 text-center bg-slate-50 border-r border-slate-100">
                     <input type="checkbox" class="log-checkbox w-4 h-4 accent-primary cursor-pointer" value="${r.id}" onchange="toggleBulkActionBanner()">
                 </td>
                 <td class="px-4 py-3 text-center font-bold text-slate-400 bg-slate-50 border-r border-slate-100">${noUrut}</td>
                 <td class="px-4 py-3 text-xs text-slate-500 font-mono">${r.tanggal || '-'}</td>
-                <td class="px-4 py-3 font-bold text-slate-800">${r.nama}</td>
+                <td class="px-4 py-3 font-bold text-slate-800">${namaTampil}</td>
                 <td class="px-4 py-3 font-bold ${r.sesi === 'Siang' ? 'text-orange-500' : 'text-indigo-600'}">${r.sesi}</td>
-                <td class="px-4 py-3 text-slate-600 text-xs">${r.lokasi || '-'}</td>
-                <td class="px-4 py-3 text-slate-600 text-xs font-semibold">${r.organisasi || '-'}</td>
-                <td class="px-4 py-3 text-center">
+                <td class="px-4 py-3 text-slate-600 text-xs">${lokasiTampil}</td>
+                <td class="px-4 py-3 text-slate-600 text-xs font-semibold">${orgTampil}</td>
+                <td class="no-print px-4 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
-                        <button onclick="bukaModalEditLog('${r.id}', '${r.tanggal}', '${r.sesi}', '${lokasiAman}', '${orgAman}')" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Edit">
+                        <button onclick="bukaModalEditLog('${r.id}', '${r.tanggal}', '${r.sesi}', '${lokasiAmanAttr}', '${orgAmanAttr}')" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Edit">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button>
                         <button onclick="deleteSingleLog('${r.id}')" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Hapus">
@@ -250,4 +264,30 @@ function exportToCSV() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+// ==========================================
+// FITUR CETAK LAPORAN & PDF
+// ==========================================
+async function cetakLaporanAbsen() {
+    let loading = showToast("Menyiapkan lembar cetak...", "loading");
+
+    try {
+        const hasilPembaruan = await loadRiwayatData();
+        if (hasilPembaruan === false) {
+            throw new Error("Data riwayat tidak berhasil diperbarui");
+        }
+        
+        if (loading) loading.remove();
+
+        // Beri waktu browser menyelesaikan layout dan paint tabel sebelum mencetak.
+        setTimeout(() => {
+            window.print();
+        }, 300);
+
+    } catch (error) {
+        if (loading) loading.remove();
+        showToast("Gagal menyiapkan cetakan laporan.", "error");
+        console.error("Print Error:", error);
+    }
 }

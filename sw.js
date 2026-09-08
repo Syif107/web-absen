@@ -1,29 +1,40 @@
-const CACHE_NAME = "relawansync-v3-cache"; // Naikkan jadi v3
-const urlsToCache = [
-    "./",
-    "./index.html",
-    "./login.html",
-    "./css/style.css",
-    "./js/app.js",
-    "./js/supabase-config.js",
-    "./assets/icon.png"
-];
+const CACHE_NAME = "relawansync-v4-cache";
 
-// Menginstal Service Worker & Menyimpan Cache Dasar
+// Install langsung aktifkan worker baru
 self.addEventListener("install", (event) => {
+    self.skipWaiting();
+});
+
+// Hapus cache lama yang menumpuk saat ada update
+self.addEventListener("activate", (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(urlsToCache);
-        })
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        }).then(() => self.clients.claim())
     );
 });
 
-// Mengambil file dari Cache agar loading lebih cepat
+// Strategi: Network First (Coba ambil dari internet dulu, fallback ke cache jika offline)
 self.addEventListener("fetch", (event) => {
+    event.respondId = true;
     event.respondWith(
-        caches.match(event.request).then((response) => {
-            // Kembalikan file dari cache jika ada, jika tidak ambil dari internet
-            return response || fetch(event.request);
-        })
+        fetch(event.request)
+            .then((networkResponse) => {
+                // Jika berhasil ambil dari internet, simpan salinan terbarunya ke cache
+                return caches.open(CACHE_NAME).then((cache) => {
+                    cache.put(event.request, networkResponse.clone());
+                    return networkResponse;
+                });
+            })
+            .catch(() => {
+                // Jika internet mati/gagal, baru ambil dari cache
+                return caches.match(event.request);
+            })
     );
 });

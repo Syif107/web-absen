@@ -28,3 +28,160 @@
 input[type="text"], textarea {
     text-transform: uppercase;
 }
+
+/* ========================================== */
+/* STYLING CETAK / PRINT LAPORAN (RIWAYAT)    */
+/* ========================================== */
+.print-header { display: none; }
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 10mm;
+    }
+
+    /* RESET HALAMAN */
+    html, body {
+        width: 100% !important;
+        height: auto !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        background: #fff !important;
+        color: #000 !important;
+        font-family: 'Inter', sans-serif !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* SEMBUHKAN ELEMEN NON-CETAK & IKON FILTER */
+    .no-print,
+    .no-print *,
+    #bulkActionBanner,
+    #modalEditLog,
+    #toastContainer,
+    aside, header, nav, footer,
+    button[onclick*="bukaExcelFilter"], 
+    .fa-filter {
+        display: none !important;
+    }
+
+    /* MATIKAN FLEX/GRID PADA PEMBUNGKUS */
+    main,
+    main *,
+    .max-w-7xl,
+    #areaCetakLaporan,
+    .print-table-container,
+    .print-table-scroll {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        transform: none !important;
+        background: transparent !important;
+    }
+
+    /* KOP LAPORAN */
+    .print-header {
+        display: block !important;
+        text-align: center;
+        margin: 0 0 10px !important;
+        padding: 0 0 5px !important;
+        border-bottom: 2px solid #1e293b !important;
+    }
+
+    .print-header h2,
+    .print-header h1 {
+        margin: 0 !important;
+        color: #0f172a !important;
+    }
+
+    .print-header h2 {
+        font-size: 10px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #312e81 !important;
+        margin-bottom: 2px !important;
+    }
+
+    .print-header h1 {
+        font-size: 13px !important;
+        font-weight: 700 !important;
+    }
+
+    /* STRUKTUR TABEL STABIL (Gunakan table-layout fixed agar teks tidak hilang/meluber) */
+    table.print-table {
+        display: table !important;
+        width: 100% !important;
+        height: auto !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+        border-spacing: 0 !important;
+    }
+
+    table.print-table thead {
+        display: table-header-group !important;
+    }
+
+    table.print-table tbody {
+        display: table-row-group !important;
+        height: auto !important;
+    }
+
+    table.print-table tr {
+        display: table-row !important;
+        height: auto !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    /* ATURAN SEL: TEKS MUNCUL JELAS, AMAN DARI NABRAK */
+    table.print-table th,
+    table.print-table td {
+        display: table-cell !important;
+        visibility: visible !important;
+        height: auto !important;
+        padding: 4px 5px !important; /* Padding rapat tapi proporsional */
+        border: 1px solid #475569 !important;
+        color: #0f172a !important;
+        background: #fff !important;
+        font-size: 8.5px !important;
+        line-height: 1.25 !important; /* Jarak antar baris pas, tidak tumpang tindih */
+        vertical-align: middle !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        white-space: normal !important;
+    }
+
+    table.print-table th {
+        background: #e2e8f0 !important;
+        font-weight: 700 !important;
+        text-transform: uppercase;
+    }
+
+    /* SEMBUNYIKAN KOLOM CHECKBOX & AKSI */
+    table.print-table th.no-print,
+    table.print-table td.no-print,
+    table.print-table th:first-child,
+    table.print-table td:first-child,
+    table.print-table th:last-child,
+    table.print-table td:last-child {
+        display: none !important;
+    }
+
+    /* LEBAR KOLOM PRESISI & AMAN */
+    table.print-table th:nth-child(2), table.print-table td:nth-child(2) { width: 7% !important; text-align: center; } /* No */
+    table.print-table th:nth-child(3), table.print-table td:nth-child(3) { width: 19% !important; text-align: center; } /* Tanggal */
+    table.print-table th:nth-child(4), table.print-table td:nth-child(4) { width: 34% !important; } /* Nama Relawan */
+    table.print-table th:nth-child(5), table.print-table td:nth-child(5) { width: 12% !important; text-align: center; } /* Sesi */
+    table.print-table th:nth-child(6), table.print-table td:nth-child(6) { width: 28% !important; } /* Lokasi Proyek & Organisasi */
+}

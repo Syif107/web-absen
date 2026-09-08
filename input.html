@@ -50,7 +50,13 @@
             </a>
         </nav>
         
-        <div class="p-4 bg-slate-50 m-2 rounded-xl border border-slate-100">
+        <div class="p-4 bg-slate-50 m-2 rounded-xl border border-slate-100 flex flex-col gap-2">
+            <!-- TOMBOL BACKUP BARU -->
+            <button onclick="backupEverything()" class="w-full flex items-center justify-center gap-2 text-indigo-600 font-bold text-sm hover:bg-indigo-50 py-2 rounded-lg transition-colors border border-indigo-100 shadow-sm">
+                <i class="fa-solid fa-cloud-arrow-down"></i><span class="sidebar-text">Backup Data</span>
+            </button>
+            
+            <!-- TOMBOL LOGOUT LAMA -->
             <button onclick="logoutSystem()" class="w-full flex items-center justify-center gap-2 text-red-600 font-bold text-sm hover:bg-red-50 py-2 rounded-lg transition-colors">
                 <i class="fa-solid fa-power-off"></i><span class="sidebar-text">Keluar (Lock)</span>
             </button>
@@ -58,6 +64,13 @@
     </aside>
 
     <main class="flex-1 flex flex-col h-[100dvh] overflow-hidden relative bg-slate-100/50">
+        
+        <!-- BARIS SAKRAL ESTETIK (POSISI ATAS TENGAH) -->
+        <div class="bg-indigo-900/5 border-b border-indigo-100/60 py-1 px-4 text-center shrink-0">
+            <span class="text-[9px] font-black text-indigo-700 tracking-[0.25em] uppercase">
+                ✨ Atas Berkat Rochmat Alloh Yang Maha Kuasa ✨
+            </span>
+        </div>        
         <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0 z-10">
             <div class="flex items-center gap-4">
                 <button id="btnToggleSidebar" onclick="toggleSidebar()" class="text-slate-500 hover:text-primary hover:bg-slate-100 w-10 h-10 rounded-lg transition-colors flex items-center justify-center">

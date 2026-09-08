@@ -128,9 +128,15 @@ function renderTabelMaster(data) {
     let html = '';
     dataPaginated.forEach((r, idx) => {
         const noUrut = startIndex + idx + 1;
-        const namaAman = r.nama ? r.nama.replace(/'/g, "\\'") : '';
-        const bidangAman = r.jabatan ? r.jabatan.replace(/'/g, "\\'") : '';
-        const orgAman = r.asal_organisasi ? r.asal_organisasi.replace(/'/g, "\\'") : '';
+        // Escape data untuk atribut HTML (onclick)
+        const namaAmanAttr = r.nama ? r.nama.replace(/'/g, "\\'") : '';
+        const bidangAmanAttr = r.jabatan ? r.jabatan.replace(/'/g, "\\'") : '';
+        const orgAmanAttr = r.asal_organisasi ? r.asal_organisasi.replace(/'/g, "\\'") : '';
+        
+        // Escape data untuk tampilan teks (Mencegah XSS)
+        const namaTampil = escapeHTML(r.nama);
+        const orgTampil = escapeHTML(r.asal_organisasi);
+        const bidangTampil = escapeHTML(r.jabatan);
         
         html += `
             <tr class="hover:bg-indigo-50/50 transition-colors">
@@ -139,21 +145,18 @@ function renderTabelMaster(data) {
                 </td>
                 <td class="px-4 py-3 text-center text-slate-400 font-bold bg-slate-50 border-r border-slate-100">${noUrut}</td>
                 <td class="px-5 py-3 font-mono text-xs text-slate-500">${r.nip || '-'}</td>
-                <td class="px-5 py-3 font-bold text-slate-800">${r.nama || '-'}</td>
-                <td class="px-5 py-3 text-slate-600 font-medium">${r.asal_organisasi || '-'}</td>
-                <td class="px-5 py-3 text-slate-600"><span class="bg-slate-100 px-2 py-1 rounded-md text-xs font-bold border border-slate-200">${r.jabatan || 'Helper'}</span></td>
+                <td class="px-5 py-3 font-bold text-slate-800">${namaTampil}</td>
+                <td class="px-5 py-3 text-slate-600 font-medium">${orgTampil}</td>
+                <td class="px-5 py-3 text-slate-600"><span class="bg-slate-100 px-2 py-1 rounded-md text-xs font-bold border border-slate-200">${bidangTampil}</span></td>
                 <td class="px-5 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
-                        <!-- TOMBOL EDIT -->
-                        <button onclick="bukaModalEdit('${r.nip}', '${namaAman}', '${bidangAman}', '${orgAman}')" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
+                        <button onclick="bukaModalEdit('${r.nip}', '${namaAmanAttr}', '${bidangAmanAttr}', '${orgAmanAttr}')" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
                             <i class="fa-solid fa-pen-to-square"></i> Edit
                         </button>
-                        <!-- TOMBOL TYPO/MERGE -->
-                        <button onclick="bukaModalMerge('${r.nip}', '${namaAman}')" class="bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-amber-200 shadow-sm flex items-center gap-1" title="Merge/Typo">
+                        <button onclick="bukaModalMerge('${r.nip}', '${namaAmanAttr}')" class="bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-amber-200 shadow-sm flex items-center gap-1" title="Merge/Typo">
                             <i class="fa-solid fa-code-merge"></i>
                         </button>
-                        <!-- TOMBOL HAPUS -->
-                        <button onclick="deleteSingleMaster('${r.nip}', '${namaAman}')" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-200 shadow-sm flex items-center gap-1" title="Hapus">
+                        <button onclick="deleteSingleMaster('${r.nip}', '${namaAmanAttr}')" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-200 shadow-sm flex items-center gap-1" title="Hapus">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
