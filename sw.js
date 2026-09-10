@@ -1,4 +1,4 @@
-const CACHE_NAME = "relawansync-v4-cache";
+const CACHE_NAME = "relawansync-v15-cache";
 
 // Install langsung aktifkan worker baru
 self.addEventListener("install", (event) => {
@@ -22,18 +22,15 @@ self.addEventListener("activate", (event) => {
 
 // Strategi: Network First (Coba ambil dari internet dulu, fallback ke cache jika offline)
 self.addEventListener("fetch", (event) => {
-    event.respondId = true;
     event.respondWith(
         fetch(event.request)
             .then((networkResponse) => {
-                // Jika berhasil ambil dari internet, simpan salinan terbarunya ke cache
                 return caches.open(CACHE_NAME).then((cache) => {
                     cache.put(event.request, networkResponse.clone());
                     return networkResponse;
                 });
             })
             .catch(() => {
-                // Jika internet mati/gagal, baru ambil dari cache
                 return caches.match(event.request);
             })
     );

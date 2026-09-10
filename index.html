@@ -14,18 +14,18 @@
     <link rel="stylesheet" href="css/style.css">
 
     <script>
-        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5', secondary: '#818CF8', dark: '#0F172A' } } } }
+        tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5', secondary: '#818CF8', dark: '#0F172A' } } } }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased flex h-screen overflow-hidden">
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans antialiased flex h-screen overflow-hidden">
 
     <!-- MOBILE OVERLAY -->
     <div id="mobileOverlay" class="fixed inset-0 bg-slate-900/60 z-40 hidden md:hidden transition-opacity backdrop-blur-sm" onclick="toggleSidebar()"></div>
 
     <!-- SIDEBAR UTAMA -->
-    <aside id="sidebar" class="w-64 bg-white border-r border-slate-200 fixed md:relative inset-y-0 left-0 transform -translate-x-full md:translate-x-0 z-50 flex flex-col shadow-xl md:shadow-sm shrink-0 transition-transform duration-300">
-        <div class="h-16 flex items-center px-6 border-b border-slate-100 justify-between">
+    <aside id="sidebar" class="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700/50 fixed md:relative inset-y-0 left-0 transform -translate-x-full md:translate-x-0 z-50 flex flex-col shadow-xl md:shadow-sm shrink-0 transition-all duration-300">
+        <div class="h-16 flex items-center px-6 border-b border-slate-100 dark:border-slate-700/50 justify-between">
             <div class="flex items-center gap-2 text-primary font-bold text-xl tracking-tight whitespace-nowrap">
                 <i class="fa-solid fa-fingerprint nav-icon"></i><span class="sidebar-text">RelawanSync V2</span>
             </div>
@@ -34,76 +34,90 @@
             </button>
         </div>
         
-        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 bg-indigo-50 text-primary rounded-xl font-medium transition-colors text-left">
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scroll">
+            <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 text-primary rounded-xl font-medium transition-colors text-left">
                 <i class="fa-solid fa-chart-pie w-6 text-center nav-icon"></i><span class="sidebar-text">Executive Dashboard</span>
             </a>
-            <a href="input.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left">
+            <a href="input.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
                 <i class="fa-solid fa-users-viewfinder w-6 text-center nav-icon"></i><span class="sidebar-text">Validasi Absensi</span>
             </a>
-            <a href="riwayat.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left">
+            <a href="riwayat.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
                 <i class="fa-solid fa-clipboard-list w-6 text-center nav-icon"></i><span class="sidebar-text">Riwayat Absen</span>
             </a>
-            <a href="master.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl font-medium transition-colors text-left">
+            <a href="kalender.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-calendar-days w-6 text-center nav-icon"></i><span class="sidebar-text">Kalender Absen</span>
+            </a>
+            <a href="statistik.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-chart-column w-6 text-center nav-icon"></i><span class="sidebar-text">Statistik</span>
+            </a>
+            <a href="master.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
                 <i class="fa-solid fa-database w-6 text-center nav-icon"></i><span class="sidebar-text">Master Data</span>
             </a>
         </nav>
         
-        <div class="p-4 bg-slate-50 m-2 rounded-xl border border-slate-100 flex flex-col gap-2">
-            <!-- TOMBOL BACKUP BARU -->
-            <button onclick="backupEverything()" class="w-full flex items-center justify-center gap-2 text-indigo-600 font-bold text-sm hover:bg-indigo-50 py-2 rounded-lg transition-colors border border-indigo-100 shadow-sm">
+        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 m-2 rounded-xl border border-slate-100 dark:border-slate-700/50 flex flex-col gap-2">
+            <button onclick="toggleDarkMode()" class="w-full flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 py-2 rounded-lg transition-colors border border-slate-200 dark:border-slate-600 shadow-sm">
+                <i class="fa-solid fa-circle-half-stroke"></i><span class="sidebar-text" id="darkModeLabel">Mode Gelap</span>
+            </button>
+            <button onclick="backupEverything()" class="w-full flex items-center justify-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10 py-2 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-500/20 shadow-sm">
                 <i class="fa-solid fa-cloud-arrow-down"></i><span class="sidebar-text">Backup Data</span>
             </button>
-            
-            <!-- TOMBOL LOGOUT LAMA -->
-            <button onclick="logoutSystem()" class="w-full flex items-center justify-center gap-2 text-red-600 font-bold text-sm hover:bg-red-50 py-2 rounded-lg transition-colors">
+            <button onclick="logoutSystem()" class="w-full flex items-center justify-center gap-2 text-red-600 dark:text-red-400 font-bold text-sm hover:bg-red-50 dark:hover:bg-red-500/10 py-2 rounded-lg transition-colors">
                 <i class="fa-solid fa-power-off"></i><span class="sidebar-text">Keluar (Lock)</span>
             </button>
         </div>
     </aside>
         
     <!-- KONTEN UTAMA DASHBOARD -->
-    <main class="flex-1 flex flex-col h-[100dvh] overflow-hidden relative bg-slate-100/50">
+    <main class="flex-1 flex flex-col h-[100dvh] overflow-hidden relative bg-slate-100/50 dark:bg-slate-900">
         
-        <!-- BARIS SAKRAL ESTETIK (POSISI ATAS TENGAH) -->
-        <div class="bg-indigo-900/5 border-b border-indigo-100/60 py-1 px-4 text-center shrink-0">
-            <span class="text-[9px] font-black text-indigo-700 tracking-[0.25em] uppercase">
-                ✨ Atas Berkat Rochmat Alloh Yang Maha Kuasa ✨
+        <!-- BARIS SAKRAL -->
+        <div class="bg-indigo-900/5 dark:bg-indigo-500/5 border-b border-indigo-100/60 dark:border-indigo-500/10 py-1 px-4 text-center shrink-0">
+            <span class="text-[9px] font-black text-indigo-700 dark:text-indigo-400 tracking-[0.25em] uppercase">
+                Atas Berkat Rochmat Alloh Yang Maha Kuasa
             </span>
         </div>        
-    <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0 z-10">
+    <header class="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700/50 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0 z-10">
             <div class="flex items-center gap-4">
-                <button id="btnToggleSidebar" onclick="toggleSidebar()" class="text-slate-500 hover:text-primary hover:bg-slate-100 w-10 h-10 rounded-lg transition-colors flex items-center justify-center">
+                <button id="btnToggleSidebar" onclick="toggleSidebar()" class="text-slate-500 dark:text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 w-10 h-10 rounded-lg transition-colors flex items-center justify-center">
                     <i class="fa-solid fa-bars text-lg"></i>
                 </button>
                 <div>
-                    <h1 class="text-lg font-extrabold text-slate-800 hidden sm:block leading-none mt-1">Executive Overview</h1>
+                    <h1 class="text-lg font-extrabold text-slate-800 dark:text-slate-100 hidden sm:block leading-none mt-1">Executive Overview</h1>
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block" id="headerDateText">Memuat tanggal...</p>
                 </div>
             </div>
-            <button onclick="loadDashboardData()" class="text-sm bg-white text-primary hover:bg-indigo-50 px-4 py-2 rounded-lg font-bold transition-colors border border-indigo-100 flex items-center gap-2 shadow-sm">
-                <i class="fa-solid fa-rotate"></i> Segarkan Data
-            </button>
+            <div class="flex items-center gap-2">
+                <button onclick="bukaModalRekapHarian()" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 shadow-sm">
+                    <i class="fa-brands fa-whatsapp text-base"></i> <span class="hidden sm:inline">Rekap WA</span>
+                </button>
+                <button id="btnNotifikasi" onclick="requestNotifikasi()" class="text-sm bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 px-3 py-2 rounded-lg font-bold transition-colors border border-slate-200 dark:border-slate-600 flex items-center gap-2 shadow-sm relative">
+                    <i class="fa-solid fa-bell"></i>
+                </button>
+                <button onclick="loadDashboardData()" class="text-sm bg-white dark:bg-slate-800 text-primary hover:bg-indigo-50 dark:hover:bg-indigo-500/10 px-4 py-2 rounded-lg font-bold transition-colors border border-indigo-100 dark:border-indigo-500/20 flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-rotate"></i> <span class="hidden sm:inline">Segarkan Data</span>
+                </button>
+            </div>
         </header>        
 
         <div class="flex-1 overflow-y-auto p-4 lg:p-6 custom-scroll relative">
             
-            <div id="loadingOverlay" class="absolute inset-0 bg-slate-50/90 z-20 flex flex-col items-center justify-center">
+            <div id="loadingOverlay" class="absolute inset-0 bg-slate-50/90 dark:bg-slate-900/90 z-20 flex flex-col items-center justify-center transition-opacity">
                 <i class="fa-solid fa-circle-notch fa-spin text-5xl text-primary mb-4"></i>
-                <p class="text-slate-600 font-bold tracking-wide">Menghitung Kalkulasi Data...</p>
+                <p class="text-slate-600 dark:text-slate-400 font-bold tracking-wide">Menghitung Kalkulasi Data...</p>
             </div>
 
             <div class="max-w-[1400px] mx-auto space-y-6">
 
                 <!-- KONTROL FILTER WAKTU -->
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center gap-4">
+                <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700/50 flex flex-wrap items-center gap-4 fade-in">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-filter text-primary"></i>
-                        <span class="font-bold text-slate-700 text-sm">Analisis Berdasarkan:</span>
+                        <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">Analisis Berdasarkan:</span>
                     </div>
                     
-                    <div class="flex items-center gap-3 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
-                        <select id="filterBulan" onchange="terapkanFilterDashboard()" class="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer">
+                    <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-700/50 p-1.5 rounded-lg border border-slate-200 dark:border-slate-600">
+                        <select id="filterBulan" onchange="terapkanFilterDashboard()" class="bg-transparent text-sm font-bold text-slate-700 dark:text-slate-200 outline-none cursor-pointer">
                             <option value="01">Januari</option><option value="02">Februari</option>
                             <option value="03">Maret</option><option value="04">April</option>
                             <option value="05">Mei</option><option value="06">Juni</option>
@@ -111,8 +125,8 @@
                             <option value="09">September</option><option value="10">Oktober</option>
                             <option value="11">November</option><option value="12">Desember</option>
                         </select>
-                        <div class="w-px h-4 bg-slate-300"></div>
-                        <select id="filterTahun" onchange="terapkanFilterDashboard()" class="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"></select>
+                        <div class="w-px h-4 bg-slate-300 dark:bg-slate-600"></div>
+                        <select id="filterTahun" onchange="terapkanFilterDashboard()" class="bg-transparent text-sm font-bold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"></select>
                     </div>
                     
                     <button onclick="resetFilterDashboard()" class="text-xs font-bold text-slate-400 hover:text-primary transition-colors underline">Kembali ke Hari Ini</button>
@@ -123,160 +137,157 @@
                 </div>
                 
                 <!-- ZONA 1: KPI CARD -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div onclick="bukaModalRincian('master', 'Semua Data Master', 'Seluruh relawan yang pernah terdaftar.')" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group cursor-pointer hover:border-blue-400 hover:shadow-md transition-all">
-                        <div class="absolute right-0 top-0 w-16 h-16 bg-blue-50 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 fade-in">
+                    <div onclick="bukaModalRincian('master', 'Semua Data Master', 'Seluruh relawan yang pernah terdaftar.')" class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden group cursor-pointer hover:border-blue-400 hover:shadow-md transition-all">
+                        <div class="absolute right-0 top-0 w-16 h-16 bg-blue-50 dark:bg-blue-500/10 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
                         <i class="fa-solid fa-database text-blue-500 absolute right-4 top-4 text-xl z-10"></i>
-                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 z-10 relative group-hover:text-blue-600 transition-colors">Total Database</p>
-                        <h3 class="text-3xl font-black text-slate-800 tracking-tight z-10 relative" id="kpi-master">-</h3>
+                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative group-hover:text-blue-600 transition-colors">Total Database</p>
+                        <h3 class="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight z-10 relative" id="kpi-master">-</h3>
                         <p class="text-[10px] text-slate-400 font-semibold mt-1 flex justify-between items-center">
                             Seluruh Relawan Terdaftar <i class="fa-solid fa-arrow-up-right-from-square text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
                         </p>
                     </div>
 
-                    <div onclick="bukaModalRincian('hari_ini', 'Kehadiran Lapangan Hari Ini', 'Relawan yang bertugas pada hari ini.')" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all">
-                        <div class="absolute right-0 top-0 w-16 h-16 bg-emerald-50 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
+                    <div onclick="bukaModalRincian('hari_ini', 'Kehadiran Lapangan Hari Ini', 'Relawan yang bertugas pada hari ini.')" class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden group cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all">
+                        <div class="absolute right-0 top-0 w-16 h-16 bg-emerald-50 dark:bg-emerald-500/10 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
                         <i class="fa-solid fa-street-view text-emerald-500 absolute right-4 top-4 text-xl z-10"></i>
-                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 z-10 relative group-hover:text-emerald-600 transition-colors">Kehadiran Hari Ini</p>
+                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative group-hover:text-emerald-600 transition-colors">Kehadiran Hari Ini</p>
                         <h3 class="text-3xl font-black text-emerald-600 tracking-tight z-10 relative" id="kpi-today">-</h3>
                         <p class="text-[10px] text-slate-400 font-semibold mt-1 flex justify-between items-center">
                             Total Siang & Malam <i class="fa-solid fa-arrow-up-right-from-square text-emerald-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
                         </p>
                     </div>
 
-                    <div onclick="bukaModalRincian('bulan_ini', 'Akumulasi Bulan Terpilih', 'Seluruh log absen pada bulan ini.')" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all">
-                        <div class="absolute right-0 top-0 w-16 h-16 bg-indigo-50 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
+                    <div onclick="bukaModalRincian('bulan_ini', 'Akumulasi Bulan Terpilih', 'Seluruh log absen pada bulan ini.')" class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden group cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all">
+                        <div class="absolute right-0 top-0 w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
                         <i class="fa-solid fa-calendar-check text-indigo-500 absolute right-4 top-4 text-xl z-10"></i>
-                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 z-10 relative group-hover:text-indigo-600 transition-colors">Akumulasi Sebulan</p>
+                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative group-hover:text-indigo-600 transition-colors">Akumulasi Sebulan</p>
                         <h3 class="text-3xl font-black text-primary tracking-tight z-10 relative" id="kpi-month">-</h3>
                         <p class="text-[10px] text-slate-400 font-semibold mt-1 flex justify-between items-center">
                             Sesuai Filter Bulan & Tahun <i class="fa-solid fa-arrow-up-right-from-square text-indigo-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
                         </p>
                     </div>
 
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group">
-                        <div class="absolute right-0 top-0 w-16 h-16 bg-orange-50 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 w-16 h-16 bg-orange-50 dark:bg-orange-500/10 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
                         <i class="fa-solid fa-chart-line text-orange-500 absolute right-4 top-4 text-xl z-10"></i>
-                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1 z-10 relative">Rata-Rata Harian</p>
+                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative">Rata-Rata Harian</p>
                         <h3 class="text-3xl font-black text-orange-500 tracking-tight z-10 relative" id="kpi-avg">-</h3>
                         <p class="text-[10px] text-slate-400 font-semibold mt-1">Rasio Relawan per Hari</p>
                     </div>
                 </div>
 
                 <!-- ZONA 2: TREN WAKTU -->
-                <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in">
                     <div class="flex justify-between items-end mb-4">
                         <div>
-                            <h3 class="font-extrabold text-slate-800 text-lg">Tren Kehadiran Lapangan</h3>
-                            <p class="text-xs font-semibold text-slate-500">Pergerakan aktivitas pada bulan terpilih. Klik titik pada grafik untuk melihat rincian tanggal.</p>
+                            <h3 class="font-extrabold text-slate-800 dark:text-slate-100 text-lg">Tren Kehadiran Lapangan</h3>
+                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Pergerakan aktivitas pada bulan terpilih. Klik titik pada grafik untuk melihat rincian tanggal.</p>
                         </div>
                     </div>
                     <div class="w-full h-72 cursor-pointer"><canvas id="chartTrend"></canvas></div>
                 </div>
 
                 <!-- ZONA 3: KOMPOSISI & LIVE FEED -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                        <h3 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-ranking-star text-amber-400 mr-2"></i>Top 10 Instansi</h3>
-                        <p class="text-xs text-slate-500 mb-4">Klik batang grafik untuk melihat rincian personel instansi pada bulan ini.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 fade-in">
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-1"><i class="fa-solid fa-ranking-star text-amber-400 mr-2"></i>Top 10 Instansi</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Klik batang grafik untuk melihat rincian personel instansi pada bulan ini.</p>
                         <div class="h-64 cursor-pointer"><canvas id="chartOrg"></canvas></div>
                     </div>
 
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                        <h3 class="font-bold text-slate-800 mb-1"><i class="fa-solid fa-map-location-dot text-emerald-500 mr-2"></i>Konsentrasi Lokasi</h3>
-                        <p class="text-xs text-slate-500 mb-4">Klik potongan diagram untuk melacak siapa saja yang bertugas di proyek ini.</p>
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-1"><i class="fa-solid fa-map-location-dot text-emerald-500 mr-2"></i>Konsentrasi Lokasi</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Klik potongan diagram untuk melacak siapa saja yang bertugas di proyek ini.</p>
                         <div class="w-full h-64 max-w-[260px] mx-auto cursor-pointer"><canvas id="chartLokasi"></canvas></div>
                     </div>
 
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col">
-                        <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 flex flex-col">
+                        <div class="p-5 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center">
                             <div>
-                                <h3 class="font-bold text-slate-800"><i class="fa-solid fa-satellite-dish text-blue-500 mr-2 animate-pulse"></i>Live Feed Harian</h3>
-                                <p class="text-xs text-slate-500 mt-1" id="liveFeedStatus">Log kehadiran khusus hari ini.</p>
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100"><i class="fa-solid fa-satellite-dish text-blue-500 mr-2 animate-pulse"></i>Live Feed Harian</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1" id="liveFeedStatus">Log kehadiran khusus hari ini.</p>
                             </div>
-                            <span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-1 rounded font-bold uppercase">Hari Ini</span>
+                            <span class="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-1 rounded font-bold uppercase">Hari Ini</span>
                         </div>
                         <div class="p-5 flex-1 overflow-y-auto custom-scroll" style="max-height: 270px;">
                             <ul id="liveFeedContainer" class="space-y-4"></ul>
                         </div>
                     </div>
-                </div> <!-- PENUTUP GRID ZONA 3 YANG BENAR -->
+                </div>
 
-                <!-- ZONA 4: LEADERBOARD RELAWAN TERAKTIF -->
-                <div class="bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 mt-6">
+                <!-- ZONA 4: LEADERBOARD -->
+                <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 mt-6 fade-in">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-3">
                         <div>
-                            <h3 class="font-extrabold text-slate-800 text-lg"><i class="fa-solid fa-trophy text-amber-500 mr-2"></i>Top Relawan Teraktif</h3>
-                            <p class="text-xs font-semibold text-slate-500">Peringkat relawan dengan kehadiran terbanyak pada bulan ini.</p>
+                            <h3 class="font-extrabold text-slate-800 dark:text-slate-100 text-lg"><i class="fa-solid fa-trophy text-amber-500 mr-2"></i>Top Relawan Teraktif</h3>
+                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Peringkat relawan dengan kehadiran terbanyak pada bulan ini.</p>
                         </div>
                         
                         <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                            <div class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200 flex-1 md:flex-initial">
+                            <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-700/50 p-1.5 rounded-lg border border-slate-200 dark:border-slate-600 flex-1 md:flex-initial">
                                 <i class="fa-solid fa-map-location-dot text-slate-400 ml-2"></i>
                                 <select id="filterTopLokasi" onchange="renderTopRelawan()" class="bg-transparent text-sm font-bold text-primary outline-none cursor-pointer w-full md:w-auto p-1">
                                     <option value="Semua">Semua Lokasi Proyek</option>
                                 </select>
                             </div>
-                            <!-- Tombol Buka Modal Peringkat Lengkap -->
-                            <button onclick="bukaModalLeaderboardSemua()" class="bg-indigo-50 hover:bg-indigo-100 text-primary text-xs font-bold px-4 py-2.5 rounded-lg transition-colors border border-indigo-100 flex items-center gap-2 shadow-sm">
+                            <button onclick="bukaModalLeaderboardSemua()" class="bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-primary text-xs font-bold px-4 py-2.5 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-500/20 flex items-center gap-2 shadow-sm">
                                 <i class="fa-solid fa-list-ol"></i> Lihat Semua Peringkat
                             </button>
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="containerTopRelawan">
-                        <!-- Data Leaderboard utama dirender via JS (Top 9) -->
-                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="containerTopRelawan"></div>
                 </div>
 
-            </div> <!-- Penutup max-w-[1400px] -->
-        </div> <!-- Penutup flex-1 overflow-y-auto -->
+            </div>
+        </div>
         
         <div id="toastContainer" class="fixed top-20 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
 
         <!-- MODAL DRILL-DOWN -->
         <div id="modalRincian" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex flex-col items-center justify-center backdrop-blur-sm p-4 sm:p-8 transition-opacity">
-            <div class="bg-white w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col h-[85vh] transform transition-all">
-                <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl shrink-0">
+            <div class="bg-white dark:bg-slate-800 w-full max-w-5xl rounded-2xl shadow-2xl flex flex-col h-[85vh] modal-scale-in border border-slate-200 dark:border-slate-700/50">
+                <div class="p-5 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-slate-50 dark:bg-slate-700/30 rounded-t-2xl shrink-0">
                     <div>
-                        <h3 class="font-black text-xl text-slate-800" id="modalRincianJudul">Detail Data</h3>
-                        <p class="text-xs text-slate-500 font-medium mt-1" id="modalRincianSub">Deskripsi data...</p>
+                        <h3 class="font-black text-xl text-slate-800 dark:text-slate-100" id="modalRincianJudul">Detail Data</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1" id="modalRincianSub">Deskripsi data...</p>
                     </div>
-                    <button onclick="tutupModalRincian()" class="w-10 h-10 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 shadow-sm transition-all flex items-center justify-center">
+                    <button onclick="tutupModalRincian()" class="w-10 h-10 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-red-500 hover:border-red-200 shadow-sm transition-all flex items-center justify-center">
                         <i class="fa-solid fa-xmark text-xl"></i>
                     </button>
                 </div>
                 
-                <div class="flex-1 overflow-auto bg-white p-0 custom-scroll">
+                <div class="flex-1 overflow-auto bg-white dark:bg-slate-800 p-0 custom-scroll">
                     <table class="w-full text-left text-sm whitespace-nowrap">
-                        <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 z-10 shadow-sm" id="modalThead"></thead>
-                        <tbody id="modalTbody" class="divide-y divide-slate-100"></tbody>
+                        <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold sticky top-0 z-10 shadow-sm" id="modalThead"></thead>
+                        <tbody id="modalTbody" class="divide-y divide-slate-100 dark:divide-slate-700/50"></tbody>
                     </table>
                 </div>
                 
-                <div class="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-between items-center shrink-0">
-                    <span class="text-xs font-bold text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200" id="modalTotalBaris">Total: 0 Data</span>
-                    <button onclick="tutupModalRincian()" class="text-sm bg-slate-800 hover:bg-slate-900 text-white font-bold px-6 py-2 rounded-lg transition-colors shadow-sm">Tutup Rincian</button>
+                <div class="p-4 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-700/30 rounded-b-2xl flex justify-between items-center shrink-0">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600" id="modalTotalBaris">Total: 0 Data</span>
+                    <button onclick="tutupModalRincian()" class="text-sm bg-slate-800 hover:bg-slate-900 dark:bg-slate-600 dark:hover:bg-slate-500 text-white font-bold px-6 py-2 rounded-lg transition-colors shadow-sm">Tutup Rincian</button>
                 </div>
             </div>
         </div>
 
-        <!-- MODAL LEADERBOARD MENYELURUH -->
+        <!-- MODAL LEADERBOARD -->
         <div id="modalLeaderboardSemua" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex flex-col items-center justify-center backdrop-blur-sm p-4 sm:p-8 transition-opacity">
-            <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col h-[85vh] transform transition-all">
-                <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl shrink-0">
+            <div class="bg-white dark:bg-slate-800 w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col h-[85vh] modal-scale-in border border-slate-200 dark:border-slate-700/50">
+                <div class="p-5 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-slate-50 dark:bg-slate-700/30 rounded-t-2xl shrink-0">
                     <div>
-                        <h3 class="font-black text-xl text-slate-800"><i class="fa-solid fa-trophy text-amber-500 mr-2"></i>Peringkat Seluruh Relawan Teraktif</h3>
-                        <p class="text-xs text-slate-500 font-medium mt-1">Daftar lengkap urutan kehadiran relawan pada bulan terpilih.</p>
+                        <h3 class="font-black text-xl text-slate-800 dark:text-slate-100"><i class="fa-solid fa-trophy text-amber-500 mr-2"></i>Peringkat Seluruh Relawan Teraktif</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Daftar lengkap urutan kehadiran relawan pada bulan terpilih.</p>
                     </div>
-                    <button onclick="tutupModalLeaderboardSemua()" class="w-10 h-10 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 shadow-sm transition-all flex items-center justify-center">
+                    <button onclick="tutupModalLeaderboardSemua()" class="w-10 h-10 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-red-500 hover:border-red-200 shadow-sm transition-all flex items-center justify-center">
                         <i class="fa-solid fa-xmark text-xl"></i>
                     </button>
                 </div>
                 
-                <div class="flex-1 overflow-auto bg-white p-4 custom-scroll">
+                <div class="flex-1 overflow-auto bg-white dark:bg-slate-800 p-4 custom-scroll">
                     <table class="w-full text-left text-sm whitespace-nowrap">
-                        <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 z-10 shadow-sm">
+                        <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold sticky top-0 z-10 shadow-sm">
                             <tr>
                                 <th class="px-4 py-3 text-center w-16">Peringkat</th>
                                 <th class="px-4 py-3">Nama Relawan</th>
@@ -284,20 +295,73 @@
                                 <th class="px-4 py-3 text-center w-28">Total Hadir</th>
                             </tr>
                         </thead>
-                        <tbody id="tbodyLeaderboardSemua" class="divide-y divide-slate-100">
-                            <!-- Data lengkap dirender via JS -->
-                        </tbody>
+                        <tbody id="tbodyLeaderboardSemua" class="divide-y divide-slate-100 dark:divide-slate-700/50"></tbody>
                     </table>
                 </div>
                 
-                <div class="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-between items-center shrink-0">
-                    <span class="text-xs font-bold text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200" id="totalRelawanLeaderboard">Total: 0 Relawan</span>
-                    <button onclick="tutupModalLeaderboardSemua()" class="text-sm bg-slate-800 hover:bg-slate-900 text-white font-bold px-6 py-2 rounded-lg transition-colors shadow-sm">Tutup</button>
+                <div class="p-4 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-700/30 rounded-b-2xl flex justify-between items-center shrink-0">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600" id="totalRelawanLeaderboard">Total: 0 Relawan</span>
+                    <button onclick="tutupModalLeaderboardSemua()" class="text-sm bg-slate-800 hover:bg-slate-900 dark:bg-slate-600 dark:hover:bg-slate-500 text-white font-bold px-6 py-2 rounded-lg transition-colors shadow-sm">Tutup</button>
+                </div>
+            </div>
+        </div>
+
+    <!-- MODAL REKAP HARIAN WA-READY -->
+        <div id="modalRekapHarian" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex flex-col items-center justify-center backdrop-blur-sm p-4 sm:p-8 transition-opacity">
+            <div class="bg-white dark:bg-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col modal-scale-in border border-slate-200 dark:border-slate-700/50">
+                <div class="p-5 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-emerald-50 dark:bg-emerald-500/10 rounded-t-2xl shrink-0">
+                    <div>
+                        <h3 class="font-black text-xl text-emerald-700 dark:text-emerald-400"><i class="fa-brands fa-whatsapp mr-2"></i>Rekap Harian WA-Ready</h3>
+                        <p class="text-xs text-emerald-600 dark:text-emerald-400/70 font-medium mt-1">Ringkasan kehadiran harian siap salin / kirim ke grup WhatsApp.</p>
+                    </div>
+                    <button onclick="tutupModalRekapHarian()" class="w-10 h-10 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-red-500 hover:border-red-200 shadow-sm transition-all flex items-center justify-center">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="p-5 space-y-4 flex-1 overflow-auto custom-scroll">
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Tanggal Rekap</label>
+                            <input type="date" id="rekapTanggal" onchange="generateRekapHarian()" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-lg px-3 py-2 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500">
+                        </div>
+                        <label class="flex items-center gap-2 mt-5 cursor-pointer select-none bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2.5">
+                            <input type="checkbox" id="rekapSertakanNama" checked onchange="generateRekapHarian()" class="w-4 h-4 accent-emerald-600 cursor-pointer">
+                            <span class="text-xs font-bold text-slate-700 dark:text-slate-200">Sertakan daftar nama</span>
+                        </label>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Pratinjau Pesan</label>
+                        <textarea id="rekapPreview" rows="14" readonly spellcheck="false" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl p-4 text-xs outline-none resize-y font-mono whitespace-pre text-slate-800 dark:text-slate-100"></textarea>
+                    </div>
+                </div>
+
+                <div class="p-5 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-700/30 rounded-b-2xl flex flex-wrap justify-end gap-2 shrink-0">
+                    <button onclick="generateRekapHarian()" class="text-sm bg-slate-800 hover:bg-slate-900 dark:bg-slate-600 dark:hover:bg-slate-500 text-white font-bold px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate"></i> Buat Rekap
+                    </button>
+                    <button onclick="salinRekapWa()" class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-copy"></i> Salin
+                    </button>
+                    <button onclick="kirimRekapViaWa()" class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5">
+                        <i class="fa-brands fa-whatsapp"></i> Kirim via WA
+                    </button>
+                    <button onclick="tutupModalRekapHarian()" class="text-sm bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 font-bold px-4 py-2 rounded-xl transition-colors shadow-sm">Tutup</button>
                 </div>
             </div>
         </div>
 
     </main>
+
+    <!-- MOBILE BOTTOM NAV -->
+    <nav class="mobile-bottom-nav no-print">
+        <a href="index.html" class="mobile-nav-item active"><i class="fa-solid fa-chart-pie"></i><span>Dashboard</span></a>
+        <a href="input.html" class="mobile-nav-item"><i class="fa-solid fa-users-viewfinder"></i><span>Input</span></a>
+        <a href="riwayat.html" class="mobile-nav-item"><i class="fa-solid fa-clipboard-list"></i><span>Riwayat</span></a>
+        <a href="kalender.html" class="mobile-nav-item"><i class="fa-solid fa-calendar-days"></i><span>Kalender</span></a>
+        <a href="statistik.html" class="mobile-nav-item"><i class="fa-solid fa-chart-column"></i><span>Stats</span></a>
+        <a href="master.html" class="mobile-nav-item"><i class="fa-solid fa-database"></i><span>Master</span></a>
+    </nav>
 
     <script src="js/supabase-config.js"></script>
     <script src="js/app.js"></script>

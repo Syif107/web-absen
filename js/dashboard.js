@@ -1,5 +1,5 @@
 // ==========================================
-// LOGIKA EXECUTIVE DASHBOARD DENGAN DRILL-DOWN & LEADERBOARD
+// LOGIKA EXECUTIVE DASHBOARD DENGAN DRILL-DOWN & LEADERBOARD (V4)
 // ==========================================
 
 let chartTrendInst = null;
@@ -17,6 +17,11 @@ let selectedMonth = "";
 Chart.defaults.font.family = "'Inter', sans-serif";
 Chart.defaults.color = '#94a3b8'; 
 Chart.defaults.scale.grid.color = '#f1f5f9'; 
+
+// Apply dark mode chart colors if needed
+if (document.documentElement.classList.contains('dark')) {
+    Chart.defaults.scale.grid.color = '#1e293b';
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     siapkanFilterWaktu();
@@ -55,13 +60,14 @@ async function loadDashboardData() {
     try {
         const [masterRes, logRes] = await Promise.all([
             supabaseFetch('master_relawan?select=*', 'GET'), 
-            supabaseFetch('log_absensi?select=*&order=id.desc', 'GET') 
+            supabaseFetch(await terapkanFilterLokasi('log_absensi?select=*&order=id.desc'), 'GET') 
         ]);
 
         if (masterRes.status === "success" && logRes.status === "success") {
             globalMasterData = masterRes.data;
             globalLogData = logRes.data;
             terapkanFilterDashboard();
+            cekNotifikasiReminder();
         } else {
             showToast("Gagal menarik data", "error");
         }
@@ -69,6 +75,31 @@ async function loadDashboardData() {
         showToast("Terjadi kesalahan jaringan", "error");
     } finally {
         overlay.classList.add('hidden');
+    }
+}
+
+// ==========================================
+// NOTIFIKASI REMINDER - Cek absensi hari ini
+// ==========================================
+function cekNotifikasiReminder() {
+    const logsToday = globalLogData.filter(r => r.tanggal === currentTodayStr);
+    const now = new Date();
+    const jam = now.getHours();
+    
+    if (logsToday.length === 0 && jam >= 9) {
+        const btnNotif = document.getElementById('btnNotifikasi');
+        if (btnNotif) btnNotif.classList.add('pulse-ring');
+        
+        if ('Notification' in window && Notification.permission === 'granted') {
+            kirimNotifikasiJudul(
+                'RelawanSync - Belum Ada Absensi Hari Ini',
+                `Belum ada data kehadiran yang tercatat untuk hari ini (${currentTodayStr}). Segera lakukan input absensi.`,
+                'assets/icon.png'
+            );
+        }
+    } else {
+        const btnNotif = document.getElementById('btnNotifikasi');
+        if (btnNotif) btnNotif.classList.remove('pulse-ring');
     }
 }
 
@@ -408,4 +439,185 @@ function bukaModalRincian(tipe, judul, sub, parameter = null) {
 
 function tutupModalRincian() {
     document.getElementById('modalRincian').classList.add('hidden');
+}
+
+// ==========================================
+// REKAP HARIAN WA-READY (FASE 3)
+// ==========================================
+
+function bukaModalRekapHarian() {
+    const modal = document.getElementById('modalRekapHarian');
+    const tgl = document.getElementById('rekapTanggal');
+
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+
+    if (!tgl.value) tgl.value = `${yyyy}-${mm}-${dd}`;
+    modal.classList.remove('hidden');
+    generateRekapHarian();
+}
+
+function tutupModalRekapHarian() {
+    document.getElementById('modalRekapHarian').classList.add('hidden');
+}
+
+async function generateRekapHarian() {
+    const tgl = document.getElementById('rekapTanggal').value;
+    const sertakanNama = document.getElementById('rekapSertakanNama').checked;
+    const preview = document.getElementById('rekapPreview');
+
+    if (!tgl) {
+        preview.value = 'Pilih tanggal terlebih dahulu.';
+        return;
+    }
+
+    preview.value = "Menyusun rekap...";
+    try {
+        const res = await supabaseFetch(
+            `log_absensi?select=nama,sesi,lokasi,organisasi&tanggal=eq.${tgl}&order=sesi.asc,lokasi.asc`,
+            'GET'
+        );
+        if (res.status !== "success") {
+            preview.value = 'Gagal memuat data rekap.';
+            return;
+        }
+        preview.value = susunPesanRekap(res.data || [], tgl, sertakanNama);
+    } catch (err) {
+        preview.value = 'Terjadi kesalahan jaringan.';
+    }
+}
+
+function formatHariTanggalID(dateStr) {
+    const hari = ['Ahad', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const bulan = {
+        '01': 'Januari', '02': 'Februari', '03': 'Maret', '04': 'April',
+        '05': 'Mei', '06': 'Juni', '07': 'Juli', '08': 'Agustus',
+        '09': 'September', '10': 'Oktober', '11': 'November', '12': 'Desember'
+    };
+    const [y, m, d] = String(dateStr).split('-');
+    if (!y || !m || !d) return dateStr;
+    const tglObj = new Date(y, m - 1, d);
+    return `${hari[tglObj.getDay()]}, ${parseInt(d, 10)} ${bulan[m] || m} ${y}`;
+}
+
+function urutSesi(sesi) {
+    const prioritas = { 'Siang': 0, 'Malam': 1 };
+    if (prioritas[sesi] !== undefined) return prioritas[sesi];
+    return 99;
+}
+
+function susunPesanRekap(logs, tanggal, sertakanNama) {
+    if (logs.length === 0) {
+        return `📊 *REKAP KEHADIRAN RELAWAN*\n📅 ${formatHariTanggalID(tanggal)}\n\nBelum ada data kehadiran yang tercatat pada tanggal ini.`;
+    }
+
+    const grup = {};
+    logs.forEach(l => {
+        const lok = (l.lokasi || 'Lainnya').trim() || 'Lainnya';
+        const ses = (l.sesi || '').trim() || '-';
+        if (!grup[lok]) grup[lok] = {};
+        if (!grup[lok][ses]) grup[lok][ses] = [];
+        grup[lok][ses].push(l);
+    });
+
+    const baris = [];
+    baris.push(`📊 *REKAP KEHADIRAN RELAWAN*`);
+    baris.push(`📅 ${formatHariTanggalID(tanggal)}`);
+    baris.push(`━━━━━━━━━━━━━━━`);
+
+    const emojiSesi = { 'Siang': '☀️', 'Malam': '🌙' };
+
+    Object.keys(grup)
+        .sort((a, b) => a.localeCompare(b, 'id'))
+        .forEach(lok => {
+            const sesiKeys = Object.keys(grup[lok]).sort((a, b) => urutSesi(a) - urutSesi(b) || a.localeCompare(b, 'id'));
+
+            baris.push('');
+            baris.push(`🏗️ *${lok.toUpperCase()}*`);
+
+            let totalLokasi = 0;
+            sesiKeys.forEach(ses => {
+                const list = grup[lok][ses];
+                const unik = [];
+                const seen = new Set();
+                list.forEach(l => {
+                    const k = (l.nama || '').trim();
+                    if (k && !seen.has(k)) {
+                        seen.add(k);
+                        unik.push(l);
+                    }
+                });
+                totalLokasi += unik.length;
+
+                const emoji = emojiSesi[ses] || '✳️';
+                baris.push(`${emoji} *${ses}* — ${unik.length} Relawan`);
+
+                if (sertakanNama) {
+                    unik.forEach(l => baris.push(`   • ${l.nama.trim()}`));
+                }
+
+                const orgCounts = {};
+                unik.forEach(l => {
+                    const o = (l.organisasi || '').trim();
+                    if (o && o !== 'Umum') orgCounts[o] = (orgCounts[o] || 0) + 1;
+                });
+                const orgKeys = Object.keys(orgCounts);
+                if (orgKeys.length > 0) {
+                    baris.push(`   ✅ ${orgKeys.map(o => `${o} (${orgCounts[o]})`).join(', ')}`);
+                }
+            });
+
+            baris.push(`   ⭐ Total ${lok}: ${totalLokasi} Relawan`);
+        });
+
+    baris.push('');
+    baris.push(`━━━━━━━━━━━━━━━`);
+    baris.push(`🚩 *TOTAL: ${logs.length} Relawan*`);
+    baris.push(`— disusun via RelawanSync —`);
+
+    return baris.join('\n');
+}
+
+function salinRekapWa() {
+    const preview = document.getElementById('rekapPreview');
+    const teks = preview.value;
+    if (!teks || teks.startsWith('Pilih tanggal')) {
+        showToast("Buat rekap terlebih dahulu.", "error");
+        return;
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(teks)
+            .then(() => showToast("Rekap disalin ke clipboard!", "success"))
+            .catch(() => salinRekapFallback(preview));
+    } else {
+        salinRekapFallback(preview);
+    }
+}
+
+function salinRekapFallback(preview) {
+    preview.removeAttribute('readonly');
+    preview.select();
+    preview.setSelectionRange(0, preview.value.length);
+    let ok = false;
+    try {
+        ok = document.execCommand('copy');
+    } catch (e) {
+        ok = false;
+    }
+    preview.setAttribute('readonly', '');
+    preview.blur();
+    showToast(ok ? "Rekap disalin ke clipboard!" : "Gagal menyalin otomatis, silakan salin manual.", ok ? "success" : "error");
+}
+
+function kirimRekapViaWa() {
+    const teks = document.getElementById('rekapPreview').value;
+    if (!teks || teks.startsWith('Pilih tanggal') || teks.startsWith('Gagal')) {
+        showToast("Buat rekap terlebih dahulu.", "error");
+        return;
+    }
+    const url = 'https://wa.me/?text=' + encodeURIComponent(teks);
+    window.open(url, '_blank');
 }

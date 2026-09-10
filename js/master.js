@@ -194,38 +194,38 @@ function bukaExcelFilterMaster(columnKey, event) {
     const currentSelected = activeExcelFilters[columnKey] || [];
 
     let html = `
-        <div class="font-bold text-slate-700 mb-2 pb-1 border-b border-slate-100 flex justify-between items-center text-xs">
+        <div class="font-bold text-slate-700 dark:text-slate-200 mb-2 pb-1 border-b border-slate-100 dark:border-slate-600 flex justify-between items-center text-xs">
             <span>Filter & Urutkan</span>
             <span class="text-primary cursor-pointer underline hover:text-indigo-700" onclick="resetFilterKolomMaster('${columnKey}')">Reset</span>
         </div>
         
         <div class="space-y-1 mb-2 text-xs">
-            <button onclick="sortDataKolomMaster('${columnKey}', 'asc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded font-semibold text-slate-600 flex items-center gap-2"><i class="fa-solid fa-arrow-down-a-z text-primary"></i> Urutkan A ke Z</button>
-            <button onclick="sortDataKolomMaster('${columnKey}', 'desc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded font-semibold text-slate-600 flex items-center gap-2"><i class="fa-solid fa-arrow-up-z-a text-primary"></i> Urutkan Z ke A</button>
+            <button onclick="sortDataKolomMaster('${columnKey}', 'asc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2"><i class="fa-solid fa-arrow-down-a-z text-primary"></i> Urutkan A ke Z</button>
+            <button onclick="sortDataKolomMaster('${columnKey}', 'desc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2"><i class="fa-solid fa-arrow-up-z-a text-primary"></i> Urutkan Z ke A</button>
         </div>
 
         <!-- KOTAK PENCARIAN DI DALAM FILTER MASTER -->
         <div class="mb-2 relative">
             <i class="fa-solid fa-search absolute left-2.5 top-2 text-slate-400 text-[10px]"></i>
-            <input type="text" id="searchPopupInput" onkeyup="filterListPopupMaster(this)" placeholder="Cari data..." class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-7 pr-3 py-1.5 text-xs outline-none focus:border-primary">
+            <input type="text" id="searchPopupInput" onkeyup="filterListPopupMaster(this)" placeholder="Cari data..." class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg pl-7 pr-3 py-1.5 text-xs outline-none text-slate-800 dark:text-slate-100 focus:border-primary dark:placeholder-slate-400">
         </div>
 
         <!-- TOMBOL PILIH SEMUA / HAPUS SEMUA MASTER -->
         <div class="flex justify-between items-center mb-1 text-[11px] font-bold text-indigo-600 px-1">
             <span class="cursor-pointer hover:underline" onclick="toggleAllPopupCheckboxMaster(true)">Pilih Semua</span>
-            <span class="text-slate-300">|</span>
+            <span class="text-slate-300 dark:text-slate-500">|</span>
             <span class="cursor-pointer hover:underline text-red-500" onclick="toggleAllPopupCheckboxMaster(false)">Hapus Semua</span>
         </div>
 
-        <div class="max-h-44 overflow-y-auto space-y-1 pr-1 custom-scroll border border-slate-100 p-1 rounded-lg bg-slate-50/50" id="excelCheckboxList">
+        <div class="max-h-44 overflow-y-auto space-y-1 pr-1 custom-scroll border border-slate-100 dark:border-slate-600 p-1 rounded-lg bg-slate-50/50 dark:bg-slate-700/50" id="excelCheckboxList">
     `;
 
     uniqueValues.forEach(val => {
         const isChecked = currentSelected.length === 0 || currentSelected.includes(val) ? 'checked' : '';
         html += `
-            <label class="popup-item-label-master flex items-center gap-2 p-1 hover:bg-white rounded cursor-pointer text-xs">
+            <label class="popup-item-label-master flex items-center gap-2 p-1 hover:bg-white dark:hover:bg-slate-600 rounded cursor-pointer text-xs">
                 <input type="checkbox" value="${val}" data-col="${columnKey}" class="excel-filter-chk-master w-3.5 h-3.5 accent-primary rounded shrink-0" ${isChecked} onchange="terapkanExcelFilterMaster()">
-                <span class="truncate text-slate-700 font-medium">${val}</span>
+                <span class="truncate text-slate-700 dark:text-slate-200 font-medium">${val}</span>
             </label>
         `;
     });
@@ -530,6 +530,12 @@ async function eksekusiMerge() {
     }
 
     const targetProfile = masterData.find(r => r.nip === targetNip);
+
+    if (!targetProfile) {
+        showToast("Profil tujuan tidak ditemukan. Muat ulang data Master.", "error");
+        resetInputMerge();
+        return;
+    }
     
     const konfirmasi = confirm(`🚨 PERINGATAN BENTURAN DATA 🚨\n\nApakah Anda yakin ingin memindahkan seluruh absen:\n[X] ${currentSourceName}\n\nKe profil yang benar:\n[✓] ${targetProfile.nama}\n\nProfil lama akan dihapus permanen!`);
     if (!konfirmasi) return;
@@ -538,15 +544,19 @@ async function eksekusiMerge() {
     btn.disabled = true;
 
     try {
-        const updatePayload = {
-            nip: targetProfile.nip,
-            nama: targetProfile.nama,
-            bidang: targetProfile.jabatan,
-            organisasi: targetProfile.asal_organisasi
-        };
-        
-        await supabaseFetch(`log_absensi?nip=eq.${currentSourceNip}`, 'PATCH', updatePayload);
-        await supabaseFetch(`master_relawan?nip=eq.${currentSourceNip}`, 'DELETE');
+        const res = await callSupabaseRpc('merge_relawan', {
+            p_sumber_nip: currentSourceNip,
+            p_target_nip: targetNip
+        });
+
+        if (res.status !== "success") {
+            const pesanServer = (res.result && res.result.message) || res.message;
+            console.error("Merge RPC Gagal:", res);
+            if (pesanServer && /tidak ditemukan|sama/.test(pesanServer)) {
+                throw new Error(pesanServer);
+            }
+            throw new Error("Gagal melakukan merge dari server.");
+        }
 
         showToast("Merge Data Berhasil! Riwayat disatukan.", "success");
         tutupModalMerge();
@@ -555,9 +565,188 @@ async function eksekusiMerge() {
         loadMasterData(); 
         
     } catch (err) {
-        showToast("Gagal melakukan Merge Data.", "error");
+        showToast(err.message || "Gagal melakukan Merge Data.", "error");
+        console.error("Merge RPC Error:", err);
     } finally {
         btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Eksekusi Gabung';
+        btn.disabled = false;
+    }
+}
+
+// ==========================================
+// ZONA IMPORT CSV
+// ==========================================
+let importCSVData = [];
+
+function bukaModalImportCSV() {
+    importCSVData = [];
+    document.getElementById('importStepUpload').classList.remove('hidden');
+    document.getElementById('importStepPreview').classList.add('hidden');
+    document.getElementById('fileCSV').value = '';
+    document.getElementById('importTotalInfo').textContent = 'Belum ada data';
+    document.getElementById('btnSubmitImport').disabled = true;
+    document.getElementById('modalImportCSV').classList.remove('hidden');
+}
+
+function tutupModalImportCSV() {
+    document.getElementById('modalImportCSV').classList.add('hidden');
+    importCSVData = [];
+}
+
+function resetImportCSV() {
+    importCSVData = [];
+    document.getElementById('importStepUpload').classList.remove('hidden');
+    document.getElementById('importStepPreview').classList.add('hidden');
+    document.getElementById('fileCSV').value = '';
+    document.getElementById('importTotalInfo').textContent = 'Belum ada data';
+    document.getElementById('btnSubmitImport').disabled = true;
+}
+
+function handleFileCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    if (!file.name.endsWith('.csv')) {
+        showToast("File harus berformat .csv!", "error");
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const content = e.target.result;
+        parseCSV(content);
+    };
+    reader.readAsText(file);
+}
+
+function parseCSV(content) {
+    const lines = content.split('\n').filter(line => line.trim() !== '');
+    if (lines.length === 0) {
+        showToast("File CSV kosong!", "error");
+        return;
+    }
+    
+    importCSVData = [];
+    let startIndex = 0;
+    
+    const firstLine = lines[0].toLowerCase();
+    if (firstLine.includes('nama') || firstLine.includes('name') || firstLine.includes('nip') || firstLine.includes('jabatan') || firstLine.includes('organisasi')) {
+        startIndex = 1;
+    }
+    
+    for (let i = startIndex; i < lines.length; i++) {
+        const cols = lines[i].split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+        
+        if (cols.length < 2) continue;
+        
+        let nip, nama, jabatan, organisasi;
+        
+        if (cols.length >= 4) {
+            nip = cols[0] || '';
+            nama = cols[1] || '';
+            jabatan = cols[2] || '';
+            organisasi = cols[3] || '';
+        } else if (cols.length === 3) {
+            nip = '';
+            nama = cols[0] || '';
+            jabatan = cols[1] || '';
+            organisasi = cols[2] || '';
+        } else {
+            nip = '';
+            nama = cols[0] || '';
+            jabatan = '';
+            organisasi = '';
+        }
+        
+        if (!nama || nama === '') continue;
+        
+        nama = nama.toUpperCase();
+        
+        const existing = masterData.find(r => r.nama === nama);
+        const nipFinal = nip || (existing ? existing.nip : `REL-${nama.replace(/\s+/g, '').substring(0,10)}${Math.floor(1000 + Math.random() * 9000)}`);
+        
+        importCSVData.push({
+            nip: nipFinal,
+            nama: nama,
+            jabatan: jabatan || (existing ? existing.jabatan : 'Helper'),
+            asal_organisasi: organisasi || (existing ? existing.asal_organisasi : 'Umum'),
+            isDuplicate: !!existing
+        });
+    }
+    
+    if (importCSVData.length === 0) {
+        showToast("Tidak ada data valid ditemukan di CSV!", "error");
+        return;
+    }
+    
+    renderImportPreview();
+}
+
+function renderImportPreview() {
+    document.getElementById('importStepUpload').classList.add('hidden');
+    document.getElementById('importStepPreview').classList.remove('hidden');
+    
+    const tbody = document.getElementById('importPreviewBody');
+    const newCount = importCSVData.filter(d => !d.isDuplicate).length;
+    const dupeCount = importCSVData.filter(d => d.isDuplicate).length;
+    
+    document.getElementById('importInfo').textContent = `${importCSVData.length} data ditemukan (${newCount} baru, ${dupeCount} sudah ada)`;
+    document.getElementById('importTotalInfo').textContent = `${importCSVData.length} data siap diimport`;
+    document.getElementById('btnSubmitImport').disabled = false;
+    
+    let html = '';
+    importCSVData.forEach((row, idx) => {
+        const statusBadge = row.isDuplicate 
+            ? '<span class="bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[10px] px-2 py-0.5 rounded font-bold">Sudah Ada</span>'
+            : '<span class="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] px-2 py-0.5 rounded font-bold">Baru</span>';
+        
+        html += `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                <td class="px-4 py-2 text-center text-slate-400 font-bold">${idx + 1}</td>
+                <td class="px-4 py-2 font-mono text-xs text-slate-500 dark:text-slate-400">${escapeHTML(row.nip)}</td>
+                <td class="px-4 py-2 font-bold text-slate-800 dark:text-slate-100">${escapeHTML(row.nama)}</td>
+                <td class="px-4 py-2 text-slate-600 dark:text-slate-300">${escapeHTML(row.jabatan)}</td>
+                <td class="px-4 py-2 text-slate-600 dark:text-slate-300">${escapeHTML(row.asal_organisasi)}</td>
+                <td class="px-4 py-2 text-center">${statusBadge}</td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+async function submitImportCSV() {
+    if (importCSVData.length === 0) return;
+    
+    const btn = document.getElementById('btnSubmitImport');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengimport...';
+    btn.disabled = true;
+    
+    const newData = importCSVData.filter(d => !d.isDuplicate);
+    
+    try {
+        if (newData.length > 0) {
+            const batchSize = 50;
+            for (let i = 0; i < newData.length; i += batchSize) {
+                const batch = newData.slice(i, i + batchSize).map(d => ({
+                    nip: d.nip,
+                    nama: d.nama,
+                    jabatan: d.jabatan,
+                    asal_organisasi: d.asal_organisasi
+                }));
+                await supabaseFetch('master_relawan', 'POST', batch);
+            }
+        }
+        
+        showToast(`${newData.length} data baru berhasil diimport!`, "success");
+        tutupModalImportCSV();
+        loadMasterData();
+        
+    } catch (err) {
+        showToast("Gagal mengimport data. Silakan coba lagi.", "error");
+        console.error("Import Error:", err);
+    } finally {
+        btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Import ke Database';
         btn.disabled = false;
     }
 }

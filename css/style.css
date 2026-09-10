@@ -1,38 +1,185 @@
 /* ==========================================
-   CUSTOM STYLES & ANIMATIONS
+   CUSTOM STYLES & ANIMATIONS (UPGRADED V4)
    ========================================== */
 
-/* Kustomisasi Scrollbar (Agar terlihat elegan) */
+/* --- Dark Mode Transitions --- */
+html { transition: background-color 0.3s ease, color 0.3s ease; }
+
+/* --- Kustomisasi Scrollbar (Elegan) --- */
 .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
 .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
 .custom-scroll::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 4px; }
+.dark .custom-scroll::-webkit-scrollbar-track { background: #1e293b; }
+.dark .custom-scroll::-webkit-scrollbar-thumb { background: #475569; }
 
-/* Animasi Muncul Notifikasi (Toast) */
+/* --- Animasi Muncul Notifikasi (Toast) --- */
 .toast-enter { animation: slideInRight 0.3s ease-out forwards; }
-@keyframes slideInRight { 
-    from { transform: translateX(100%); opacity: 0; } 
-    to { transform: translateX(0); opacity: 1; } 
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
 
-/* Animasi Sidebar Melipat */
-#sidebar { transition: width 0.3s ease; overflow-x: hidden; }
+/* --- Animasi Sidebar Melipat --- */
+#sidebar { transition: width 0.3s ease, background-color 0.3s ease, border-color 0.3s ease; overflow-x: hidden; }
 .sidebar-collapsed { width: 5rem !important; }
 .sidebar-collapsed .sidebar-text { opacity: 0; display: none; }
 .sidebar-collapsed .nav-btn { justify-content: center; padding-left: 0; padding-right: 0; }
 .sidebar-collapsed .nav-icon { margin-right: 0; font-size: 1.25rem; }
 
-/* Ukuran Checkbox untuk mode Bulk Action nanti */
+/* --- Ukuran Checkbox untuk Bulk Action --- */
 .bulk-checkbox { width: 1.25rem; height: 1.25rem; cursor: pointer; accent-color: #4F46E5; }
 
-/* Auto-Capslock Visual */
+/* --- Auto-Capslock Visual --- */
 input[type="text"], textarea {
     text-transform: uppercase;
 }
+
+/* --- Skeleton Loading Animation --- */
+.skeleton {
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s ease-in-out infinite;
+    border-radius: 0.5rem;
+}
+.dark .skeleton {
+    background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+    background-size: 200% 100%;
+}
+@keyframes skeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+.skeleton-text { height: 0.75rem; margin-bottom: 0.5rem; width: 80%; }
+.skeleton-title { height: 1.5rem; width: 50%; margin-bottom: 0.75rem; }
+.skeleton-card { height: 6rem; width: 100%; }
+.skeleton-row { height: 2.5rem; margin-bottom: 0.5rem; width: 100%; }
+
+/* --- Fade In Animation --- */
+.fade-in { animation: fadeIn 0.3s ease-out forwards; }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Scale In Animation (Modals) --- */
+.modal-scale-in { animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes modalScaleIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* --- Pulse Ring for Notifications --- */
+.pulse-ring { position: relative; }
+.pulse-ring::after {
+    content: '';
+    position: absolute;
+    top: -2px; right: -2px;
+    width: 10px; height: 10px;
+    background: #ef4444;
+    border-radius: 50%;
+    border: 2px solid white;
+    animation: pulseRingDot 2s ease-in-out infinite;
+}
+@keyframes pulseRingDot {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+/* --- Calendar Grid Styles --- */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    min-height: 3.5rem;
+    border: 2px solid transparent;
+}
+.calendar-day:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 2; }
+.calendar-day.has-siang {
+    background-color: rgba(249, 115, 22, 0.1);
+    border-color: rgba(249, 115, 22, 0.3);
+}
+.calendar-day.has-malam {
+    background-color: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+.calendar-day.has-both {
+    background: linear-gradient(135deg, rgba(249,115,22,0.12), rgba(99,102,241,0.12));
+    border-color: rgba(139, 92, 246, 0.4);
+}
+.calendar-day.no-data { background: transparent; border-color: rgba(148,163,184,0.15); }
+.calendar-day.today { box-shadow: 0 0 0 2px #4F46E5; }
+.calendar-day.other-month { opacity: 0.25; pointer-events: none; }
+.dark .calendar-day:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+.dark .calendar-day.no-data { border-color: rgba(71,85,105,0.3); }
+
+/* --- Stat Card Gradient Accents --- */
+.stat-card-gradient-blue { background: linear-gradient(135deg, rgba(59,130,246,0.06), rgba(59,130,246,0.01)); }
+.stat-card-gradient-green { background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.01)); }
+.stat-card-gradient-purple { background: linear-gradient(135deg, rgba(139,92,246,0.06), rgba(139,92,246,0.01)); }
+.stat-card-gradient-orange { background: linear-gradient(135deg, rgba(249,115,22,0.06), rgba(249,115,22,0.01)); }
+
+/* --- Mobile Bottom Navigation --- */
+.mobile-bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    background: white;
+    border-top: 1px solid #e2e8f0;
+    padding: 0.4rem 0;
+    padding-bottom: env(safe-area-inset-bottom, 0.4rem);
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+}
+.dark .mobile-bottom-nav {
+    background: #0f172a;
+    border-color: #1e293b;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
+}
+@media (max-width: 767px) {
+    .mobile-bottom-nav { display: flex !important; justify-content: space-around; align-items: center; }
+}
+.mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    padding: 0.3rem 0.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #94a3b8;
+    transition: color 0.2s;
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.mobile-nav-item.active { color: #4F46E5; }
+.dark .mobile-nav-item.active { color: #818CF8; }
+.mobile-nav-item i { font-size: 1.1rem; }
+
+/* --- Dark mode overrides for specific elements --- */
+.dark aside { background-color: #0f172a !important; }
+.dark header { background-color: #0f172a !important; }
+.dark #mobileOverlay { background-color: rgba(0,0,0,0.7) !important; }
 
 /* ========================================== */
 /* STYLING CETAK / PRINT LAPORAN (RIWAYAT)    */
 /* ========================================== */
 .print-header { display: none; }
+.ttd-block { display: none; }
 
 @media print {
     @page {
@@ -40,7 +187,6 @@ input[type="text"], textarea {
         margin: 10mm;
     }
 
-    /* RESET HALAMAN */
     html, body {
         width: 100% !important;
         height: auto !important;
@@ -55,19 +201,18 @@ input[type="text"], textarea {
         print-color-adjust: exact;
     }
 
-    /* SEMBUHKAN ELEMEN NON-CETAK & IKON FILTER */
     .no-print,
     .no-print *,
     #bulkActionBanner,
     #modalEditLog,
     #toastContainer,
     aside, header, nav, footer,
-    button[onclick*="bukaExcelFilter"], 
+    .mobile-bottom-nav,
+    button[onclick*="bukaExcelFilter"],
     .fa-filter {
         display: none !important;
     }
 
-    /* MATIKAN FLEX/GRID PADA PEMBUNGKUS */
     main,
     main *,
     .max-w-7xl,
@@ -89,7 +234,6 @@ input[type="text"], textarea {
         background: transparent !important;
     }
 
-    /* KOP LAPORAN */
     .print-header {
         display: block !important;
         text-align: center;
@@ -98,27 +242,50 @@ input[type="text"], textarea {
         border-bottom: 2px solid #1e293b !important;
     }
 
-    .print-header h2,
-    .print-header h1 {
-        margin: 0 !important;
+    .print-header .kop-lembaga {
+        font-size: 13px !important;
+        font-weight: 800 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
         color: #0f172a !important;
     }
 
-    .print-header h2 {
-        font-size: 10px !important;
-        font-weight: 800 !important;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        color: #312e81 !important;
-        margin-bottom: 2px !important;
+    .print-header .kop-devisi {
+        font-size: 9px !important;
+        color: #334155 !important;
+        margin-top: 2px !important;
+    }
+
+    .print-header .kop-rule {
+        border: none !important;
+        border-top: 2px solid #1e293b !important;
+        margin: 6px 0 4px !important;
     }
 
     .print-header h1 {
+        margin: 0 !important;
+        color: #0f172a !important;
         font-size: 13px !important;
         font-weight: 700 !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
-    /* STRUKTUR TABEL STABIL (Gunakan table-layout fixed agar teks tidak hilang/meluber) */
+    .print-header .print-meta {
+        margin: 3px 0 0 !important;
+        font-size: 8.5px !important;
+        color: #334155 !important;
+        font-weight: 600;
+    }
+
+    .print-header .kop-sakral {
+        font-size: 12px !important;
+        font-weight: 800 !important;
+        letter-spacing: 1px;
+        color: #0f172a !important;
+        margin-bottom: 3px !important;
+    }
+
     table.print-table {
         display: table !important;
         width: 100% !important;
@@ -126,16 +293,11 @@ input[type="text"], textarea {
         table-layout: fixed !important;
         border-collapse: collapse !important;
         border-spacing: 0 !important;
+        margin-top: 4px !important;
     }
 
-    table.print-table thead {
-        display: table-header-group !important;
-    }
-
-    table.print-table tbody {
-        display: table-row-group !important;
-        height: auto !important;
-    }
+    table.print-table thead { display: table-header-group !important; }
+    table.print-table tbody { display: table-row-group !important; height: auto !important; }
 
     table.print-table tr {
         display: table-row !important;
@@ -144,18 +306,17 @@ input[type="text"], textarea {
         break-inside: avoid !important;
     }
 
-    /* ATURAN SEL: TEKS MUNCUL JELAS, AMAN DARI NABRAK */
     table.print-table th,
     table.print-table td {
         display: table-cell !important;
         visibility: visible !important;
         height: auto !important;
-        padding: 4px 5px !important; /* Padding rapat tapi proporsional */
+        padding: 4px 5px !important;
         border: 1px solid #475569 !important;
         color: #0f172a !important;
         background: #fff !important;
         font-size: 8.5px !important;
-        line-height: 1.25 !important; /* Jarak antar baris pas, tidak tumpang tindih */
+        line-height: 1.25 !important;
         vertical-align: middle !important;
         word-wrap: break-word !important;
         overflow-wrap: break-word !important;
@@ -168,7 +329,6 @@ input[type="text"], textarea {
         text-transform: uppercase;
     }
 
-    /* SEMBUNYIKAN KOLOM CHECKBOX & AKSI */
     table.print-table th.no-print,
     table.print-table td.no-print,
     table.print-table th:first-child,
@@ -178,10 +338,52 @@ input[type="text"], textarea {
         display: none !important;
     }
 
-    /* LEBAR KOLOM PRESISI & AMAN */
-    table.print-table th:nth-child(2), table.print-table td:nth-child(2) { width: 7% !important; text-align: center; } /* No */
-    table.print-table th:nth-child(3), table.print-table td:nth-child(3) { width: 19% !important; text-align: center; } /* Tanggal */
-    table.print-table th:nth-child(4), table.print-table td:nth-child(4) { width: 34% !important; } /* Nama Relawan */
-    table.print-table th:nth-child(5), table.print-table td:nth-child(5) { width: 12% !important; text-align: center; } /* Sesi */
-    table.print-table th:nth-child(6), table.print-table td:nth-child(6) { width: 28% !important; } /* Lokasi Proyek & Organisasi */
+    table.print-table th:nth-child(2), table.print-table td:nth-child(2) { width: 7% !important; text-align: center; }
+    table.print-table th:nth-child(3), table.print-table td:nth-child(3) { width: 19% !important; text-align: center; }
+    table.print-table th:nth-child(4), table.print-table td:nth-child(4) { width: 34% !important; }
+    table.print-table th:nth-child(5), table.print-table td:nth-child(5) { width: 12% !important; text-align: center; }
+    table.print-table th:nth-child(6), table.print-table td:nth-child(6) { width: 28% !important; }
+
+    .print-header { display: block !important; }
+    .print-meta { display: block !important; }
+
+    /* Kop & TTD disembunyikan dulu sementara data lembaga belum lengkap */
+    .kop-lembaga, .kop-devisi, .kop-rule,
+    .ttd-block, .ttd-left, .ttd-right {
+        display: none !important;
+    }
+
+    .ttd-block {
+        display: flex !important;
+        justify-content: space-between;
+        margin-top: 24px !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    .ttd-left, .ttd-right {
+        font-size: 9.5px !important;
+        color: #0f172a !important;
+    }
+
+    .ttd-left p, .ttd-right p { margin: 2px 0 !important; }
+
+    .ttd-left { width: 45%; }
+    .ttd-right { width: 45%; text-align: center; }
+
+    .ttd-left { text-align: center; }
+
+    .ttd-space {
+        height: 52px !important;
+    }
+
+    .ttd-nama {
+        font-weight: 700 !important;
+        letter-spacing: 0.5px;
+    }
+
+    .ttd-nip {
+        font-size: 8.5px !important;
+        color: #334155 !important;
+    }
 }

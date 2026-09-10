@@ -6,6 +6,7 @@ let riwayatData = [];
 
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('filterTanggal').valueAsDate = new Date();
+    muatIdentitasLaporan();
     loadRiwayatData();
 
     // Tambahkan event listener change agar otomatis memfilter saat tanggal diubah
@@ -14,12 +15,60 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+// ==========================================
+// IDENTITAS LAPORAN RESMI (KOP & TTD)
+// ==========================================
+
+const IDENTITAS_LAPORAN_KEY = 'relawan_laporan_identitas';
+
+function getIdentitasLaporan() {
+    try {
+        return JSON.parse(localStorage.getItem(IDENTITAS_LAPORAN_KEY) || 'null') || {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function simpanIdentitasLaporan() {
+    const data = {
+        lembaga: document.getElementById('identLemBaga').value.trim(),
+        pjNama: document.getElementById('identPjNama').value.trim(),
+        pjJabatan: document.getElementById('identPjJabatan').value.trim(),
+        ttdJabatan: document.getElementById('identNipJabatan').value.trim()
+    };
+    localStorage.setItem(IDENTITAS_LAPORAN_KEY, JSON.stringify(data));
+    showToast("Identitas laporan tersimpan.", "success");
+}
+
+function muatIdentitasLaporan() {
+    const data = getIdentitasLaporan();
+    const set = (id, v) => {
+        const el = document.getElementById(id);
+        if (el && v) el.value = v;
+    };
+    set('identLemBaga', data.lembaga);
+    set('identPjNama', data.pjNama);
+    set('identPjJabatan', data.pjJabatan);
+    set('identNipJabatan', data.ttdJabatan);
+}
+
+function formatTanggalID(dateStr) {
+    const bulan = {
+        '01': 'Januari', '02': 'Februari', '03': 'Maret', '04': 'April',
+        '05': 'Mei', '06': 'Juni', '07': 'Juli', '08': 'Agustus',
+        '09': 'September', '10': 'Oktober', '11': 'November', '12': 'Desember'
+    };
+    if (!dateStr) return dateStr;
+    const [y, m, d] = dateStr.split('-');
+    return `${parseInt(d, 10)} ${bulan[m] || m} ${y}`;
+}
+
 async function loadRiwayatData() {
     const loading = document.getElementById('loadingOverlay');
     loading.classList.remove('hidden');
     
     try {
-        const res = await supabaseFetch('log_absensi?select=*&order=id.desc', 'GET');
+        const res = await supabaseFetch(await terapkanFilterLokasi('log_absensi?select=*&order=id.desc'), 'GET');
         if (res.status === "success") {
             riwayatData = res.data;
             jalankanFilterDanSortRiwayat(); 
@@ -266,6 +315,54 @@ function exportToCSV() {
     document.body.removeChild(link);
 }
 
+function exportToXLSX() {
+    const barisTabel = document.querySelectorAll('#riwayatBody tr');
+    if (barisTabel.length === 0 || barisTabel[0].innerText.includes("Tidak ada data")) {
+        showToast("Tidak ada data untuk diekspor!", "error");
+        return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+        showToast("Lib Excel belum dimuat, beralih ke CSV.", "info");
+        setTimeout(exportToCSV, 50);
+        return;
+    }
+
+    const aoa = [[
+        { t: 's', v: 'No' },
+        { t: 's', v: 'Tanggal' },
+        { t: 's', v: 'Nama Relawan' },
+        { t: 's', v: 'Sesi' },
+        { t: 's', v: 'Lokasi Proyek' },
+        { t: 's', v: 'Organisasi' }
+    ]];
+
+    barisTabel.forEach(row => {
+        const cols = row.querySelectorAll('td');
+        if (cols.length < 7) return;
+        aoa.push([
+            { t: 'n', v: Number(cols[1].innerText) || 0 },
+            { t: 's', v: cols[2].innerText },
+            { t: 's', v: cols[3].innerText },
+            { t: 's', v: cols[4].innerText },
+            { t: 's', v: cols[5].innerText },
+            { t: 's', v: cols[6].innerText }
+        ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [
+        { wch: 5 }, { wch: 14 }, { wch: 30 }, { wch: 9 }, { wch: 30 }, { wch: 25 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Absensi');
+
+    const filterTgl = document.getElementById('filterTanggal').value || 'SemuaTanggal';
+    XLSX.writeFile(wb, `Laporan_Absen_${filterTgl}.xlsx`);
+    showToast("Export Excel berhasil.", "success");
+}
+
 // ==========================================
 // FITUR CETAK LAPORAN & PDF
 // ==========================================
@@ -277,17 +374,52 @@ async function cetakLaporanAbsen() {
         if (hasilPembaruan === false) {
             throw new Error("Data riwayat tidak berhasil diperbarui");
         }
-        
+
+        isiElemenLaporan();
+
         if (loading) loading.remove();
 
         // Beri waktu browser menyelesaikan layout dan paint tabel sebelum mencetak.
         setTimeout(() => {
             window.print();
-        }, 300);
+        }, 400);
 
     } catch (error) {
         if (loading) loading.remove();
         showToast("Gagal menyiapkan cetakan laporan.", "error");
         console.error("Print Error:", error);
     }
+}
+
+// Isi kop, meta info dan blok TTD dengan identitas + filter terkini
+function isiElemenLaporan() {
+    const ident = getIdentitasLaporan();
+    const setText = (id, v, fallback) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = v || fallback || '';
+    };
+
+    setText('kopLembaga', ident.lembaga, 'Lembaga / Panitia');
+    setText('ttdLeftJabatan', ident.pjJabatan, 'Ketua Panitia');
+    setText('ttdLeftNama', ident.pjNama ? ident.pjNama : '(_______________)');
+    setText('ttdRightJabatan', ident.ttdJabatan, 'Koordinator Lapangan');
+
+    // Nama & NIP sisi kanan tetap kosong agar bisa ditulis tangan saat dicetak
+    const ttdNama = document.getElementById('ttdRightNama');
+    if (ttdNama) ttdNama.textContent = '(_______________)';
+
+    const tglCetak = new Date();
+    const tglCetakStr = tglCetak.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    setText('ttdRightTanggal', tglCetakStr, tglCetakStr);
+
+    // Meta laporan berdasarkan filter
+    const filterTgl = document.getElementById('filterTanggal').value;
+    const filterCari = document.getElementById('filterCari').value.trim();
+    const jumlahData = document.querySelectorAll('#riwayatBody tr').length;
+
+    let periode = 'Semua Periode';
+    if (filterTgl) periode = `Periode: ${formatTanggalID(filterTgl)}`;
+    if (filterCari) periode += ` • Kata kunci: "${filterCari}"`;
+
+    setText('printMetaInfo', `${periode} • Jumlah Data: ${jumlahData} • Dicetak: ${tglCetakStr}`, `${periode} • Dicetak: ${tglCetakStr}`);
 }

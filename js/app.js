@@ -1,42 +1,51 @@
 // ==========================================
-// LOGIKA UI GLOBAL & SECURITY CHECK
+// LOGIKA UI GLOBAL & SECURITY CHECK (V4 UPGRADED)
 // ==========================================
 
 // ==========================================
-// 1. PROTEKSI HALAMAN & VALIDASI TOKEN (SECURITY GUARD)
+// 1. DARK MODE
 // ==========================================
-if (!window.location.pathname.includes('login.html')) {
-    const token = localStorage.getItem('relawan_token');
+(function initDarkMode() {
+    const saved = localStorage.getItem('relawan_dark_mode');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
-    if (!token) {
-        window.location.replace('login.html');
-    } else {
-        // Cek apakah struktur token JWT valid dan belum kedaluwarsa secara lokal
-        try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            
-            const payload = JSON.parse(jsonPayload);
-            const currentTime = Math.floor(Date.now() / 1000);
-            
-            // Jika waktu sekarang sudah melewati waktu exp token
-            if (payload.exp && payload.exp < currentTime) {
-                localStorage.removeItem('relawan_token');
-                window.location.replace('login.html');
-            }
-        } catch (e) {
-            // Jika token korup atau tidak valid formatnya
-            localStorage.removeItem('relawan_token');
-            window.location.replace('login.html');
-        }
+    if (saved === 'true' || (saved === null && prefersDark)) {
+        document.documentElement.classList.add('dark');
+    }
+    
+    updateDarkModeLabel();
+})();
+
+function toggleDarkMode() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('relawan_dark_mode', isDark);
+    updateDarkModeLabel();
+    
+    if (typeof Chart !== 'undefined') {
+        Chart.defaults.color = isDark ? '#94a3b8' : '#94a3b8';
+        Chart.defaults.scale.grid.color = isDark ? '#1e293b' : '#f1f5f9';
+    }
+}
+
+function updateDarkModeLabel() {
+    const label = document.getElementById('darkModeLabel');
+    if (label) {
+        label.textContent = document.documentElement.classList.contains('dark') ? 'Mode Terang' : 'Mode Gelap';
     }
 }
 
 // ==========================================
-// 2. LOGIKA BUKA TUTUP SIDEBAR
+// 2. PROTEKSI HALAMAN & VALIDASI TOKEN
+// ==========================================
+if (!window.location.pathname.includes('login.html')) {
+    if (!isSessionAlive()) {
+        supabaseLogout();
+        window.location.replace('login.html');
+    }
+}
+
+// ==========================================
+// 3. LOGIKA BUKA TUTUP SIDEBAR
 // ==========================================
 const sidebar = document.getElementById('sidebar');
 const btnToggleSidebar = document.getElementById('btnToggleSidebar');
@@ -56,12 +65,13 @@ function toggleSidebar() {
     }
 }
 
-// Gunakan onclick agar event listener lama tertimpa
 if (btnToggleSidebar) {
     btnToggleSidebar.onclick = toggleSidebar;
 }
 
-// 3. Logika Notifikasi Toast
+// ==========================================
+// 4. LOGIKA NOTIFIKASI TOAST
+// ==========================================
 function showToast(msg, type = 'success') {
     const container = document.getElementById('toastContainer');
     if (!container) return; 
@@ -70,10 +80,11 @@ function showToast(msg, type = 'success') {
     const config = { 
         success: { b: 'border-green-500', i: '<i class="fa-solid fa-check text-green-500"></i>' }, 
         error: { b: 'border-red-500', i: '<i class="fa-solid fa-xmark text-red-500"></i>' }, 
-        loading: { b: 'border-blue-500', i: '<i class="fa-solid fa-spinner fa-spin text-blue-500"></i>' } 
+        loading: { b: 'border-blue-500', i: '<i class="fa-solid fa-spinner fa-spin text-blue-500"></i>' },
+        info: { b: 'border-blue-500', i: '<i class="fa-solid fa-circle-info text-blue-500"></i>' }
     };
     
-    toast.className = `toast-enter flex items-center gap-4 w-80 p-4 rounded-xl shadow-lg border-l-4 bg-white ${config[type].b} text-slate-800 z-50 pointer-events-auto`;
+    toast.className = `toast-enter flex items-center gap-4 w-80 p-4 rounded-xl shadow-lg border-l-4 bg-white dark:bg-slate-800 ${config[type].b} text-slate-800 dark:text-slate-100 z-50 pointer-events-auto`;
     toast.innerHTML = `<div>${config[type].i}</div><div class="text-sm font-bold">${msg}</div>`;
     
     container.appendChild(toast);
@@ -89,10 +100,11 @@ function showToast(msg, type = 'success') {
     return toast;
 }
 
-// 4. Logika Keluar (Logout) Terverifikasi
+// ==========================================
+// 5. LOGIKA KELUAR (LOGOUT)
+// ==========================================
 function logoutSystem() {
-    // Hapus tiket masuk dari memori
-    localStorage.removeItem('relawan_token');
+    supabaseLogout();
     showToast("Mengunci sistem...", "loading");
     
     setTimeout(() => {
@@ -101,33 +113,63 @@ function logoutSystem() {
 }
 
 // ==========================================
-// 5. PWA SERVICE WORKER REGISTRATION
+// 6. PWA SERVICE WORKER REGISTRATION
 // ==========================================
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log('✅ PWA Service Worker Aktif!', reg.scope))
-            .catch(err => console.log('❌ PWA Service Worker Gagal:', err));
+            .then(reg => console.log('PWA Service Worker Aktif!', reg.scope))
+            .catch(err => console.log('PWA Service Worker Gagal:', err));
     });
 }
 
-// VARIABEL PENYIMPAN FILTER AKTIF
-let activeExcelFilters = {}; // Menyimpan nilai filter per kolom
-let activeSortColumn = null;
-let activeSortDirection = 'asc'; // 'asc' (A-Z) atau 'desc' (Z-A)
+// ==========================================
+// 7. BROWSER NOTIFICATION HELPER
+// ==========================================
+function requestNotifikasi() {
+    if (!('Notification' in window)) {
+        showToast("Browser Anda tidak mendukung notifikasi.", "error");
+        return;
+    }
+    
+    Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+            showToast("Notifikasi diaktifkan!", "success");
+        } else {
+            showToast("Izin notifikasi ditolak.", "error");
+        }
+    });
+}
 
-// ELEMEN CONTAINER POP-UP FILTER (Dibuat otomatis jika belum ada)
+function kirimNotifikasiJudul(judul, pesan, icon) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    
+    new Notification(judul, {
+        body: pesan,
+        icon: icon || 'assets/icon.png',
+        badge: 'assets/icon.png',
+        tag: 'relawansync-reminder',
+        renotify: true
+    });
+}
+
+// ==========================================
+// 8. VARIABEL FILTER GLOBAL
+// ==========================================
+let activeExcelFilters = {};
+let activeSortColumn = null;
+let activeSortDirection = 'asc';
+
 document.addEventListener("DOMContentLoaded", () => {
     if (!document.getElementById('excelFilterPopup')) {
         const popupDiv = document.createElement('div');
         popupDiv.id = 'excelFilterPopup';
-        popupDiv.className = 'absolute hidden bg-white rounded-xl shadow-2xl border border-slate-200 z-50 p-3 w-64 text-xs';
+        popupDiv.className = 'absolute hidden bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-600 z-50 p-3 w-64 text-xs';
         document.body.appendChild(popupDiv);
         
-        // Tutup popup jika klik di luar
         document.addEventListener('click', (e) => {
             const popup = document.getElementById('excelFilterPopup');
-            if (!e.target.closest('#excelFilterPopup') && !e.target.closest('button[onclick*="bukaExcelFilter"]')) {
+            if (popup && !e.target.closest('#excelFilterPopup') && !e.target.closest('button[onclick*="bukaExcelFilter"]')) {
                 popup.classList.add('hidden');
             }
         });
@@ -135,7 +177,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==========================================
-// UPGRADE POP-UP EXCEL FILTER (DENGAN SEARCH & SELECT ALL / DESELECT ALL)
+// 9. POP-UP EXCEL FILTER (RIWAYAT)
 // ==========================================
 
 function bukaExcelFilter(columnKey, event) {
@@ -152,36 +194,36 @@ function bukaExcelFilter(columnKey, event) {
     const currentSelected = activeExcelFilters[columnKey] || [];
 
     let html = `
-        <div class="font-bold text-slate-700 mb-2 pb-1 border-b border-slate-100 flex justify-between items-center text-xs">
+        <div class="font-bold text-slate-700 dark:text-slate-200 mb-2 pb-1 border-b border-slate-100 dark:border-slate-600 flex justify-between items-center text-xs">
             <span>Filter & Urutkan</span>
             <span class="text-primary cursor-pointer underline hover:text-indigo-700" onclick="resetFilterKolom('${columnKey}')">Reset</span>
         </div>
         
         <div class="space-y-1 mb-2 text-xs">
-            <button onclick="sortDataKolom('${columnKey}', 'asc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded font-semibold text-slate-600 flex items-center gap-2"><i class="fa-solid fa-arrow-down-a-z text-primary"></i> Urutkan A ke Z</button>
-            <button onclick="sortDataKolom('${columnKey}', 'desc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded font-semibold text-slate-600 flex items-center gap-2"><i class="fa-solid fa-arrow-up-z-a text-primary"></i> Urutkan Z ke A</button>
+            <button onclick="sortDataKolom('${columnKey}', 'asc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2"><i class="fa-solid fa-arrow-down-a-z text-primary"></i> Urutkan A ke Z</button>
+            <button onclick="sortDataKolom('${columnKey}', 'desc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2"><i class="fa-solid fa-arrow-up-z-a text-primary"></i> Urutkan Z ke A</button>
         </div>
 
         <div class="mb-2 relative">
             <i class="fa-solid fa-search absolute left-2.5 top-2 text-slate-400 text-[10px]"></i>
-            <input type="text" id="searchPopupInput" onkeyup="filterListPopup(this)" placeholder="Cari nama/data..." class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-7 pr-3 py-1.5 text-xs outline-none focus:border-primary">
+            <input type="text" id="searchPopupInput" onkeyup="filterListPopup(this)" placeholder="Cari nama/data..." class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg pl-7 pr-3 py-1.5 text-xs outline-none text-slate-800 dark:text-slate-100 focus:border-primary">
         </div>
 
-        <div class="flex justify-between items-center mb-1 text-[11px] font-bold text-indigo-600 px-1">
+        <div class="flex justify-between items-center mb-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 px-1">
             <span class="cursor-pointer hover:underline" onclick="toggleAllPopupCheckbox(true, 'riwayat')">Pilih Semua</span>
-            <span class="text-slate-300">|</span>
+            <span class="text-slate-300 dark:text-slate-600">|</span>
             <span class="cursor-pointer hover:underline text-red-500" onclick="toggleAllPopupCheckbox(false, 'riwayat')">Hapus Semua</span>
         </div>
 
-        <div class="max-h-44 overflow-y-auto space-y-1 pr-1 custom-scroll border border-slate-100 p-1 rounded-lg bg-slate-50/50" id="excelCheckboxList">
+        <div class="max-h-44 overflow-y-auto space-y-1 pr-1 custom-scroll border border-slate-100 dark:border-slate-600 p-1 rounded-lg bg-slate-50/50 dark:bg-slate-700/50" id="excelCheckboxList">
     `;
 
     uniqueValues.forEach(val => {
         const isChecked = currentSelected.length === 0 || currentSelected.includes(val) ? 'checked' : '';
         html += `
-            <label class="popup-item-label flex items-center gap-2 p-1 hover:bg-white rounded cursor-pointer text-xs">
+            <label class="popup-item-label flex items-center gap-2 p-1 hover:bg-white dark:hover:bg-slate-600 rounded cursor-pointer text-xs">
                 <input type="checkbox" value="${val}" data-col="${columnKey}" class="excel-filter-chk w-3.5 h-3.5 accent-primary rounded shrink-0" ${isChecked} onchange="terapkanExcelFilter()">
-                <span class="truncate text-slate-700 font-medium">${val}</span>
+                <span class="truncate text-slate-700 dark:text-slate-200 font-medium">${val}</span>
             </label>
         `;
     });
@@ -191,8 +233,45 @@ function bukaExcelFilter(columnKey, event) {
     popup.classList.remove('hidden');
 }
 
+function filterListPopup(input) {
+    const keyword = input.value.toLowerCase();
+    document.querySelectorAll('.popup-item-label').forEach(lbl => {
+        lbl.style.display = lbl.innerText.toLowerCase().includes(keyword) ? "flex" : "none";
+    });
+}
+
+function toggleAllPopupCheckbox(status) {
+    document.querySelectorAll('.excel-filter-chk').forEach(chk => {
+        if (chk.closest('label').style.display !== 'none') chk.checked = status;
+    });
+    terapkanExcelFilter();
+}
+
+function terapkanExcelFilter() {
+    const checkboxes = document.querySelectorAll('.excel-filter-chk');
+    if (checkboxes.length === 0) return;
+    const colKey = checkboxes[0].dataset.col;
+    let selectedVals = [];
+    checkboxes.forEach(chk => { if (chk.checked) selectedVals.push(chk.value); });
+    activeExcelFilters[colKey] = selectedVals;
+    jalankanFilterDanSortRiwayat();
+}
+
+function sortDataKolom(columnKey, direction) {
+    activeSortColumn = columnKey;
+    activeSortDirection = direction;
+    jalankanFilterDanSortRiwayat();
+    document.getElementById('excelFilterPopup').classList.add('hidden');
+}
+
+function resetFilterKolom(columnKey) {
+    delete activeExcelFilters[columnKey];
+    jalankanFilterDanSortRiwayat();
+    document.getElementById('excelFilterPopup').classList.add('hidden');
+}
+
 // ==========================================
-// UPGRADE POP-UP EXCEL FILTER (MASTER)
+// 10. POP-UP EXCEL FILTER (MASTER)
 // ==========================================
 
 function bukaExcelFilterMaster(columnKey, event) {
@@ -213,36 +292,36 @@ function bukaExcelFilterMaster(columnKey, event) {
     const currentSelected = activeExcelFilters[columnKey] || [];
 
     let html = `
-        <div class="font-bold text-slate-700 mb-2 pb-1 border-b border-slate-100 flex justify-between items-center text-xs">
+        <div class="font-bold text-slate-700 dark:text-slate-200 mb-2 pb-1 border-b border-slate-100 dark:border-slate-600 flex justify-between items-center text-xs">
             <span>Filter & Urutkan</span>
             <span class="text-primary cursor-pointer underline hover:text-indigo-700" onclick="resetFilterKolomMaster('${columnKey}')">Reset</span>
         </div>
         
         <div class="space-y-1 mb-2 text-xs">
-            <button onclick="sortDataKolomMaster('${columnKey}', 'asc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded font-semibold text-slate-600 flex items-center gap-2"><i class="fa-solid fa-arrow-down-a-z text-primary"></i> Urutkan A ke Z</button>
-            <button onclick="sortDataKolomMaster('${columnKey}', 'desc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 rounded font-semibold text-slate-600 flex items-center gap-2"><i class="fa-solid fa-arrow-up-z-a text-primary"></i> Urutkan Z ke A</button>
+            <button onclick="sortDataKolomMaster('${columnKey}', 'asc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2"><i class="fa-solid fa-arrow-down-a-z text-primary"></i> Urutkan A ke Z</button>
+            <button onclick="sortDataKolomMaster('${columnKey}', 'desc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2"><i class="fa-solid fa-arrow-up-z-a text-primary"></i> Urutkan Z ke A</button>
         </div>
 
         <div class="mb-2 relative">
             <i class="fa-solid fa-search absolute left-2.5 top-2 text-slate-400 text-[10px]"></i>
-            <input type="text" id="searchPopupInput" onkeyup="filterListPopupMaster(this)" placeholder="Cari data..." class="w-full bg-slate-50 border border-slate-300 rounded-lg pl-7 pr-3 py-1.5 text-xs outline-none focus:border-primary">
+            <input type="text" id="searchPopupInput" onkeyup="filterListPopupMaster(this)" placeholder="Cari data..." class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg pl-7 pr-3 py-1.5 text-xs outline-none text-slate-800 dark:text-slate-100 focus:border-primary">
         </div>
 
-        <div class="flex justify-between items-center mb-1 text-[11px] font-bold text-indigo-600 px-1">
+        <div class="flex justify-between items-center mb-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 px-1">
             <span class="cursor-pointer hover:underline" onclick="toggleAllPopupCheckboxMaster(true)">Pilih Semua</span>
-            <span class="text-slate-300">|</span>
+            <span class="text-slate-300 dark:text-slate-600">|</span>
             <span class="cursor-pointer hover:underline text-red-500" onclick="toggleAllPopupCheckboxMaster(false)">Hapus Semua</span>
         </div>
 
-        <div class="max-h-44 overflow-y-auto space-y-1 pr-1 custom-scroll border border-slate-100 p-1 rounded-lg bg-slate-50/50" id="excelCheckboxList">
+        <div class="max-h-44 overflow-y-auto space-y-1 pr-1 custom-scroll border border-slate-100 dark:border-slate-600 p-1 rounded-lg bg-slate-50/50 dark:bg-slate-700/50" id="excelCheckboxList">
     `;
 
     uniqueValues.forEach(val => {
         const isChecked = currentSelected.length === 0 || currentSelected.includes(val) ? 'checked' : '';
         html += `
-            <label class="popup-item-label-master flex items-center gap-2 p-1 hover:bg-white rounded cursor-pointer text-xs">
+            <label class="popup-item-label-master flex items-center gap-2 p-1 hover:bg-white dark:hover:bg-slate-600 rounded cursor-pointer text-xs">
                 <input type="checkbox" value="${val}" data-col="${columnKey}" class="excel-filter-chk-master w-3.5 h-3.5 accent-primary rounded shrink-0" ${isChecked} onchange="terapkanExcelFilterMaster()">
-                <span class="truncate text-slate-700 font-medium">${val}</span>
+                <span class="truncate text-slate-700 dark:text-slate-200 font-medium">${val}</span>
             </label>
         `;
     });
@@ -254,39 +333,24 @@ function bukaExcelFilterMaster(columnKey, event) {
 
 function filterListPopupMaster(input) {
     const keyword = input.value.toLowerCase();
-    const labels = document.querySelectorAll('.popup-item-label-master');
-    
-    labels.forEach(lbl => {
-        const text = lbl.innerText.toLowerCase();
-        if (text.includes(keyword)) {
-            lbl.style.display = "flex";
-        } else {
-            lbl.style.display = "none";
-        }
+    document.querySelectorAll('.popup-item-label-master').forEach(lbl => {
+        lbl.style.display = lbl.innerText.toLowerCase().includes(keyword) ? "flex" : "none";
     });
 }
 
 function toggleAllPopupCheckboxMaster(status) {
-    const checkboxes = document.querySelectorAll('.excel-filter-chk-master');
-    checkboxes.forEach(chk => {
-        if (chk.closest('label').style.display !== 'none') {
-            chk.checked = status;
-        }
+    document.querySelectorAll('.excel-filter-chk-master').forEach(chk => {
+        if (chk.closest('label').style.display !== 'none') chk.checked = status;
     });
     terapkanExcelFilterMaster();
 }
 
-// EKSEKUSI FILTER MASTER
 function terapkanExcelFilterMaster() {
     const checkboxes = document.querySelectorAll('.excel-filter-chk-master');
     if (checkboxes.length === 0) return;
     const colKey = checkboxes[0].dataset.col;
-
     let selectedVals = [];
-    checkboxes.forEach(chk => {
-        if (chk.checked) selectedVals.push(chk.value);
-    });
-
+    checkboxes.forEach(chk => { if (chk.checked) selectedVals.push(chk.value); });
     activeExcelFilters[colKey] = selectedVals;
     jalankanFilterDanSortMaster();
 }
@@ -295,42 +359,37 @@ function sortDataKolomMaster(columnKey, direction) {
     activeSortColumn = columnKey;
     activeSortDirection = direction;
     jalankanFilterDanSortMaster();
-    const popup = document.getElementById('excelFilterPopup');
-    if (popup) popup.classList.add('hidden');
+    document.getElementById('excelFilterPopup').classList.add('hidden');
 }
 
 function resetFilterKolomMaster(columnKey) {
     delete activeExcelFilters[columnKey];
     jalankanFilterDanSortMaster();
-    const popup = document.getElementById('excelFilterPopup');
-    if (popup) popup.classList.add('hidden');
+    document.getElementById('excelFilterPopup').classList.add('hidden');
 }
 
 function jalankanFilterDanSortMaster() {
-    // Menghubungkan ke fungsi filter paginasi master yang sudah ada di master.js
     if (typeof terapkanFilterDanPaginasi === 'function') {
         terapkanFilterDanPaginasi();
     }
 }
 
 // ==========================================
-// FITUR 1-KLIK BACKUP DATA (JSON)
+// 11. FITUR 1-KLIK BACKUP DATA (JSON)
 // ==========================================
 async function backupEverything() {
     let loading = showToast("Menyiapkan file backup, mohon tunggu...", "loading");
 
     try {
-        // Tarik seluruh data dari database secara paralel
         const [masterRes, logRes] = await Promise.all([
             supabaseFetch('master_relawan?select=*', 'GET'),
-            supabaseFetch('log_absensi?select=*', 'GET')
+            supabaseFetch(await terapkanFilterLokasi('log_absensi?select=*'), 'GET')
         ]);
 
         if (masterRes.status !== "success" || logRes.status !== "success") {
             throw new Error("Gagal mengambil data dari server.");
         }
 
-        // Susun struktur data JSON yang rapi
         const backupData = {
             app_name: "RelawanSync V2",
             backup_date: new Date().toISOString(),
@@ -342,23 +401,19 @@ async function backupEverything() {
             }
         };
 
-        // Konversi menjadi file Blob JSON
         const jsonString = JSON.stringify(backupData, null, 2);
         const blob = new Blob([jsonString], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         
-        // Buat nama file berdasarkan tanggal hari ini
         const today = new Date();
         const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
         
-        // Picu unduhan otomatis di browser
         const a = document.createElement('a');
         a.href = url;
         a.download = `Backup_RelawanSync_${dateStr}.json`;
         document.body.appendChild(a);
         a.click();
         
-        // Bersihkan memori DOM
         setTimeout(() => {
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
@@ -375,7 +430,7 @@ async function backupEverything() {
 }
 
 // ==========================================
-// UTILITAS KEAMANAN (ANTI-XSS)
+// 12. UTILITAS KEAMANAN (ANTI-XSS)
 // ==========================================
 function escapeHTML(str) {
     if (str === null || str === undefined || str === '') return '-';
