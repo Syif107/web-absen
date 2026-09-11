@@ -169,7 +169,7 @@ BEGIN
 
         IF p_skip_duplikat AND EXISTS (
             SELECT 1 FROM public.log_absensi
-            WHERE tanggal = v_tanggal
+            WHERE tanggal = v_tanggal::date
               AND sesi    = v_sesi
               AND nama    = v_nama
               AND lokasi IS NOT DISTINCT FROM v_lokasi
@@ -180,7 +180,7 @@ BEGIN
 
         INSERT INTO public.log_absensi (tanggal, sesi, lokasi, nip, nama, bidang, organisasi)
         VALUES (
-            v_tanggal,
+            v_tanggal::date,
             v_sesi,
             v_lokasi,
             item->>'nip',
