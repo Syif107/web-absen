@@ -48,6 +48,9 @@
             <a href="master.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
                 <i class="fa-solid fa-database w-6 text-center nav-icon"></i><span class="sidebar-text">Master Data</span>
             </a>
+            <a href="panduan.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-book-open w-6 text-center nav-icon"></i><span class="sidebar-text">Panduan</span>
+            </a>
         </nav>
         <div class="p-4 bg-slate-50 dark:bg-slate-800/50 m-2 rounded-xl border border-slate-100 dark:border-slate-700/50 flex flex-col gap-2">
             <button onclick="toggleDarkMode()" class="w-full flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 py-2 rounded-lg transition-colors border border-slate-200 dark:border-slate-600 shadow-sm">
@@ -78,6 +81,9 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
+                <button onclick="bukaModalExportRekap()" class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-file-export"></i> <span class="hidden sm:inline">Export Rekap</span>
+                </button>
                 <button onclick="exportTableCSV()" class="text-sm bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 shadow-sm">
                     <i class="fa-solid fa-file-csv"></i> <span class="hidden sm:inline">CSV</span>
                 </button>
@@ -216,6 +222,68 @@
         </div>
 
         <div id="toastContainer" class="fixed top-20 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+        <!-- MODAL EXPORT REKAP -->
+        <div id="modalExportRekap" class="no-print fixed inset-0 bg-slate-900/60 z-50 hidden flex-col items-center justify-center backdrop-blur-sm p-4 sm:p-8 transition-opacity">
+            <div class="bg-white dark:bg-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col modal-scale-in border border-slate-200 dark:border-slate-700/50 max-h-[90vh]">
+                <div class="p-5 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-indigo-50 dark:bg-indigo-500/10 rounded-t-2xl shrink-0">
+                    <div>
+                        <h3 class="font-black text-xl text-indigo-700 dark:text-indigo-400"><i class="fa-solid fa-file-export mr-2"></i>Export Rekap Kehadiran</h3>
+                        <p class="text-[10px] font-bold text-indigo-500 dark:text-indigo-400/60 uppercase tracking-wider mt-1">Laporan Excel per relawan (join master & log)</p>
+                    </div>
+                    <button onclick="tutupModalExportRekap()" class="w-10 h-10 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-red-500 hover:border-red-200 shadow-sm transition-all flex items-center justify-center">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+
+                <div class="p-5 space-y-4 overflow-y-auto custom-scroll shrink-0">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1.5">Dari Bulan</label>
+                            <select id="rekapBulanDari" onchange="perbaruiInfoExportRekap()" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-3 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer"></select>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1.5">Sampai Bulan</label>
+                            <select id="rekapBulanSampai" onchange="perbaruiInfoExportRekap()" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-3 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer"></select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1.5">Lokasi Proyek</label>
+                        <select id="rekapLokasi" onchange="perbaruiInfoExportRekap()" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-3 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer"></select>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-2">Dasar Peringkat</label>
+                        <div class="flex flex-wrap gap-3">
+                            <label class="flex items-center gap-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 cursor-pointer transition-colors">
+                                <input type="radio" name="rekapSortBasis" id="rekapSortTotal" value="total" checked onchange="perbaruiInfoExportRekap()" class="accent-primary w-4 h-4">
+                                <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Total Kehadiran</span>
+                            </label>
+                            <label class="flex items-center gap-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 cursor-pointer transition-colors">
+                                <input type="radio" name="rekapSortBasis" id="rekapSortPersen" value="persen" onchange="perbaruiInfoExportRekap()" class="accent-primary w-4 h-4">
+                                <span class="text-xs font-bold text-slate-600 dark:text-slate-300">% Hadir</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="rekapExportInfo" class="grid grid-cols-2 md:grid-cols-4 gap-2"></div>
+
+                    <p class="text-[10px] text-slate-500 dark:text-slate-400 font-semibold leading-relaxed bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-3 rounded-lg">
+                        <i class="fa-solid fa-circle-info text-amber-500 mr-1"></i>
+                        Data dikelompokkan per NIP (bukan nama). Nama sama/mirip dengan NIP berbeda tetap
+                        ditampilkan terpisah, dan akan dicatat di sheet <b>"Kandidat Duplikat"</b> — tidak digabung otomatis.
+                    </p>
+                </div>
+
+                <div class="p-5 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-700/30 rounded-b-2xl flex flex-wrap justify-end gap-2 shrink-0">
+                    <button onclick="tutupModalExportRekap()" class="text-sm bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 font-bold px-5 py-2.5 rounded-xl transition-colors shadow-sm">Batal</button>
+                    <button id="btnExportRekapExec" onclick="exportRekapExcel()" class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2.5 rounded-xl transition-colors shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-file-excel"></i> Export Excel
+                    </button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- MOBILE BOTTOM NAV -->
@@ -226,11 +294,13 @@
         <a href="kalender.html" class="mobile-nav-item"><i class="fa-solid fa-calendar-days"></i><span>Kalender</span></a>
         <a href="statistik.html" class="mobile-nav-item active"><i class="fa-solid fa-chart-column"></i><span>Stats</span></a>
         <a href="master.html" class="mobile-nav-item"><i class="fa-solid fa-database"></i><span>Master</span></a>
+        <a href="panduan.html" class="mobile-nav-item"><i class="fa-solid fa-book-open"></i><span>Panduan</span></a>
     </nav>
 
     <script src="js/supabase-config.js"></script>
     <script src="js/app.js"></script>
     <script src="js/statistik.js"></script>
+    <script src="js/export-rekap.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </body>
 </html>

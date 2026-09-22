@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panduan Admin - RelawanSync V2</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4F46E5">
+    <link rel="apple-touch-icon" href="assets/icon.png">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5', secondary: '#818CF8', dark: '#0F172A' } } } }
+    </script>
+    <style>
+        .panduan-section { scroll-margin-top: 1.5rem; }
+        .panduan-section h3 { font-size: 1.15rem; font-weight: 800; }
+        .panduan-section ol, .panduan-section ul { list-style: none; }
+        .panduan-section ol > li { position: relative; padding-left: 1.75rem; margin-bottom: 0.5rem; }
+        .panduan-section ol > li::before {
+            content: attr(data-step); position: absolute; left: 0; top: 0.05rem;
+            width: 1.25rem; height: 1.25rem; border-radius: 0.5rem;
+            background: #4F46E5; color: #fff; font-size: 0.65rem; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .panduan-section ul > li { position: relative; padding-left: 1.5rem; margin-bottom: 0.4rem; }
+        .panduan-section ul > li::before {
+            content: ""; position: absolute; left: 0.35rem; top: 0.55rem;
+            width: 0.4rem; height: 0.4rem; border-radius: 9999px; background: #818CF8;
+        }
+        .panduan-section code {
+            background: #eef2ff; color: #4338ca; padding: 0.05rem 0.35rem;
+            border-radius: 0.35rem; font-size: 0.78em; font-weight: 700;
+        }
+        .dark .panduan-section code { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+        .panduan-section p { margin-bottom: 0.5rem; }
+        .kisi-table td, .kisi-table th { vertical-align: top; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans antialiased flex h-[100dvh] overflow-hidden">
+
+    <div id="mobileOverlay" class="no-print fixed inset-0 bg-slate-900/60 z-40 hidden md:hidden transition-opacity backdrop-blur-sm" onclick="toggleSidebar()"></div>
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="no-print w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700/50 fixed md:relative inset-y-0 left-0 transform -translate-x-full md:translate-x-0 z-50 flex flex-col shadow-xl md:shadow-sm shrink-0 transition-all duration-300">
+        <div class="h-16 flex items-center px-6 border-b border-slate-100 dark:border-slate-700/50 justify-between">
+            <div class="flex items-center gap-2 text-primary font-bold text-xl tracking-tight whitespace-nowrap">
+                <i class="fa-solid fa-fingerprint nav-icon"></i><span class="sidebar-text">RelawanSync V2</span>
+            </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-red-500 text-xl"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scroll">
+            <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-chart-pie w-6 text-center nav-icon"></i><span class="sidebar-text">Executive Dashboard</span>
+            </a>
+            <a href="input.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-users-viewfinder w-6 text-center nav-icon"></i><span class="sidebar-text">Validasi Absensi</span>
+            </a>
+            <a href="riwayat.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-clipboard-list w-6 text-center nav-icon"></i><span class="sidebar-text">Riwayat Absen</span>
+            </a>
+            <a href="kalender.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-calendar-days w-6 text-center nav-icon"></i><span class="sidebar-text">Kalender Absen</span>
+            </a>
+            <a href="statistik.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-chart-column w-6 text-center nav-icon"></i><span class="sidebar-text">Statistik</span>
+            </a>
+            <a href="master.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-database w-6 text-center nav-icon"></i><span class="sidebar-text">Master Data</span>
+            </a>
+            <a href="panduan.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 text-primary rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-book-open w-6 text-center nav-icon"></i><span class="sidebar-text">Panduan</span>
+            </a>
+        </nav>
+        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 m-2 rounded-xl border border-slate-100 dark:border-slate-700/50 flex flex-col gap-2">
+            <button onclick="toggleDarkMode()" class="w-full flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 py-2 rounded-lg transition-colors border border-slate-200 dark:border-slate-600 shadow-sm">
+                <i class="fa-solid fa-circle-half-stroke"></i><span class="sidebar-text" id="darkModeLabel">Mode Gelap</span>
+            </button>
+            <button onclick="backupEverything()" class="w-full flex items-center justify-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10 py-2 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-500/20 shadow-sm">
+                <i class="fa-solid fa-cloud-arrow-down"></i><span class="sidebar-text">Backup Data</span>
+            </button>
+            <button onclick="logoutSystem()" class="w-full flex items-center justify-center gap-2 text-red-600 dark:text-red-400 font-bold text-sm hover:bg-red-50 dark:hover:bg-red-500/10 py-2 rounded-lg transition-colors">
+                <i class="fa-solid fa-power-off"></i><span class="sidebar-text">Keluar (Lock)</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- KONTEN UTAMA PANDUAN -->
+    <main class="flex-1 flex flex-col h-[100dvh] overflow-hidden relative bg-slate-100/50 dark:bg-slate-900">
+        <div class="no-print bg-indigo-900/5 dark:bg-indigo-500/5 border-b border-indigo-100/60 dark:border-indigo-500/10 py-1 px-4 text-center shrink-0">
+            <span class="text-[9px] font-black text-indigo-700 dark:text-indigo-400 tracking-[0.25em] uppercase">Atas Berkat Rochmat Alloh Yang Maha Kuasa</span>
+        </div>
+        <header class="no-print h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700/50 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0 z-10">
+            <div class="flex items-center gap-4">
+                <button id="btnToggleSidebar" onclick="toggleSidebar()" class="text-slate-500 dark:text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 w-10 h-10 rounded-lg transition-colors flex items-center justify-center">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+                <div>
+                    <h1 class="text-lg font-extrabold text-slate-800 dark:text-slate-100 hidden sm:block leading-none mt-1">Panduan Admin</h1>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">Kisi-kisi & cara pakai seluruh fitur</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="window.print()" class="text-sm bg-white dark:bg-slate-800 text-primary hover:bg-indigo-50 dark:hover:bg-indigo-500/10 px-4 py-2 rounded-lg font-bold transition-colors border border-indigo-100 dark:border-indigo-500/20 flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-print"></i> <span class="hidden sm:inline">Cetak / PDF</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 lg:p-6 custom-scroll">
+            <div class="max-w-[1000px] mx-auto space-y-6">
+
+                <!-- KEPALA PANDUAN -->
+                <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-primary flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-book-open text-xl"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-black text-slate-800 dark:text-slate-100 leading-tight">Panduan Lengkap Admin — RelawanSync V2</h2>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Satu-satunya rujukan resmi cara kerja seluruh menu. Ikuti alur kerja: <strong class="text-slate-700 dark:text-slate-200">Login → Validasi Absensi → Riwayat → Statistik → Master Data.</strong></p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5 text-xs font-bold">
+                        <a href="#pengantar" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">0. Pengantar</a>
+                        <a href="#akses" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">1. Akses & Login</a>
+                        <a href="#dashboard" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">2. Dashboard</a>
+                        <a href="#input" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">3. Validasi Absensi</a>
+                        <a href="#riwayat" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">4. Riwayat Absen</a>
+                        <a href="#kalender" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">5. Kalender Absen</a>
+                        <a href="#statistik" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">6. Statistik</a>
+                        <a href="#master" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">7. Master Data</a>
+                        <a href="#kisikisi" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">8. Kisi-kisi Ringkas</a>
+                        <a href="#batasan" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">9. Batasan & Tips</a>
+                        <a href="#tanya" class="text-center px-3 py-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-primary col-span-2 md:col-span-1">→ Ada pertanyaan?</a>
+                    </div>
+                </div>
+
+                <!-- 0. PENGANTAR -->
+                <section id="pengantar" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
+                    <div class="flex items-center gap-2 text-primary">
+                        <i class="fa-solid fa-compass"></i><span class="text-xs font-black uppercase tracking-wider">0. Pengantar</span>
+                    </div>
+                    <h3 class="text-slate-800 dark:text-slate-100">Alur kerja aplikasi</h3>
+                    <p class="text-sm text-slate-600 dark:text-slate-400">RelawanSync V2 mengelola kehadiran relawan lapangan dalam 5 langkah utama:</p>
+                    <ol class="text-sm text-slate-700 dark:text-slate-300 font-medium">
+                        <li data-step="1"><strong>Input</strong> — tempel (paste) kiriman laporan absen dari WhatsApp/Excel di halaman <em>Validasi Absensi</em>.</li>
+                        <li data-step="2"><strong>Validasi</strong> — sistem mencocokkan nama ke Master Data, menandai <em>Mirip / Baru / Duplikat</em>, admin memperbaiki sebelum kirim.</li>
+                        <li data-step="3"><strong>Penyimpanan</strong> — data masuk tabel log absensi; relawan baru otomatis terdaftar di Master.</li>
+                        <li data-step="4"><strong>Pelaporan</strong> — cek <em>Riwayat</em>, <em>Kalender</em>, <em>Statistik</em>; cetak atau export laporan kapan saja.</li>
+                        <li data-step="5"><strong>Rekap WA</strong> — dari Dashboard, buat ringkasan kehadiran harian siap kirim ke grup WhatsApp.</li>
+                    </ol>
+                </section>
+
+                <!-- 1. AKSES & LOGIN -->
+                <section id="akses" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
+                    <div class="flex items-center gap-2 text-primary">
+                        <i class="fa-solid fa-lock"></i><span class="text-xs font-black uppercase tracking-wider">1. Akses & Login</span>
+                    </div>
+                    <h3 class="text-slate-800 dark:text-slate-100">Cara masuk & mengunci sistem</h3>
+                    <ul class="text-sm text-slate-700 dark:text-slate-300">
+                        <li>Buka aplikasi; bila belum login, Anda otomatis dialihkan ke halaman <strong>Login</strong>.</li>
+                        <li>Masukkan <strong>email & password</strong> akun Supabase Anda, lalu tekan tombol masuk.</li>
+                        <li>Sesi berjalan otomatis; bila sesi kedaluwarsa, aplikasi langsung mengembalikan ke layar login.</li>
+                        <li>Tombol <strong>Keluar (Lock)</strong> di sidebar bawah mengunci sistem dan kembali ke login.</li>
+                        <li><strong>Backup Data</strong> mengunduh seluruh data (Master + Log) sebagai file <code>.json</code> — lakukan rutin.</li>
+                        <li><strong>Mode Gelap</strong> menyimpan preferensi tampilan terang/gelap di perangkat.</li>
+                    </ul>
+                </section>
+
+                <!-- 2. DASHBOARD -->
+                <section id="dashboard" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
+                    <div class="flex items-center gap-2 text-primary">
+                        <i class="fa-solid fa-chart-pie"></i><span class="text-xs font-black uppercase tracking-wider">2. Executive Dashboard</span>
+                    </div>
+                    <h3 class="text-slate-800 dark:text-slate-100">Ringkasan & laporan cepat</h3>
+                    <p class="text-sm text-slate-600 dark:text-slate-400">Halaman utama (<code>index.html</code>) berisi ikhtisar seluruh data. Klik kebanyakan elemen untuk rincian.</p>
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/50">
+                        <table class="w-full text-left text-xs kisi-table">
+                            <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold">
+                                <tr><th class="px-3 py-2">Fitur</th><th class="px-3 py-2">Cara Pakai</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Filter Waktu</td><td class="px-3 py-2">Pilih <strong>Bulan</strong> + <strong>Tahun</strong>; tombol "Kembali ke Hari Ini" me-reset ke tanggal berjalan.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">4 Kartu KPI</td><td class="px-3 py-2">Total Database, Kehadiran Hari Ini, Akumulasi Sebulan — klik kartu untuk modal rincian data. <em>(Rata-Rata Harian hanya tampilan ringkas, belum bisa diklik.)</em></td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Tren Harian</td><td class="px-3 py-2">Klik titik grafik untuk melihat rincian siapa saja pada tanggal itu.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Top 10 Instansi</td><td class="px-3 py-2">Klik batang grafik untuk melihat personel instansi tersebut pada bulan terpilih.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Konsentrasi Lokasi</td><td class="px-3 py-2">Klik potongan donat untuk melacak relawan yang bertugas di lokasi proyek itu.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Live Feed Harian</td><td class="px-3 py-2">Daftar kehadiran khusus hari ini, tampil otomatis.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Top Relawan</td><td class="px-3 py-2">9 relawan teratas + tombol <strong>Lihat Semua Peringkat</strong>; filter per lokasi tersedia.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Rekap WA</td><td class="px-3 py-2">Tombol hijau kanan atas → pilih tanggal → centang "Sertakan daftar nama" → <strong>Buat Rekap</strong> → <strong>Salin</strong> / <strong>Kirim via WA</strong>.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Segarkan Data</td><td class="px-3 py-2">Tarik ulang data terbaru dari server.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 3. VALIDASI ABSENSI -->
+                <section id="input" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
+                    <div class="flex items-center gap-2 text-primary">
+                        <i class="fa-solid fa-users-viewfinder"></i><span class="text-xs font-black uppercase tracking-wider">3. Validasi Absensi</span>
+                    </div>
+                    <h3 class="text-slate-800 dark:text-slate-100">Input & validasi absen (<code>input.html</code>)</h3>
+                    <p class="text-sm text-slate-600 dark:text-slate-400">Tempel kiriman absen dari WhatsApp atau Excel. Sistem memecah teks menjadi <strong>Nama / Bidang / Ditugaskan Oleh / Lokasi / Tanggal / Sesi</strong>.</p>
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/50">
+                        <table class="w-full text-left text-xs kisi-table">
+                            <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold">
+                                <tr><th class="px-3 py-2">Fitur</th><th class="px-3 py-2">Cara Pakai</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">3 Cara Input</td><td class="px-3 py-2">Tulis manual, <strong>paste dari WA</strong>, atau tempel tabel Excel. Baris header, <code>*ABSENSI*</code>, baris sakral, dan <code>Nama PJ</code> dilewati otomatis.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Deteksi Sesi</td><td class="px-3 py-2">Sesi <strong>Siang/Malam</strong> diambil dari baris <code>Waktu : ...</code>; kosong dianggap Siang.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Status Per Baris</td><td class="px-3 py-2"><span class="text-emerald-600 font-bold">Terdaftar</span> = cocok Master · <span class="text-amber-600 font-bold">Mirip</span> = kemungkinan salah ketik (tombol <strong>Perbaiki</strong>) · <span class="text-blue-600 font-bold">Baru</span> = belum ada Master · <span class="text-red-600 font-bold">Duplikat</span> = sudah diinput tanggal/sesi sama.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Simpan Template</td><td class="px-3 py-2">Simpan kombinasi lokasi/sesi/organisasi favorit, lalu terapkan kembali dari dropdown — mempercepat input berulang.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Ulang Batch Kemarin</td><td class="px-3 py-2">Ambil lagi batch yang diinput kemarin untuk modifikasi.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Kirim</td><td class="px-3 py-2">Submit baris valid ke log absen; relawan <strong>Baru otomatis masuk Master Data</strong>; Duplikat dilewati.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 4. RIWAYAT -->
+                <section id="riwayat" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
+                    <div class="flex items-center gap-2 text-primary">
+                        <i class="fa-solid fa-clipboard-list"></i><span class="text-xs font-black uppercase tracking-wider">4. Riwayat Absen</span>
+                    </div>
+                    <h3 class="text-slate-800 dark:text-slate-100">Telusuri, ubah & cetak log (<code>riwayat.html</code>)</h3>
+                    <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/50">
+                        <table class="w-full text-left text-xs kisi-table">
+                            <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold">
+                                <tr><th class="px-3 py-2">Fitur</th><th class="px-3 py-2">Cara Pakai</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Filter Tanggal & Cari</td><td class="px-3 py-2">Atur rentang tanggal, ketik kata kunci nama/instansi/lokasi pada kotak cari.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Filter Per Kolom</td><td class="px-3 py-2">Klik <i class="fa-solid fa-filter"></i> di judul kolom → urutkan A→Z / Z→A, pilih nilai via checkbox, atau Reset.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Edit Log</td><td class="px-3 py-2">Ubah nama/tanggal/sesi data yang salah input langsung dari baris tabel.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Hapus</td><td class="px-3 py-2">Hapus satu baris, atau centang beberapa baris lalu hapus massal (banner aksi massal muncul di atas tabel).</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Export</td><td class="px-3 py-2">Unduh data terfilter sebagai <strong>CSV</strong> atau <strong>Excel (XLSX)</strong>.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Cetak / PDF</td><td class="px-3 py-2">Tombol cetak membuka tampilan laporan siap print; simpan sebagai PDF dari dialog browser.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 p-3 rounded-lg">
+                        <i class="fa-solid fa-circle-info text-blue-400 mr-1"></i> <strong>Catatan:</strong> kolom identitas lembaga/penandatangan pada laporan cetak belum dapat diisi admin (panelnya belum aktif) — cetakan memakai kop bawaan.
+                    </div>
+                </section>
+
+                <!-- 5. KALENDER -->
+                <section id="kalender" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
+                    <div class="flex items-center gap-2 text-primary">
+                        <i class="fa-solid fa-calendar-days"></i><span class="text-xs font-black uppercase tracking-wider">5. Kalender Absen</span>
+                    </div>
+                    <h3 class="text-slate-800 dark:text-slate-100">Visualisasi bulanan (<code>kalender.html</code>)</h3>
+                    <ul class="text-sm text-slate-700 dark:text-slate-300">
+                        <li>Navigasi bulan (sebelumnya/berikutnya) dan filter per <strong>lokasi proyek</strong>.</li>
+                        <li>4 kartu statistik bulan terpilih: <strong>Total Hari Hadir · Total Siang · Total Malam · Hari Dua Sesi</strong>.</li>
+                        <li>Klik tanggal mana pun pada kalender untuk melihat daftar lengkap relawan hari itu.</li>
+                    </ul>
+                </section>
+
+                <!-- 6. STATISTIK -->
+                <section id="statistik" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
+                    <div class="flex items-center gap-2 text-primary">
+                        <i class="fa-solid fa-chart-column"></i><span class="text-xs font-black uppercase tracking-wider">6. Statistik</span>
+                    </div>
+                    <h3 class="text-slate-800 dark:text-slate-100">Analisis & export rekap (<code>statistik.html</code>)</h3>
+                    <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/50">
+                        <table class="w-full text-left text-xs kisi-table">
+                            <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold">
+                                <tr><th class="px-3 py-2">Fitur</th><th class="px-3 py-2">Cara Pakai</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Kartu Ringkasan</td><td class="px-3 py-2">Total kehadiran, relawan aktif, dan ikhtisar lain sesuai filter bulan/lokasi.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Rekap Per Relawan</td><td class="px-3 py-2">Pilih bulan, cari nama, klik judul kolom untuk mengurutkan (total kehadiran, % hadir, dst).</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Chart</td><td class="px-3 py-2">Rekap organisasi/instansi, distribusi sesi siang-malam, dan tren 6 bulan terakhir.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Export CSV / XLSX</td><td class="px-3 py-2">Unduh tabel statistik yang sedang tampil (flat, tanpa perhitungan %).</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Export Rekap</td><td class="px-3 py-2">Tombol <strong>Export Rekap</strong> → tentukan <strong>rentang bulan (dari–sampai)</strong> + <strong>lokasi</strong> → pilih <strong>dasar peringkat</strong> (Total Kehadiran atau % Hadir) → lihat pratinjau → <strong>Export Excel</strong>.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="bg-indigo-50/70 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 p-4 rounded-xl text-sm text-slate-700 dark:text-slate-300 space-y-2">
+                        <p class="font-black text-indigo-700 dark:text-indigo-400 text-xs uppercase tracking-wider"><i class="fa-solid fa-star mr-1"></i> Detail hasil Export Rekap</p>
+                        <ul>
+                            <li>Hasil berupa file Excel dengan 2 sheet: <strong>Rekap Kehadiran</strong> dan <strong>Kandidat Duplikat</strong> (deteksi otomatis kemiripan nama).</li>
+                            <li><strong>% Hadir</strong> = jumlah hari unik relawan hadir ÷ hari operasional pada rentang terfilter (mis. 2 hari dari 2 hari = 100%).</li>
+                            <li><strong>Dasar Peringkat</strong> memilih urutan baris: <em>Total Kehadiran</em> atau <em>% Hadir</em>. Pada data dengan kehadiran merata (1 sesi/hari), keduanya sering menghasilkan urutan sama.</li>
+                            <li>Relawan diidentifikasi per <strong>NIP</strong>; bila NIP kosong, memakai nama ternormalisasi. Dua orang bernama sama dengan <strong>NIP berbeda tetap 2 baris terpisah</strong> — tidak pernah digabung otomatis.</li>
+                            <li>Yang masuk rekap hanya relawan yang benar-benar punya kehadiran pada rentang tersebut.</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- 7. MASTER DATA -->
+                <section id="master" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
+                    <div class="flex items-center gap-2 text-primary">
+                        <i class="fa-solid fa-database"></i><span class="text-xs font-black uppercase tracking-wider">7. Master Data</span>
+                    </div>
+                    <h3 class="text-slate-800 dark:text-slate-100">Database relawan (<code>master.html</code>)</h3>
+                    <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/50">
+                        <table class="w-full text-left text-xs kisi-table">
+                            <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold">
+                                <tr><th class="px-3 py-2">Fitur</th><th class="px-3 py-2">Cara Pakai</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Import CSV</td><td class="px-3 py-2">Unggah file CSV (kolom: NIP, Nama, Bidang, Organisasi, dsb.) → preview → sistem menandai baris duplikat sebelum disimpan.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Edit & Hapus</td><td class="px-3 py-2">Ubah data per baris, hapus satu atau massal dengan memilih checkbox.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Gabung (Merge)</td><td class="px-3 py-2">Pilih dua relawan yang dobel → tombol <strong>Gabung</strong> → pilih data utama; riwayat absen ikut dipindahkan.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Filter & Sort</td><td class="px-3 py-2">Sama seperti Riwayat: klik ikon filter di judul kolom untuk urutkan/pilih nilai.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Batas Tampil</td><td class="px-3 py-2">Atur jumlah baris per halaman + paginasi (Sebelumnya / Berikutnya).</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 8. KISI-KISI -->
+                <section id="kisikisi" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
+                    <div class="flex items-center gap-2 text-primary">
+                        <i class="fa-solid fa-table-list"></i><span class="text-xs font-black uppercase tracking-wider">8. Kisi-kisi Ringkas</span>
+                    </div>
+                    <h3 class="text-slate-800 dark:text-slate-100">Peta fitur per halaman</h3>
+                    <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/50">
+                        <table class="w-full text-left text-xs kisi-table">
+                            <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold">
+                                <tr><th class="px-3 py-2">Halaman</th><th class="px-3 py-2">Fitur Utama</th><th class="px-3 py-2">Output</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Dashboard</td><td class="px-3 py-2">Filter bulan/tahun, KPI, chart drill-down, Rekap WA</td><td class="px-3 py-2">Rincian data & pesan siap kirim WA</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Validasi Absensi</td><td class="px-3 py-2">Paste WA/Excel, status validasi, Perbaiki, template, kirim</td><td class="px-3 py-2">Log absen baru + Master auto-isi</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Riwayat Absen</td><td class="px-3 py-2">Filter/cari, edit, hapus, export, cetak</td><td class="px-3 py-2">CSV, XLSX, PDF/print</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Kalender Absen</td><td class="px-3 py-2">Navigasi bulan, filter lokasi, klik tanggal</td><td class="px-3 py-2">Visualisasi & daftar per hari</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Statistik</td><td class="px-3 py-2">Rekap relawan, chart, Export Rekap</td><td class="px-3 py-2">CSV/XLSX + Excel rekap ber-% dan deteksi duplikat</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Master Data</td><td class="px-3 py-2">Import, edit, hapus, merge, filter/sort/paginasi</td><td class="px-3 py-2">Database relawan bersih</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Panduan</td><td class="px-3 py-2">Dokumen ini, tombol Cetak/Print</td><td class="px-3 py-2">PDF panduan</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 9. BATASAN & TIPS -->
+                <section id="batasan" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
+                    <div class="flex items-center gap-2 text-amber-500">
+                        <i class="fa-solid fa-triangle-exclamation"></i><span class="text-xs font-black uppercase tracking-wider">9. Batasan & Tips Anti-Duplikat</span>
+                    </div>
+
+                    <div class="text-xs text-slate-600 dark:text-slate-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-3 rounded-lg">
+                        <strong class="text-amber-700 dark:text-amber-400">Batasan yang perlu diketahui:</strong>
+                        <ul class="mt-1">
+                            <li>• Fase multi-user/koordinator <strong>belum aktif</strong> — saat ini semua akun = admin penuh.</li>
+                            <li>• Panel identitas lembaga untuk laporan cetak <strong>belum bisa diisi</strong>.</li>
+                            <li>• Export CSV/XLSX biasa bersifat <em>flat</em>; perhitungan % & deteksi duplikat ada di <strong>Export Rekap</strong>.</li>
+                            <li>• Data yang sudah dihapus permanen tidak bisa dikembalikan (backup JSON rutin disarankan).</li>
+                        </ul>
+                    </div>
+
+                    <div class="text-xs text-slate-600 dark:text-slate-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 p-3 rounded-lg">
+                        <strong class="text-emerald-700 dark:text-emerald-400">Tips mencegah data ganda:</strong>
+                        <ul class="mt-1">
+                            <li>• Selalu tekan <strong>Perbaiki</strong> saat muncul status <em>Mirip</em> — jangan lanjutkan selama belum yakin.</li>
+                            <li>• Periksa sheet <strong>Kandidat Duplikat</strong> hasil Export Rekap.</li>
+                            <li>• Bila ada nama dobel, gabungkan via <strong>Master Data → Gabung</strong> (lebih aman daripada hapus manual).</li>
+                            <li>• Isi <strong>NIP</strong> pada Master bila memungkinkan — jadi pengenal utama, bukan nama.</li>
+                            <li>• Duplikat input pada tanggal/sesi sama ditolak sistem (peringatan otomatis).</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- 10. TANYA -->
+                <section id="tanya" class="panduan-section bg-indigo-600 text-white p-6 rounded-2xl shadow-md fade-in space-y-4">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-comments"></i><span class="text-xs font-black uppercase tracking-wider opacity-80">Masih ada yang belum jelas?</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black">Butuh bantuan atau menemukan hal aneh?</h3>
+                    </div>
+                    <a href="https://wa.me/6287850404498" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-white text-emerald-700 hover:bg-emerald-50 font-black text-sm px-5 py-3 rounded-xl shadow-md transition-colors w-fit">
+                        <i class="fa-brands fa-whatsapp text-xl"></i> Hubungi via WhatsApp — 0878-5040-4498
+                    </a>
+                </section>
+
+                <p class="text-center text-[10px] text-slate-400 font-bold pb-6">PANDUAN ADMIN · RELAWANSYNC V2 · DOKUMEN INI MENGIKUTI KONDISI APLIKASI TERKINI</p>
+
+            </div>
+        </div>
+
+        <div id="toastContainer" class="fixed top-20 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+    </main>
+
+    <!-- MOBILE BOTTOM NAV -->
+    <nav class="mobile-bottom-nav no-print">
+        <a href="index.html" class="mobile-nav-item"><i class="fa-solid fa-chart-pie"></i><span>Dashboard</span></a>
+        <a href="input.html" class="mobile-nav-item"><i class="fa-solid fa-users-viewfinder"></i><span>Input</span></a>
+        <a href="riwayat.html" class="mobile-nav-item"><i class="fa-solid fa-clipboard-list"></i><span>Riwayat</span></a>
+        <a href="kalender.html" class="mobile-nav-item"><i class="fa-solid fa-calendar-days"></i><span>Kalender</span></a>
+        <a href="statistik.html" class="mobile-nav-item"><i class="fa-solid fa-chart-column"></i><span>Stats</span></a>
+        <a href="master.html" class="mobile-nav-item"><i class="fa-solid fa-database"></i><span>Master</span></a>
+        <a href="panduan.html" class="mobile-nav-item active"><i class="fa-solid fa-book-open"></i><span>Panduan</span></a>
+    </nav>
+
+    <script src="js/supabase-config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
