@@ -86,7 +86,46 @@ function logoutSystem() {
 }
 
 // ==========================================
-// 5A. AKSES UI BERDASARKAN ROLE
+// 5A. NAVIGASI FITUR PERINGKAT & SERAGAM
+//     Disuntikkan terpusat agar seluruh halaman lama mendapat menu baru.
+// ==========================================
+function injectFeatureNavigation() {
+    const current = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+    const desktopNav = document.querySelector('#sidebar nav');
+    const panduanLink = desktopNav?.querySelector('a[href="panduan.html"]');
+    const links = [
+        { href: 'peringkat.html', icon: 'fa-ranking-star', label: 'Peringkat & Reward' },
+        { href: 'seragam.html', icon: 'fa-shirt', label: 'Kontrol Seragam', adminOnly: true }
+    ];
+
+    if (desktopNav && panduanLink) {
+        links.forEach(item => {
+            if (desktopNav.querySelector(`a[href="${item.href}"]`)) return;
+            const active = current === item.href;
+            const anchor = document.createElement('a');
+            anchor.href = item.href;
+            anchor.className = `nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors text-left ${active ? 'bg-indigo-50 dark:bg-indigo-500/10 text-primary' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}${item.adminOnly ? ' admin-only' : ''}`;
+            anchor.innerHTML = `<i class="fa-solid ${item.icon} w-6 text-center nav-icon"></i><span class="sidebar-text">${item.label}</span>`;
+            desktopNav.insertBefore(anchor, panduanLink);
+        });
+    }
+
+    const mobileNav = document.querySelector('.mobile-bottom-nav');
+    const mobilePanduan = mobileNav?.querySelector('a[href="panduan.html"]');
+    if (mobileNav && mobilePanduan) {
+        links.forEach(item => {
+            if (mobileNav.querySelector(`a[href="${item.href}"]`)) return;
+            const anchor = document.createElement('a');
+            anchor.href = item.href;
+            anchor.className = `mobile-nav-item${current === item.href ? ' active' : ''}${item.adminOnly ? ' admin-only' : ''}`;
+            anchor.innerHTML = `<i class="fa-solid ${item.icon}"></i><span>${item.href === 'peringkat.html' ? 'Ranking' : 'Seragam'}</span>`;
+            mobileNav.insertBefore(anchor, mobilePanduan);
+        });
+    }
+}
+
+// ==========================================
+// 5B. AKSES UI BERDASARKAN ROLE
 // ==========================================
 async function applyAccessUi() {
     const akses = await getAksesUser();
@@ -100,7 +139,7 @@ async function applyAccessUi() {
     }
 
     if (akses.role === 'koordinator') {
-        document.querySelectorAll('a[href="master.html"], button[onclick*="backupEverything"]')
+        document.querySelectorAll('a[href="master.html"], a[href="seragam.html"], button[onclick*="backupEverything"]')
             .forEach(el => el.classList.add('hidden'));
         document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
 
@@ -122,6 +161,10 @@ async function applyAccessUi() {
         if (window.location.pathname.endsWith('/master.html')) {
             showToast("Master Data hanya dapat dikelola admin.", "error");
             setTimeout(() => window.location.replace('index.html'), 700);
+        }
+        if (window.location.pathname.endsWith('/seragam.html')) {
+            showToast("Kontrol Seragam hanya dapat dikelola admin.", "error");
+            setTimeout(() => window.location.replace('peringkat.html'), 700);
         }
     }
 }
@@ -175,6 +218,7 @@ let activeSortColumn = null;
 let activeSortDirection = 'asc';
 
 document.addEventListener("DOMContentLoaded", () => {
+    injectFeatureNavigation();
     applyAccessUi();
 
     if (!document.getElementById('excelFilterPopup')) {
@@ -401,9 +445,12 @@ async function backupEverything() {
     let loading = showToast("Menyiapkan file backup, mohon tunggu...", "loading");
 
     try {
-        const [masterRes, logRes] = await Promise.all([
+        const [masterRes, logRes, seragamRes, stokRes, riwayatSeragamRes] = await Promise.all([
             supabaseFetchAll('master_relawan?select=*&order=nip.asc'),
-            supabaseFetchAll(await terapkanFilterLokasi('log_absensi?select=*&order=id.asc'))
+            supabaseFetchAll(await terapkanFilterLokasi('log_absensi?select=*&order=id.asc')),
+            supabaseFetchAll('seragam_penerima?select=*&order=nip.asc'),
+            supabaseFetchAll('stok_seragam?select=*&order=ukuran.asc'),
+            supabaseFetchAll('seragam_riwayat?select=*&order=id.asc')
         ]);
 
         if (masterRes.status !== "success" || logRes.status !== "success") {
@@ -417,7 +464,10 @@ async function backupEverything() {
             total_log: logRes.data.length,
             data: {
                 master_relawan: masterRes.data,
-                log_absensi: logRes.data
+                log_absensi: logRes.data,
+                seragam_penerima: seragamRes.status === 'success' ? seragamRes.data : [],
+                stok_seragam: stokRes.status === 'success' ? stokRes.data : [],
+                seragam_riwayat: riwayatSeragamRes.status === 'success' ? riwayatSeragamRes.data : []
             }
         };
 

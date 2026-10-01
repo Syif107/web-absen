@@ -366,9 +366,9 @@ function renderLiveFeed(logsToday) {
     
     let html = '';
     logsToday.slice(0, 50).forEach(row => {
-        const isSiang = row.sesi === 'Siang';
-        const icon = isSiang ? '<i class="fa-solid fa-sun text-orange-500"></i>' : '<i class="fa-solid fa-moon text-indigo-500"></i>';
-        const bgIcon = isSiang ? 'bg-orange-50 border-orange-100' : 'bg-indigo-50 border-indigo-100';
+        const isPagi = row.sesi === 'Pagi' || row.sesi === 'Siang';
+        const icon = isPagi ? '<i class="fa-solid fa-sun text-orange-500"></i>' : '<i class="fa-solid fa-moon text-indigo-500"></i>';
+        const bgIcon = isPagi ? 'bg-orange-50 border-orange-100' : 'bg-indigo-50 border-indigo-100';
 
         html += `
             <li class="flex items-start gap-3">
@@ -421,7 +421,7 @@ function bukaModalRincian(tipe, judul, sub, parameter = null) {
         dataSumber.forEach((r, i) => {
             htmlBody += `<tr class="hover:bg-slate-50">
                 <td class="px-4 py-2 text-center text-slate-500">${i+1}</td>
-                <td class="px-4 py-2 text-sm"><span class="font-bold text-slate-700">${r.tanggal}</span> <span class="text-xs bg-slate-100 border border-slate-200 px-1 rounded ml-1">${r.sesi}</span></td>
+                <td class="px-4 py-2 text-sm"><span class="font-bold text-slate-700">${r.tanggal}</span> <span class="text-xs bg-slate-100 border border-slate-200 px-1 rounded ml-1">${r.sesi === 'Siang' ? 'Pagi' : r.sesi}</span></td>
                 <td class="px-4 py-2 font-bold text-primary">${r.nama}</td>
                 <td class="px-4 py-2 text-slate-600">${r.organisasi}</td>
                 <td class="px-4 py-2 text-slate-600">${r.bidang}</td>
@@ -503,7 +503,7 @@ function formatHariTanggalID(dateStr) {
 }
 
 function urutSesi(sesi) {
-    const prioritas = { 'Siang': 0, 'Malam': 1 };
+    const prioritas = { 'Pagi': 0, 'Siang': 0, 'Malam': 1 };
     if (prioritas[sesi] !== undefined) return prioritas[sesi];
     return 99;
 }
@@ -527,7 +527,7 @@ function susunPesanRekap(logs, tanggal, sertakanNama) {
     baris.push(`📅 ${formatHariTanggalID(tanggal)}`);
     baris.push(`━━━━━━━━━━━━━━━`);
 
-    const emojiSesi = { 'Siang': '☀️', 'Malam': '🌙' };
+    const emojiSesi = { 'Pagi': '☀️', 'Siang': '☀️', 'Malam': '🌙' };
 
     Object.keys(grup)
         .sort((a, b) => a.localeCompare(b, 'id'))

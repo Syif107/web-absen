@@ -126,8 +126,10 @@ function computeVolunteerStats() {
 
     logs.forEach(log => {
         const nama = log.nama || '-';
-        if (!map[nama]) {
-            map[nama] = {
+        const identityKey = log.nip || `NAMA:${normalizeNama(nama)}`;
+        if (!map[identityKey]) {
+            map[identityKey] = {
+                nip: log.nip || '',
                 nama: nama,
                 organisasi: log.organisasi || '-',
                 totalHadir: 0,
@@ -135,14 +137,15 @@ function computeVolunteerStats() {
                 sesiTerakhir: log.tanggal || '-'
             };
         }
-        map[nama].totalHadir += 1;
-        if (log.tanggal) map[nama].hariSet.add(log.tanggal);
-        if (log.tanggal && log.tanggal > (map[nama].sesiTerakhir || '')) {
-            map[nama].sesiTerakhir = log.tanggal;
+        map[identityKey].totalHadir += 1;
+        if (log.tanggal) map[identityKey].hariSet.add(log.tanggal);
+        if (log.tanggal && log.tanggal > (map[identityKey].sesiTerakhir || '')) {
+            map[identityKey].sesiTerakhir = log.tanggal;
         }
     });
 
     volunteerStats = Object.values(map).map(v => ({
+        nip: v.nip,
         nama: v.nama,
         organisasi: v.organisasi,
         totalHadir: v.totalHadir,
@@ -314,15 +317,15 @@ function renderOrgChart() {
 }
 
 // ==========================================
-// 6. CHART: DISTRIBUSI SESI (SIANG vs MALAM)
+// 6. CHART: DISTRIBUSI SESI (PAGI vs MALAM)
 // ==========================================
 
 function renderSesiChart() {
-    let siang = 0;
+    let pagi = 0;
     let malam = 0;
 
     allLogData.forEach(r => {
-        if (r.sesi === 'Siang') siang += 1;
+        if (r.sesi === 'Pagi' || r.sesi === 'Siang') pagi += 1;
         else if (r.sesi === 'Malam') malam += 1;
     });
 
@@ -332,9 +335,9 @@ function renderSesiChart() {
     chartSesiInst = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Siang', 'Malam'],
+            labels: ['Pagi', 'Malam'],
             datasets: [{
-                data: [siang, malam],
+                data: [pagi, malam],
                 backgroundColor: ['#F97316', '#6366F1'],
                 borderWidth: 3,
                 borderColor: '#ffffff'

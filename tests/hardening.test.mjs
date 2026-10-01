@@ -128,3 +128,49 @@ test('migrasi multi-user fail closed dan membatasi merge ke admin', () => {
     assert.match(source, /GANTI_EMAIL_ADMIN/);
     assert.doesNotMatch(source, /COALESCE\([\s\S]*?'admin'\s*-- belum dibuatkan profil/);
 });
+
+test('fitur peringkat dan seragam mempunyai halaman, navigasi, dan kontrak database', () => {
+    const app = read('js/app.js');
+    const peringkatHtml = read('peringkat.html');
+    const seragamHtml = read('seragam.html');
+    const peringkatJs = read('js/peringkat.js');
+    const seragamJs = read('js/seragam.js');
+
+    assert.match(app, /injectFeatureNavigation/);
+    assert.match(app, /peringkat\.html/);
+    assert.match(app, /seragam\.html/);
+    assert.match(peringkatHtml, /Peringkat & Reward/);
+    assert.match(seragamHtml, /Kontrol Seragam/);
+    assert.match(peringkatJs, /v_peringkat_personel/);
+    assert.match(peringkatJs, /indeks_keaktifan/);
+    assert.match(seragamJs, /v_status_seragam/);
+    assert.match(seragamJs, /simpan_status_seragam/);
+    assert.match(seragamJs, /notifikasi_pengembalian/);
+});
+
+test('migrasi fase 6 aman, dapat diulang, dan memisahkan dua kategori ranking', () => {
+    const source = read('db/fase6_ranking_seragam.sql');
+    assert.match(source, /BEGIN;/);
+    assert.match(source, /COMMIT;/);
+    assert.match(source, /backup_fase6_master_relawan_20261002/);
+    assert.match(source, /ADD COLUMN IF NOT EXISTS asal_daerah/);
+    assert.match(source, /ADD COLUMN IF NOT EXISTS kategori_wilayah/);
+    assert.match(source, /'khususul_khusus', 'lainnya'/);
+    assert.match(source, /CREATE VIEW public\.v_peringkat_personel/);
+    assert.match(source, /CREATE VIEW public\.v_status_seragam/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.simpan_status_seragam/);
+    assert.match(source, /CREATE TRIGGER trg_catat_riwayat_seragam/);
+    assert.match(source, /ALTER TABLE public\.seragam_penerima ENABLE ROW LEVEL SECURITY/);
+    assert.match(source, /WHEN l\.sesi = 'Siang' THEN 'Pagi'/);
+});
+
+test('input menggunakan Pagi dan nama baku lima proyek', () => {
+    const html = read('input.html');
+    const source = read('js/input.js');
+    assert.match(html, /option value="Pagi"/);
+    assert.match(html, /Monumen Semboyan Sang Mursyid/);
+    assert.match(html, /Chaddun 'Adhiim/);
+    assert.match(html, /Gapura Syukur/);
+    assert.match(source, /startsWith\('PAG'\)/);
+    assert.match(source, /startsWith\('SIA'\).*'Pagi'/);
+});

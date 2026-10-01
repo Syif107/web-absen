@@ -258,7 +258,8 @@ async function muatLogHariIni(tanggal) {
         const res = await supabaseFetch(await terapkanFilterLokasi(`log_absensi?select=nama,sesi,lokasi&tanggal=eq.${tanggal}`), 'GET');
         if (res.status === "success") {
             res.data.forEach(r => {
-                if (r.nama) logHariIniSet.add(normalizeNama(r.nama) + '|' + (r.sesi || '') + '|' + (r.lokasi || ''));
+                const sesiNormal = r.sesi === 'Siang' ? 'Pagi' : (r.sesi || '');
+                if (r.nama) logHariIniSet.add(normalizeNama(r.nama) + '|' + sesiNormal + '|' + (r.lokasi || ''));
             });
         }
     } catch (e) { /* non-fatal: lanjut tanpa deteksi duplikat */ }
@@ -316,7 +317,7 @@ function ekstrakBaris(line) {
 // ==========================================
 // 4b. PENGENAL BARIS META FORMAT WA ADMIN (ABSENSI)
 //     LeWATkan: kalimat sakral, *ABSENSI (loKASI)*, Hari/Tgl, Nama PJ
-//     Tangkap:  Waktu : Siang / Malam  -> sesi
+//     Tangkap:  Waktu : Pagi / Siang / Malam  -> sesi
 // ==========================================
 
 function klasifikasiGarisWA(line) {
@@ -334,7 +335,7 @@ function klasifikasiGarisWA(line) {
     const mWaktu = up.match(/^WAKTU\s*:\s*(\S+)/);
     if (mWaktu) {
         const k = mWaktu[1].toUpperCase();
-        const sesi = k.startsWith('SIA') ? 'Siang' : k.startsWith('MAL') ? 'Malam' : mWaktu[1];
+        const sesi = (k.startsWith('PAG') || k.startsWith('SIA')) ? 'Pagi' : k.startsWith('MAL') ? 'Malam' : mWaktu[1];
         return { tipe: 'sesi', sesi: sesi };
     }
 
@@ -605,7 +606,7 @@ function simpanPreset() {
         return;
     }
 
-    const judul = prompt("Nama template (misal: Sesi Siang Monumen):", `${lokasi} - ${sesi}`);
+    const judul = prompt("Nama template (misal: Sesi Pagi Monumen):", `${lokasi} - ${sesi}`);
     if (!judul) return;
 
     const presets = getPresets();
@@ -867,6 +868,10 @@ async function submitDataToServer() {
             if (masterSkipped > 0) pesanBerhasil += ` ${masterSkipped} data Master sudah ada dan dilewati.`;
             showToast(pesanBerhasil, "success");
 
+            // Tidak memblokir absensi. Bila personel luar Jombang kembali saat
+            // seragamnya dititipkan, petugas hanya menerima pengingat singkat.
+            cekNotifikasiPengembalianSetelahAbsen(arrayDataAbsensi.map(item => item.nip));
+
             document.getElementById('daftarNama').value = "";
             cancelStaging();
             hapusDraft();
@@ -882,5 +887,21 @@ async function submitDataToServer() {
     } finally {
         btn.innerHTML = teksAsli;
         btn.disabled = false;
+    }
+}
+
+async function cekNotifikasiPengembalianSetelahAbsen(nipList) {
+    try {
+        const target = new Set((nipList || []).filter(Boolean));
+        if (!target.size) return;
+        const res = await supabaseFetchAll('v_status_seragam?select=nip,nama&notifikasi_pengembalian=eq.true');
+        if (res.status !== 'success') return;
+        const perluKembali = (res.data || []).filter(row => target.has(row.nip));
+        if (!perluKembali.length) return;
+        const nama = perluKembali.slice(0, 3).map(row => row.nama).join(', ');
+        const tambahan = perluKembali.length > 3 ? ` dan ${perluKembali.length - 3} personel lain` : '';
+        showToast(`Pengingat seragam: ${nama}${tambahan} perlu menerima kembali seragam yang dititipkan di kantor.`, 'info');
+    } catch (error) {
+        console.warn('Notifikasi seragam tidak dapat diperiksa:', error);
     }
 }

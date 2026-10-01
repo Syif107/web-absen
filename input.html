@@ -97,20 +97,26 @@
                             <div>
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2 block">Sesi Bertugas</label>
                                 <select id="inputSesi" onchange="simpanDraft()" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-3 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
-                                    <option value="Siang">☀️ Siang</option>
+                                    <option value="Pagi">☀️ Pagi</option>
                                     <option value="Malam">🌙 Malam</option>
                                 </select>
                             </div>
                             <div class="flex flex-col">
                                 <label class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2 block">Lokasi Proyek</label>
                                 <select id="inputLokasi" onchange="toggleCustomLokasi(); simpanDraft()" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-3 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
-                                    <option value="Monumen Semboyan">Monumen Semboyan</option>
+                                    <option value="Monumen Semboyan Sang Mursyid">Monumen Semboyan Sang Mursyid</option>
                                     <option value="Kanal Ta'at">Kanal Ta'at</option>
                                     <option value="Perpustakaan Tashawwuf">Perpustakaan Tashawwuf</option>
-                                    <option value="Pembesian">Pembesian</option>
-                                    <option value="Masjid Raya Fatchan Mubiina Chaddun 'Adhiima">Masjid Raya Fatchan Mubiina Chaddun 'Adhiima</option>
-                                    <option value="Gapuro Syukur">Gapuro Syukur</option>
-                                    <option value="Gudang Keramik">Gudang Keramik</option>
+                                    <option value="Masjid Raya Fatchan Mubiina Chaddun 'Adhiim">Masjid Raya Fatchan Mubiina Chaddun 'Adhiim</option>
+                                    <option value="Gapura Syukur">Gapura Syukur</option>
+                                    <optgroup label="Proyek Lainnya">
+                                        <option value="Kerja Bakti">Kerja Bakti</option>
+                                        <option value="Pembesian">Pembesian</option>
+                                        <option value="Paving">Paving</option>
+                                        <option value="Maqom Bapak Wali Talqin">Maqom Bapak Wali Talqin</option>
+                                        <option value="Muat Genteng">Muat Genteng</option>
+                                        <option value="Gudang Keramik">Gudang Keramik</option>
+                                    </optgroup>
                                     <option value="Lainnya">Lainnya... (Ketik Manual)</option>
                                 </select>
                                 <input type="text" id="inputLokasiCustom" style="text-transform: none !important;" placeholder="Ketik lokasi spesifik..." class="hidden w-full bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 text-sm rounded-xl px-4 py-3 outline-none font-semibold focus:border-amber-500 focus:ring-1 focus:ring-amber-500 mt-2 transition-all placeholder-amber-400" oninput="simpanDraft()">
@@ -147,7 +153,7 @@
                     <div class="p-4 md:p-6">
                         <div id="step-paste">
                             <label class="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2 block"><i class="fa-solid fa-paste text-primary mr-1"></i> Input Data Relawan (Smart Parser)</label>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 p-3 rounded-lg"><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i> <strong>Tip:</strong> Paste langsung dari WA atau Excel. Format kiriman admin secara utuh dikenali otomatis — baris sakral, <em>*ABSENSI (lokasi)*</em>, Hari/Tgl, dan <em>Nama PJ : ...</em> dilewati, sesi diambil dari baris <em>Waktu : Siang/Malam</em>. Sistem memisahkan <code>Nama / Bidang / Ditugaskan Oleh</code>, mencocokkan ke Master Data, menandai typo, dan memperingatkan nama yang sudah tercatat pada tanggal/sesi yang sama.</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 p-3 rounded-lg"><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i> <strong>Tip:</strong> Paste langsung dari WA atau Excel. Format kiriman admin secara utuh dikenali otomatis — baris sakral, <em>*ABSENSI (lokasi)*</em>, Hari/Tgl, dan <em>Nama PJ : ...</em> dilewati, sesi diambil dari baris <em>Waktu : Pagi/Malam</em> (istilah lama “Siang” otomatis dibaca sebagai Pagi). Sistem memisahkan <code>Nama / Bidang / Ditugaskan Oleh</code>, mencocokkan ke Master Data, menandai typo, dan memperingatkan nama yang sudah tercatat pada tanggal/sesi yang sama.</p>
                             
                             <textarea id="daftarNama" rows="8" oninput="simpanDraft()" placeholder="Paste data absensi (Excel / WA) di sini..." class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl p-4 text-sm outline-none resize-y font-mono whitespace-pre text-slate-800 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary"></textarea>
                             

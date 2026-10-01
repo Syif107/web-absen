@@ -122,7 +122,7 @@
                         </div>
                         <div>
                             <h2 class="text-xl font-black text-slate-800 dark:text-slate-100 leading-tight">Panduan Lengkap Admin — RelawanSync V2</h2>
-                            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Satu-satunya rujukan resmi cara kerja seluruh menu. Ikuti alur kerja: <strong class="text-slate-700 dark:text-slate-200">Login → Validasi Absensi → Riwayat → Statistik → Master Data.</strong></p>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Satu-satunya rujukan resmi cara kerja seluruh menu. Ikuti alur kerja: <strong class="text-slate-700 dark:text-slate-200">Login → Validasi Absensi → Peringkat → Kontrol Seragam.</strong></p>
                         </div>
                     </div>
 
@@ -135,8 +135,10 @@
                         <a href="#kalender" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">5. Kalender Absen</a>
                         <a href="#statistik" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">6. Statistik</a>
                         <a href="#master" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">7. Master Data</a>
-                        <a href="#kisikisi" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">8. Kisi-kisi Ringkas</a>
-                        <a href="#batasan" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">9. Batasan & Tips</a>
+                        <a href="#peringkat" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">8. Peringkat</a>
+                        <a href="#seragam" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">9. Seragam</a>
+                        <a href="#kisikisi" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">10. Kisi-kisi</a>
+                        <a href="#batasan" class="text-center px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-primary transition-colors">11. Batasan & Tips</a>
                         <a href="#tanya" class="text-center px-3 py-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-primary col-span-2 md:col-span-1">→ Ada pertanyaan?</a>
                     </div>
                 </div>
@@ -216,7 +218,7 @@
                             </thead>
                             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">3 Cara Input</td><td class="px-3 py-2">Tulis manual, <strong>paste dari WA</strong>, atau tempel tabel Excel. Baris header, <code>*ABSENSI*</code>, baris sakral, dan <code>Nama PJ</code> dilewati otomatis.</td></tr>
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Deteksi Sesi</td><td class="px-3 py-2">Sesi <strong>Siang/Malam</strong> diambil dari baris <code>Waktu : ...</code>; kosong dianggap Siang.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Deteksi Sesi</td><td class="px-3 py-2">Sesi <strong>Pagi/Malam</strong> diambil dari baris <code>Waktu : ...</code>; istilah lama “Siang” otomatis dibaca sebagai Pagi.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Status Per Baris</td><td class="px-3 py-2"><span class="text-emerald-600 font-bold">Terdaftar</span> = cocok Master · <span class="text-amber-600 font-bold">Mirip</span> = kemungkinan salah ketik (tombol <strong>Perbaiki</strong>) · <span class="text-blue-600 font-bold">Baru</span> = belum ada Master · <span class="text-red-600 font-bold">Duplikat</span> = sudah diinput tanggal/sesi sama.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Simpan Template</td><td class="px-3 py-2">Simpan kombinasi lokasi/sesi/organisasi favorit, lalu terapkan kembali dari dropdown — mempercepat input berulang.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Ulang Batch Kemarin</td><td class="px-3 py-2">Ambil lagi batch yang diinput kemarin untuk modifikasi.</td></tr>
@@ -260,7 +262,7 @@
                     <h3 class="text-slate-800 dark:text-slate-100">Visualisasi bulanan (<code>kalender.html</code>)</h3>
                     <ul class="text-sm text-slate-700 dark:text-slate-300">
                         <li>Navigasi bulan (sebelumnya/berikutnya) dan filter per <strong>lokasi proyek</strong>.</li>
-                        <li>4 kartu statistik bulan terpilih: <strong>Total Hari Hadir · Total Siang · Total Malam · Hari Dua Sesi</strong>.</li>
+                        <li>4 kartu statistik bulan terpilih: <strong>Total Hari Hadir · Total Pagi · Total Malam · Hari Dua Sesi</strong>.</li>
                         <li>Klik tanggal mana pun pada kalender untuk melihat daftar lengkap relawan hari itu.</li>
                     </ul>
                 </section>
@@ -279,7 +281,7 @@
                             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Kartu Ringkasan</td><td class="px-3 py-2">Total kehadiran, relawan aktif, dan ikhtisar lain sesuai filter bulan/lokasi.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Rekap Per Relawan</td><td class="px-3 py-2">Pilih bulan, cari nama, klik judul kolom untuk mengurutkan (total kehadiran, % hadir, dst).</td></tr>
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Chart</td><td class="px-3 py-2">Rekap organisasi/instansi, distribusi sesi siang-malam, dan tren 6 bulan terakhir.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Chart</td><td class="px-3 py-2">Rekap organisasi/instansi, distribusi sesi Pagi–Malam, dan tren 6 bulan terakhir.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Export CSV / XLSX</td><td class="px-3 py-2">Unduh tabel statistik yang sedang tampil (flat, tanpa perhitungan %).</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Export Rekap</td><td class="px-3 py-2">Tombol <strong>Export Rekap</strong> → tentukan <strong>rentang bulan (dari–sampai)</strong> + <strong>lokasi</strong> → pilih <strong>dasar peringkat</strong> (Total Kehadiran atau % Hadir) → lihat pratinjau → <strong>Export Excel</strong>.</td></tr>
                             </tbody>
@@ -320,10 +322,35 @@
                     </div>
                 </section>
 
-                <!-- 8. KISI-KISI -->
+                <!-- 8. PERINGKAT -->
+                <section id="peringkat" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
+                    <div class="flex items-center gap-2 text-primary"><i class="fa-solid fa-ranking-star"></i><span class="text-xs font-black uppercase tracking-wider">8. Peringkat & Reward</span></div>
+                    <h3 class="text-slate-800 dark:text-slate-100">Membaca prioritas penerima (<code>peringkat.html</code>)</h3>
+                    <ul class="text-sm text-slate-600 dark:text-slate-300 space-y-2 list-disc pl-5">
+                        <li>Pilih kelompok <strong>5 Proyek Khususul Khusus</strong> atau <strong>Proyek Lainnya</strong>. Masing-masing memiliki target 40 hari unik.</li>
+                        <li>Hadir Pagi dan Malam dihitung dua sesi, tetapi tetap satu hari. Hadir di beberapa lokasi pada tanggal sama juga tetap satu hari per kategori.</li>
+                        <li>Zona 4 memenuhi syarat sejak hari pertama. Ranking berikutnya mempertimbangkan indeks keaktifan, tanggal memenuhi syarat, lalu total hari.</li>
+                        <li>Klik ikon mata untuk rincian atau ikon seragam untuk membuka pengelolaan penerima.</li>
+                    </ul>
+                </section>
+
+                <!-- 9. SERAGAM -->
+                <section id="seragam" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
+                    <div class="flex items-center gap-2 text-violet-600"><i class="fa-solid fa-shirt"></i><span class="text-xs font-black uppercase tracking-wider">9. Kontrol Seragam</span></div>
+                    <h3 class="text-slate-800 dark:text-slate-100">Stok, penyerahan, dan penitipan (<code>seragam.html</code>)</h3>
+                    <ul class="text-sm text-slate-600 dark:text-slate-300 space-y-2 list-disc pl-5">
+                        <li>Masukkan stok nyata melalui <strong>Atur Stok</strong>. Saat penyerahan baru, stok ukuran terkait berkurang otomatis.</li>
+                        <li>Untuk seragam yang sudah telanjur dibagikan, centang <strong>pencatatan seragam lama</strong> agar stok kantor tidak berkurang.</li>
+                        <li>Personel luar Jombang dan Zona 4 wajib tercatat <strong>Dititipkan di kantor</strong> saat meninggalkan proyek.</li>
+                        <li>Ketika mereka kembali hadir, sistem menampilkan pengingat tanpa menghambat petugas mencatat absensi.</li>
+                        <li>Setiap perubahan status disimpan di riwayat audit.</li>
+                    </ul>
+                </section>
+
+                <!-- 10. KISI-KISI -->
                 <section id="kisikisi" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
                     <div class="flex items-center gap-2 text-primary">
-                        <i class="fa-solid fa-table-list"></i><span class="text-xs font-black uppercase tracking-wider">8. Kisi-kisi Ringkas</span>
+                        <i class="fa-solid fa-table-list"></i><span class="text-xs font-black uppercase tracking-wider">10. Kisi-kisi Ringkas</span>
                     </div>
                     <h3 class="text-slate-800 dark:text-slate-100">Peta fitur per halaman</h3>
                     <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/50">
@@ -338,16 +365,18 @@
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Kalender Absen</td><td class="px-3 py-2">Navigasi bulan, filter lokasi, klik tanggal</td><td class="px-3 py-2">Visualisasi & daftar per hari</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Statistik</td><td class="px-3 py-2">Rekap relawan, chart, Export Rekap</td><td class="px-3 py-2">CSV/XLSX + Excel rekap ber-% dan deteksi duplikat</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Master Data</td><td class="px-3 py-2">Import, edit, hapus, merge, filter/sort/paginasi</td><td class="px-3 py-2">Database relawan bersih</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Peringkat & Reward</td><td class="px-3 py-2">Ranking dua kategori proyek, indeks keaktifan, progres 40 hari</td><td class="px-3 py-2">Urutan prioritas penerima</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Kontrol Seragam</td><td class="px-3 py-2">Stok, ukuran, status proses, penitipan, penyerahan kembali</td><td class="px-3 py-2">Riwayat seragam terpantau</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Panduan</td><td class="px-3 py-2">Dokumen ini, tombol Cetak/Print</td><td class="px-3 py-2">PDF panduan</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </section>
 
-                <!-- 9. BATASAN & TIPS -->
+                <!-- 11. BATASAN & TIPS -->
                 <section id="batasan" class="panduan-section bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in space-y-3">
                     <div class="flex items-center gap-2 text-amber-500">
-                        <i class="fa-solid fa-triangle-exclamation"></i><span class="text-xs font-black uppercase tracking-wider">9. Batasan & Tips Anti-Duplikat</span>
+                        <i class="fa-solid fa-triangle-exclamation"></i><span class="text-xs font-black uppercase tracking-wider">11. Batasan & Tips Anti-Duplikat</span>
                     </div>
 
                     <div class="text-xs text-slate-600 dark:text-slate-400 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-3 rounded-lg">

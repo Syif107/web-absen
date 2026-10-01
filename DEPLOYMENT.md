@@ -1,5 +1,23 @@
 # Deployment hardening RelawanSync V2
 
+## Fase 6: Peringkat dan kontrol seragam
+
+Fitur `peringkat.html`, `seragam.html`, kolom wilayah pada Master Data, sesi
+Pagi/Malam, stok ukuran, dan pengingat penitipan membutuhkan migrasi
+`db/fase6_ranking_seragam.sql`. Migrasi ini:
+
+- membuat backup tabel produksi sebelum normalisasi;
+- mempertahankan NIP sebagai identitas personel;
+- mengubah sesi lama `Siang` menjadi `Pagi`;
+- menormalkan tiga nama proyek lama;
+- menambah view peringkat, status seragam, stok, dan riwayat audit;
+- tidak menghapus personel maupun absensi lama.
+
+Urutan rilis Fase 6: jalankan migrasi database, pastikan query verifikasi di
+bagian akhir berhasil, kemudian commit dan push frontend. Setelah GitHub Pages
+selesai membangun, buka ulang web dua kali agar service worker
+`relawansync-v19-ranking-seragam-cache` aktif.
+
 Perubahan hardening di repository ini belum mengubah Supabase produksi. Terapkan
 database lebih dahulu, kemudian frontend, agar kontrak RPC tetap cocok.
 

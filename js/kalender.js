@@ -96,7 +96,7 @@ function renderKalender() {
     monthLogs.forEach(log => {
         const day = parseInt(log.tanggal.split('-')[2]);
         if (!dayMap[day]) dayMap[day] = { siang: false, malam: false, records: [] };
-        if (log.sesi === 'Siang') dayMap[day].siang = true;
+        if (log.sesi === 'Pagi' || log.sesi === 'Siang') dayMap[day].siang = true;
         if (log.sesi === 'Malam') dayMap[day].malam = true;
         dayMap[day].records.push(log);
     });
@@ -129,7 +129,7 @@ function renderKalender() {
                 dots = `<span class="text-[9px] font-bold text-violet-500 mt-0.5">2 Sesi</span>`;
             } else if (info.siang) {
                 classes += ' has-siang';
-                dots = `<span class="text-[9px] font-bold text-orange-500 mt-0.5">Siang</span>`;
+                dots = `<span class="text-[9px] font-bold text-orange-500 mt-0.5">Pagi</span>`;
             } else if (info.malam) {
                 classes += ' has-malam';
                 dots = `<span class="text-[9px] font-bold text-indigo-500 mt-0.5">Malam</span>`;
@@ -172,7 +172,7 @@ function updateStats(monthLogs) {
     monthLogs.forEach(log => {
         const day = log.tanggal;
         if (!dayDetails[day]) dayDetails[day] = { siang: false, malam: false };
-        if (log.sesi === 'Siang') dayDetails[day].siang = true;
+        if (log.sesi === 'Pagi' || log.sesi === 'Siang') dayDetails[day].siang = true;
         if (log.sesi === 'Malam') dayDetails[day].malam = true;
     });
 
@@ -217,13 +217,13 @@ function bukaModalDetail(day) {
     } else {
         let html = '';
         filteredLogs.forEach((r, idx) => {
-            const sesiColor = r.sesi === 'Siang' ? 'text-orange-500 bg-orange-50 dark:bg-orange-500/10' : 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10';
+            const sesiColor = (r.sesi === 'Pagi' || r.sesi === 'Siang') ? 'text-orange-500 bg-orange-50 dark:bg-orange-500/10' : 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10';
             html += `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                     <td class="px-4 py-3 text-center font-bold text-slate-400">${idx + 1}</td>
                     <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">${escapeHTML(r.nama)}</td>
                     <td class="px-4 py-3">
-                        <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${sesiColor}">${escapeHTML(r.sesi)}</span>
+                        <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${sesiColor}">${escapeHTML(r.sesi === 'Siang' ? 'Pagi' : r.sesi)}</span>
                     </td>
                     <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">${escapeHTML(r.lokasi)}</td>
                     <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold">${escapeHTML(r.organisasi)}</td>

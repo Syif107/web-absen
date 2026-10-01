@@ -224,7 +224,15 @@ input[type="text"], textarea {
     box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
 }
 @media (max-width: 767px) {
-    .mobile-bottom-nav { display: flex !important; justify-content: space-around; align-items: center; }
+    .mobile-bottom-nav {
+        display: flex !important;
+        justify-content: flex-start;
+        align-items: center;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+    .mobile-bottom-nav::-webkit-scrollbar { display: none; }
 }
 .mobile-nav-item {
     display: flex;
@@ -240,6 +248,8 @@ input[type="text"], textarea {
     text-decoration: none;
     text-transform: uppercase;
     letter-spacing: 0.02em;
+    min-width: 4.25rem;
+    flex: 0 0 auto;
 }
 .mobile-nav-item.active { color: #4F46E5; }
 .dark .mobile-nav-item.active { color: #818CF8; }

@@ -1,4 +1,4 @@
-const CACHE_NAME = "relawansync-v18-cache";
+const CACHE_NAME = "relawansync-v19-ranking-seragam-cache";
 const PRECACHE_URLS = [
     "manifest.json",
     "assets/icon.png",

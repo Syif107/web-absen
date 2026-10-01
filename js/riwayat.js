@@ -300,11 +300,12 @@ function renderTabelRiwayat(data) {
         const noUrut = idx + 1;
         const idAttr = escapeAttribute(r.id);
         const tanggalAttr = escapeAttribute(r.tanggal);
-        const sesiAttr = escapeAttribute(r.sesi);
+        const sesiNormal = r.sesi === 'Siang' ? 'Pagi' : r.sesi;
+        const sesiAttr = escapeAttribute(sesiNormal);
         const lokasiAttr = escapeAttribute(r.lokasi);
         const orgAttr = escapeAttribute(r.organisasi);
         const tanggalTampil = escapeHTML(r.tanggal);
-        const sesiTampil = escapeHTML(r.sesi);
+        const sesiTampil = escapeHTML(sesiNormal);
         const namaTampil = escapeHTML(r.nama);
         const lokasiTampil = escapeHTML(r.lokasi);
         const orgTampil = escapeHTML(r.organisasi);
@@ -317,7 +318,7 @@ function renderTabelRiwayat(data) {
                 <td class="px-4 py-3 text-center font-bold text-slate-400 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50">${noUrut}</td>
                 <td class="px-4 py-3 text-xs text-slate-500 font-mono">${tanggalTampil}</td>
                 <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">${namaTampil}</td>
-                <td class="px-4 py-3 font-bold ${r.sesi === 'Siang' ? 'text-orange-500' : 'text-indigo-600'}">${sesiTampil}</td>
+                <td class="px-4 py-3 font-bold ${(r.sesi === 'Pagi' || r.sesi === 'Siang') ? 'text-orange-500' : 'text-indigo-600'}">${sesiTampil}</td>
                 <td class="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs">${lokasiTampil}</td>
                 <td class="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs font-semibold">${orgTampil}</td>
                 <td class="admin-only no-print px-4 py-3 text-center">

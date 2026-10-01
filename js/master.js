@@ -60,6 +60,8 @@ function terapkanFilterDanPaginasi() {
     filteredData = masterData.filter(r => 
         (r.nama && r.nama.toLowerCase().includes(keyword)) || 
         (r.asal_organisasi && r.asal_organisasi.toLowerCase().includes(keyword)) ||
+        (r.asal_daerah && r.asal_daerah.toLowerCase().includes(keyword)) ||
+        (r.kategori_wilayah && r.kategori_wilayah.toLowerCase().includes(keyword)) ||
         (r.nip && r.nip.toLowerCase().includes(keyword))
     );
 
@@ -112,7 +114,7 @@ function renderTabelMaster(data) {
     const btnNext = document.getElementById('btnNext');
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-slate-400 font-medium">Data tidak ditemukan.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center p-8 text-slate-400 font-medium">Data tidak ditemukan.</td></tr>';
         info.innerText = "Menampilkan 0 data";
         btnPrev.disabled = true;
         btnNext.disabled = true;
@@ -134,10 +136,27 @@ function renderTabelMaster(data) {
         const namaAttr = escapeAttribute(r.nama);
         const bidangAttr = escapeAttribute(r.jabatan);
         const orgAttr = escapeAttribute(r.asal_organisasi);
+        const daerahAttr = escapeAttribute(r.asal_daerah);
+        const kategoriAttr = escapeAttribute(r.kategori_wilayah || 'belum_dilengkapi');
+        const ukuranAttr = escapeAttribute(r.ukuran_seragam);
+        const catatanSeragamAttr = escapeAttribute(r.catatan_seragam);
         const nipTampil = escapeHTML(r.nip);
         const namaTampil = escapeHTML(r.nama);
         const orgTampil = escapeHTML(r.asal_organisasi);
         const bidangTampil = escapeHTML(r.jabatan);
+        const daerahTampil = escapeHTML(r.asal_daerah || 'Belum diisi');
+        const ukuranTampil = escapeHTML(r.ukuran_seragam || '-');
+        const labelWilayah = {
+            jombang: 'Jombang',
+            luar_jombang: 'Luar Jombang',
+            zona_4: 'Zona 4',
+            belum_dilengkapi: 'Belum dilengkapi'
+        }[r.kategori_wilayah] || 'Belum dilengkapi';
+        const warnaWilayah = r.kategori_wilayah === 'zona_4'
+            ? 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300'
+            : r.kategori_wilayah === 'belum_dilengkapi' || !r.kategori_wilayah
+                ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'
+                : 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300';
         
         html += `
             <tr class="hover:bg-indigo-50/50 transition-colors">
@@ -149,9 +168,11 @@ function renderTabelMaster(data) {
                 <td class="px-5 py-3 font-bold text-slate-800">${namaTampil}</td>
                 <td class="px-5 py-3 text-slate-600 font-medium">${orgTampil}</td>
                 <td class="px-5 py-3 text-slate-600"><span class="bg-slate-100 px-2 py-1 rounded-md text-xs font-bold border border-slate-200">${bidangTampil}</span></td>
+                <td class="px-5 py-3"><span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black ${warnaWilayah}">${escapeHTML(labelWilayah)}</span><p class="text-[10px] text-slate-400 mt-1">${daerahTampil}</p></td>
+                <td class="px-5 py-3 font-black text-center">${ukuranTampil}</td>
                 <td class="px-5 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
-                        <button onclick="bukaModalEditDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" data-bidang="${bidangAttr}" data-org="${orgAttr}" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
+                        <button onclick="bukaModalEditDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" data-bidang="${bidangAttr}" data-org="${orgAttr}" data-daerah="${daerahAttr}" data-kategori-wilayah="${kategoriAttr}" data-ukuran="${ukuranAttr}" data-catatan-seragam="${catatanSeragamAttr}" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
                             <i class="fa-solid fa-pen-to-square"></i> Edit
                         </button>
                         <button onclick="bukaModalMergeDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" class="bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-amber-200 shadow-sm flex items-center gap-1" title="Merge/Typo">
@@ -384,17 +405,25 @@ function bukaModalEditDariTombol(button) {
         button.dataset.nip || '',
         button.dataset.nama || '',
         button.dataset.bidang || '',
-        button.dataset.org || ''
+        button.dataset.org || '',
+        button.dataset.daerah || '',
+        button.dataset.kategoriWilayah || 'belum_dilengkapi',
+        button.dataset.ukuran || '',
+        button.dataset.catatanSeragam || ''
     );
 }
 
-function bukaModalEdit(nip, nama, bidang, org) {
+function bukaModalEdit(nip, nama, bidang, org, daerah = '', kategoriWilayah = 'belum_dilengkapi', ukuran = '', catatanSeragam = '') {
     currentEditNip = nip;
     
     document.getElementById('editNip').value = nip;
     document.getElementById('editNama').value = nama;
     document.getElementById('editBidang').value = bidang;
     document.getElementById('editOrg').value = org;
+    document.getElementById('editDaerah').value = daerah;
+    document.getElementById('editKategoriWilayah').value = kategoriWilayah || 'belum_dilengkapi';
+    document.getElementById('editUkuranSeragam').value = ukuran;
+    document.getElementById('editCatatanSeragam').value = catatanSeragam;
     
     document.getElementById('modalEdit').classList.remove('hidden');
 }
@@ -407,6 +436,10 @@ async function simpanEditMaster() {
     const namaBaru = document.getElementById('editNama').value.trim().toUpperCase();
     const bidangBaru = document.getElementById('editBidang').value.trim();
     const orgBaru = document.getElementById('editOrg').value.trim();
+    const daerahBaru = document.getElementById('editDaerah').value.trim();
+    const kategoriWilayahBaru = document.getElementById('editKategoriWilayah').value;
+    const ukuranSeragamBaru = document.getElementById('editUkuranSeragam').value;
+    const catatanSeragamBaru = document.getElementById('editCatatanSeragam').value.trim();
     
     if(!namaBaru) {
         showToast("Nama Relawan tidak boleh kosong!", "error");
@@ -420,7 +453,11 @@ async function simpanEditMaster() {
     const payloadUpdate = {
         nama: namaBaru,
         jabatan: bidangBaru,
-        asal_organisasi: orgBaru
+        asal_organisasi: orgBaru,
+        asal_daerah: daerahBaru || null,
+        kategori_wilayah: kategoriWilayahBaru,
+        ukuran_seragam: ukuranSeragamBaru || null,
+        catatan_seragam: catatanSeragamBaru || null
     };
 
     try {
