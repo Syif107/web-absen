@@ -49,6 +49,23 @@ test('service worker hanya mencache GET dari origin aplikasi', () => {
     assert.doesNotMatch(source, /cache\.put\(event\.request/);
 });
 
+test('tema light dan dark tersimpan serta light mode memakai off-white', () => {
+    const theme = read('js/theme.js');
+    const style = read('css/style.css');
+    const htmlFiles = readdirSync(root).filter(name => name.endsWith('.html'));
+    assert.match(theme, /relawan_theme/);
+    assert.match(theme, /classList\.toggle\(['"]dark['"]/);
+    assert.match(theme, /data-theme-toggle/);
+    assert.match(style, /--theme-page:\s*#[0-9a-f]{6}/i);
+    assert.match(style, /--theme-surface:\s*#[0-9a-f]{6}/i);
+    assert.match(style, /html:not\(\.dark\) \.bg-white/);
+    assert.doesNotMatch(style, /--theme-(?:page|surface):\s*#(?:fff|ffffff)\b/i);
+
+    for (const file of htmlFiles) {
+        assert.match(read(file), /<script src=["']js\/theme\.js["']><\/script>/, `${file} belum memuat tema global`);
+    }
+});
+
 test('input mendukung transaksi atomik dan mode kompatibilitas database lama', () => {
     const config = read('js/supabase-config.js');
     const source = read('js/input.js');

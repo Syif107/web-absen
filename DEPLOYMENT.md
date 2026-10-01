@@ -32,7 +32,7 @@ migrasi SQL yang sesuai.
    - ubah `FASE4_ENABLED` di `js/supabase-config.js` menjadi `true`.
 9. Deploy frontend.
 10. Buka ulang aplikasi dua kali agar service worker versi baru mengambil alih,
-    kemudian pastikan cache `relawansync-v16-cache` sudah terhapus.
+    kemudian pastikan cache lama sebelum `relawansync-v18-cache` sudah terhapus.
 
 ## Smoke test wajib
 

@@ -1,5 +1,11 @@
-const CACHE_NAME = "relawansync-v17-cache";
-const PRECACHE_URLS = ["manifest.json", "assets/icon.png", "assets/icon-192.png"];
+const CACHE_NAME = "relawansync-v18-cache";
+const PRECACHE_URLS = [
+    "manifest.json",
+    "assets/icon.png",
+    "assets/icon-192.png",
+    "css/style.css",
+    "js/theme.js"
+];
 
 // Install langsung aktifkan worker baru
 self.addEventListener("install", (event) => {

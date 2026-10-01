@@ -15,8 +15,14 @@
     <script>
         tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5' } } } }
     </script>
+    <script src="js/theme.js"></script>
 </head>
 <body class="bg-slate-100 dark:bg-slate-900 flex items-center justify-center h-screen font-sans antialiased transition-colors">
+
+    <button type="button" onclick="toggleDarkMode()" data-theme-toggle class="theme-toggle theme-toggle-floating flex items-center gap-2 font-bold text-xs transition-colors">
+        <span class="theme-toggle-icon"><i data-theme-icon class="fa-solid fa-moon"></i></span>
+        <span data-theme-label>Mode Gelap</span>
+    </button>
 
     <div class="bg-white dark:bg-slate-800 p-8 md:p-10 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700/50 w-full max-w-md relative overflow-hidden modal-scale-in">
         
@@ -77,12 +83,6 @@
             window.location.href = 'index.html';
         } else if (getAccessToken()) {
             supabaseLogout();
-        }
-
-        // Apply saved dark mode on login page
-        if (localStorage.getItem('relawan_dark_mode') === 'true' || 
-            (!localStorage.getItem('relawan_dark_mode') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
         }
 
         async function prosesLogin(e) {

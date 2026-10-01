@@ -3,38 +3,6 @@
 // ==========================================
 
 // ==========================================
-// 1. DARK MODE
-// ==========================================
-(function initDarkMode() {
-    const saved = localStorage.getItem('relawan_dark_mode');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    if (saved === 'true' || (saved === null && prefersDark)) {
-        document.documentElement.classList.add('dark');
-    }
-    
-    updateDarkModeLabel();
-})();
-
-function toggleDarkMode() {
-    const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('relawan_dark_mode', isDark);
-    updateDarkModeLabel();
-    
-    if (typeof Chart !== 'undefined') {
-        Chart.defaults.color = isDark ? '#94a3b8' : '#94a3b8';
-        Chart.defaults.scale.grid.color = isDark ? '#1e293b' : '#f1f5f9';
-    }
-}
-
-function updateDarkModeLabel() {
-    const label = document.getElementById('darkModeLabel');
-    if (label) {
-        label.textContent = document.documentElement.classList.contains('dark') ? 'Mode Terang' : 'Mode Gelap';
-    }
-}
-
-// ==========================================
 // 2. PROTEKSI HALAMAN & VALIDASI TOKEN
 // ==========================================
 if (!window.location.pathname.includes('login.html')) {
