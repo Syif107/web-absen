@@ -157,6 +157,7 @@
                         <li data-step="4"><strong>Pelaporan</strong> — cek <em>Riwayat</em>, <em>Kalender</em>, <em>Statistik</em>; cetak atau export laporan kapan saja.</li>
                         <li data-step="5"><strong>Rekap WA</strong> — dari Dashboard, buat ringkasan kehadiran harian siap kirim ke grup WhatsApp.</li>
                     </ol>
+                    <div class="rounded-xl border border-indigo-100 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 p-3 text-xs text-slate-600 dark:text-slate-300"><strong class="text-indigo-700 dark:text-indigo-300">Pembagian menu:</strong> Master Data mengurus identitas dan wilayah, Peringkat & Reward mengurus kelayakan/urutan, sedangkan Kontrol Seragam mengurus stok dan penyerahan. Ketiganya sengaja dipisah agar petugas tidak mencampur edit profil dengan transaksi seragam.</div>
                 </section>
 
                 <!-- 1. AKSES & LOGIN -->
@@ -313,9 +314,9 @@
                             </thead>
                             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Import CSV</td><td class="px-3 py-2">Unggah file CSV (kolom: NIP, Nama, Bidang, Organisasi, dsb.) → preview → sistem menandai baris duplikat sebelum disimpan.</td></tr>
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Edit & Hapus</td><td class="px-3 py-2">Ubah data per baris, hapus satu atau massal dengan memilih checkbox.</td></tr>
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Gabung (Merge)</td><td class="px-3 py-2">Pilih dua relawan yang dobel → tombol <strong>Gabung</strong> → pilih data utama; riwayat absen ikut dipindahkan.</td></tr>
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Filter & Sort</td><td class="px-3 py-2">Sama seperti Riwayat: klik ikon filter di judul kolom untuk urutkan/pilih nilai.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Edit & Hapus</td><td class="px-3 py-2">Tombol <strong>Edit</strong> membuka seluruh profil: nama, asal organisasi, jabatan, kabupaten/kota asal, kategori wilayah, ukuran, dan catatan. Hapus satu atau massal hanya bila benar-benar yakin.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Rapikan Master</td><td class="px-3 py-2">Sistem hanya menawarkan merge untuk <strong>nama + asal organisasi yang sama</strong>. Nama sama dengan asal berbeda tetap dipisah; asal kosong tidak digabung otomatis.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Filter & Sort</td><td class="px-3 py-2">Gunakan pencarian, filter judul kolom, serta urutan nama, kehadiran, persentase, tanggal pertama, atau ID. Kartu <strong>Belum diisi</strong> menampilkan data wilayah yang perlu dilengkapi.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Batas Tampil</td><td class="px-3 py-2">Atur jumlah baris per halaman + paginasi (Sebelumnya / Berikutnya).</td></tr>
                             </tbody>
                         </table>
@@ -327,7 +328,7 @@
                     <div class="flex items-center gap-2 text-primary"><i class="fa-solid fa-ranking-star"></i><span class="text-xs font-black uppercase tracking-wider">8. Peringkat & Reward</span></div>
                     <h3 class="text-slate-800 dark:text-slate-100">Membaca prioritas penerima (<code>peringkat.html</code>)</h3>
                     <ul class="text-sm text-slate-600 dark:text-slate-300 space-y-2 list-disc pl-5">
-                        <li>Pilih kelompok <strong>5 Proyek Khususul Khusus</strong> atau <strong>Proyek Lainnya</strong>. Masing-masing memiliki target 40 hari unik.</li>
+                        <li>Dropdown proyek menyediakan semua proyek, gabungan 5 proyek khusus, setiap proyek khusus, dan proyek lainnya. Masing-masing kelompok memiliki target 40 hari unik.</li>
                         <li>Hadir Pagi dan Malam dihitung dua sesi, tetapi tetap satu hari. Hadir di beberapa lokasi pada tanggal sama juga tetap satu hari per kategori.</li>
                         <li>Zona 4 memenuhi syarat sejak hari pertama. Ranking berikutnya mempertimbangkan indeks keaktifan, tanggal memenuhi syarat, lalu total hari.</li>
                         <li>Klik ikon mata untuk rincian atau ikon seragam untuk membuka pengelolaan penerima.</li>
@@ -342,6 +343,7 @@
                         <li>Masukkan stok nyata melalui <strong>Atur Stok</strong>. Saat penyerahan baru, stok ukuran terkait berkurang otomatis.</li>
                         <li>Untuk seragam yang sudah telanjur dibagikan, centang <strong>pencatatan seragam lama</strong> agar stok kantor tidak berkurang.</li>
                         <li>Personel luar Jombang dan Zona 4 wajib tercatat <strong>Dititipkan di kantor</strong> saat meninggalkan proyek.</li>
+                        <li>Gunakan filter proyek untuk melihat penerima terkait; penerima yang sudah diserahi seragam tetapi absen lebih dari 30 hari diberi peringatan merah.</li>
                         <li>Ketika mereka kembali hadir, sistem menampilkan pengingat tanpa menghambat petugas mencatat absensi.</li>
                         <li>Setiap perubahan status disimpan di riwayat audit.</li>
                     </ul>
@@ -364,7 +366,7 @@
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Riwayat Absen</td><td class="px-3 py-2">Filter/cari, edit, hapus, export, cetak</td><td class="px-3 py-2">CSV, XLSX, PDF/print</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Kalender Absen</td><td class="px-3 py-2">Navigasi bulan, filter lokasi, klik tanggal</td><td class="px-3 py-2">Visualisasi & daftar per hari</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Statistik</td><td class="px-3 py-2">Rekap relawan, chart, Export Rekap</td><td class="px-3 py-2">CSV/XLSX + Excel rekap ber-% dan deteksi duplikat</td></tr>
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Master Data</td><td class="px-3 py-2">Import, edit, hapus, merge, filter/sort/paginasi</td><td class="px-3 py-2">Database relawan bersih</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Master Data</td><td class="px-3 py-2">Import, edit seluruh profil, isi wilayah, rapikan duplikat aman, filter/sort/paginasi</td><td class="px-3 py-2">Database relawan bersih</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Peringkat & Reward</td><td class="px-3 py-2">Ranking dua kategori proyek, indeks keaktifan, progres 40 hari</td><td class="px-3 py-2">Urutan prioritas penerima</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Kontrol Seragam</td><td class="px-3 py-2">Stok, ukuran, status proses, penitipan, penyerahan kembali</td><td class="px-3 py-2">Riwayat seragam terpantau</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Panduan</td><td class="px-3 py-2">Dokumen ini, tombol Cetak/Print</td><td class="px-3 py-2">PDF panduan</td></tr>
@@ -394,7 +396,8 @@
                         <ul class="mt-1">
                             <li>• Selalu tekan <strong>Perbaiki</strong> saat muncul status <em>Mirip</em> — jangan lanjutkan selama belum yakin.</li>
                             <li>• Periksa sheet <strong>Kandidat Duplikat</strong> hasil Export Rekap.</li>
-                            <li>• Bila ada nama dobel, gabungkan via <strong>Master Data → Gabung</strong> (lebih aman daripada hapus manual).</li>
+                            <li>• Gunakan <strong>Master Data → Rapikan</strong>; hanya nama + asal organisasi yang sama yang dapat digabung.</li>
+                            <li>• Lengkapi <strong>Kabupaten/Kota Asal</strong> dan <strong>Kategori Wilayah</strong> dari tombol Edit agar aturan Zona 4 dan laporan daerah akurat.</li>
                             <li>• Isi <strong>NIP</strong> pada Master bila memungkinkan — jadi pengenal utama, bukan nama.</li>
                             <li>• Duplikat input pada tanggal/sesi sama ditolak sistem (peringatan otomatis).</li>
                         </ul>

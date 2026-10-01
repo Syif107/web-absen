@@ -187,6 +187,22 @@ test('fase 7 menyediakan rincian proyek, ringkasan direktori, dan peringatan abs
     assert.match(masterHtml, /Persentase hadir/);
 });
 
+test('fase 8 membatasi merge pada nama dan asal organisasi yang identik', () => {
+    const source = read('db/fase8_master_data_rapi.sql');
+    const master = read('js/master.js');
+    const masterHtml = read('master.html');
+
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.merge_relawan/);
+    assert.match(source, /Hanya admin yang boleh menggabungkan relawan/);
+    assert.match(source, /hanya nama dan asal organisasi yang sama yang boleh digabung/);
+    assert.match(master, /normalisasiKunciMaster/);
+    assert.match(master, /buatGrupDuplikatAman/);
+    assert.match(masterHtml, /Gabungkan Semua Aman/);
+    assert.match(masterHtml, /modalRapikanMaster/);
+    assert.match(masterHtml, /Nama sama dengan asal berbeda/);
+    assert.match(masterHtml, /editDaerah/);
+});
+
 test('input menggunakan Pagi dan nama baku lima proyek', () => {
     const html = read('input.html');
     const source = read('js/input.js');

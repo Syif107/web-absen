@@ -8,11 +8,34 @@ let currentPage = 1;
 let rowsPerPage = 50;
 let isNewestFilter = false;
 let masterSortMode = 'nama';
+let duplikatMasterGroups = [];
+
+function normalisasiKunciMaster(value) {
+    return String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
+}
+
+function kunciIdentitasMaster(row) {
+    const nama = normalisasiKunciMaster(row?.nama);
+    const asal = normalisasiKunciMaster(row?.asal_organisasi);
+    if (!nama || !asal) return '';
+    return `${nama}\u241F${asal}`;
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
     const akses = await getAksesUser();
     if (akses.role !== 'admin') return;
     loadMasterData();
+});
+
+document.addEventListener('keydown', event => {
+    const modalEdit = document.getElementById('modalEdit');
+    if (event.key === 'Escape' && modalEdit && !modalEdit.classList.contains('hidden')) {
+        tutupModalEdit();
+    }
+    if (event.ctrlKey && event.key === 'Enter' && modalEdit && !modalEdit.classList.contains('hidden')) {
+        event.preventDefault();
+        simpanEditMaster();
+    }
 });
 
 // 1. Tarik Data Master Sekali di Awal
@@ -28,13 +51,11 @@ async function loadMasterData() {
             document.getElementById('totalMasterInfo').innerText = `Total: ${masterData.length} Relawan`;
             
             terapkanFilterDanPaginasi();
-            siapkanDropdownMerge(); 
         } else if (res.status === "success") {
             masterData = res.data || [];
             renderRingkasanMaster();
             document.getElementById('totalMasterInfo').innerText = `Total: ${masterData.length} Relawan`;
             terapkanFilterDanPaginasi();
-            siapkanDropdownMerge();
         } else {
             showToast("Gagal mengambil data master.", "error");
         }
@@ -97,7 +118,7 @@ function terapkanFilterDanPaginasi() {
             return 0;
         });
     } else {
-        if (isNewestFilter && keyword === "") {
+        if (isNewestFilter && keyword === "" && Object.keys(activeExcelFilters).length === 0) {
             filteredData = [...masterData].reverse();
         } else {
             filteredData.sort((a, b) => {
@@ -170,6 +191,9 @@ function renderTabelMaster(data) {
             : r.kategori_wilayah === 'belum_dilengkapi' || !r.kategori_wilayah
                 ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'
                 : 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300';
+        const mergeAction = pasanganDuplikatAman(r).length
+            ? `<button onclick="bukaModalMergeDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" class="bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-amber-200 shadow-sm flex items-center gap-1" title="Gabung dengan nama dan asal yang sama"><i class="fa-solid fa-code-merge"></i></button>`
+            : '<span class="text-[10px] text-slate-300 dark:text-slate-600" title="Tidak ada pasangan aman untuk digabung"><i class="fa-solid fa-code-merge"></i></span>';
         
         html += `
             <tr class="hover:bg-indigo-50/50 transition-colors">
@@ -191,9 +215,7 @@ function renderTabelMaster(data) {
                         <button onclick="bukaModalEditDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" data-bidang="${bidangAttr}" data-org="${orgAttr}" data-daerah="${daerahAttr}" data-kategori-wilayah="${kategoriAttr}" data-ukuran="${ukuranAttr}" data-catatan-seragam="${catatanSeragamAttr}" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
                             <i class="fa-solid fa-pen-to-square"></i> Edit
                         </button>
-                        <button onclick="bukaModalMergeDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" class="bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-amber-200 shadow-sm flex items-center gap-1" title="Merge/Typo">
-                            <i class="fa-solid fa-code-merge"></i>
-                        </button>
+                        ${mergeAction}
                         <button onclick="deleteSingleMasterDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-200 shadow-sm flex items-center gap-1" title="Hapus">
                             <i class="fa-solid fa-trash"></i>
                         </button>
@@ -213,6 +235,125 @@ function formatTanggalMaster(value) {
     if (!value) return '-';
     const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
     return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function skorProfilMaster(row) {
+    const kolomTerisi = ['nama', 'asal_organisasi', 'jabatan', 'asal_daerah', 'kategori_wilayah', 'ukuran_seragam', 'catatan_seragam']
+        .filter(key => String(row?.[key] || '').trim() && row[key] !== 'belum_dilengkapi').length;
+    return [Number(row?.total_hari || 0), Number(row?.total_sesi || 0), kolomTerisi, String(row?.nip || '')];
+}
+
+function bandingkanProfilMaster(a, b) {
+    const skorA = skorProfilMaster(a);
+    const skorB = skorProfilMaster(b);
+    return skorB[0] - skorA[0]
+        || skorB[1] - skorA[1]
+        || skorB[2] - skorA[2]
+        || skorA[3].localeCompare(skorB[3], 'id');
+}
+
+function pasanganDuplikatAman(row) {
+    const key = kunciIdentitasMaster(row);
+    if (!key) return [];
+    return masterData.filter(item => item.nip !== row.nip && kunciIdentitasMaster(item) === key);
+}
+
+function buatGrupDuplikatAman() {
+    const groups = new Map();
+    masterData.forEach(row => {
+        const key = kunciIdentitasMaster(row);
+        if (!key) return;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(row);
+    });
+    return [...groups.entries()]
+        .filter(([, rows]) => rows.length > 1)
+        .map(([key, rows]) => ({ key, rows: rows.sort(bandingkanProfilMaster) }))
+        .sort((a, b) => String(a.rows[0]?.nama || '').localeCompare(String(b.rows[0]?.nama || ''), 'id'));
+}
+
+function profilUtamaDuplikat(group) {
+    return [...(group?.rows || [])].sort(bandingkanProfilMaster)[0] || null;
+}
+
+function perbaruiRingkasanDuplikat() {
+    duplikatMasterGroups = buatGrupDuplikatAman();
+    const jumlahProfil = duplikatMasterGroups.reduce((total, group) => total + group.rows.length, 0);
+    const duplicateCard = document.getElementById('ringkasanMasterDuplikat');
+    const duplicateBadge = document.getElementById('badgeDuplikatMaster');
+    if (duplicateCard) duplicateCard.textContent = Number(jumlahProfil).toLocaleString('id-ID');
+    if (duplicateBadge) duplicateBadge.textContent = Number(duplikatMasterGroups.length).toLocaleString('id-ID');
+}
+
+function bukaModalRapikanMaster() {
+    duplikatMasterGroups = buatGrupDuplikatAman();
+    renderDuplikatMaster();
+    document.getElementById('modalRapikanMaster')?.classList.remove('hidden');
+}
+
+function tutupModalRapikanMaster() {
+    document.getElementById('modalRapikanMaster')?.classList.add('hidden');
+}
+
+function renderDuplikatMaster() {
+    const list = document.getElementById('duplikatMasterList');
+    const count = document.getElementById('jumlahGrupDuplikat');
+    const bulkButton = document.getElementById('btnGabungSemuaDuplikat');
+    if (!list) return;
+    if (count) count.textContent = `${duplikatMasterGroups.length.toLocaleString('id-ID')} kelompok aman`;
+    if (bulkButton) bulkButton.disabled = duplikatMasterGroups.length === 0;
+    if (!duplikatMasterGroups.length) {
+        list.innerHTML = '<div class="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-500/30 p-5 text-sm text-emerald-700 dark:text-emerald-300"><i class="fa-solid fa-circle-check mr-2"></i>Tidak ada duplikat aman. Data dengan nama sama tetapi asal berbeda tetap dipisahkan.</div>';
+        return;
+    }
+    list.innerHTML = duplikatMasterGroups.map((group, index) => {
+        const target = profilUtamaDuplikat(group);
+        const nama = escapeHTML(target?.nama || '-');
+        const asal = escapeHTML(target?.asal_organisasi || '-');
+        const anggota = group.rows.map(row => {
+            const isTarget = row.nip === target?.nip;
+            return `<li class="flex items-center justify-between gap-3 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0"><span><strong>${escapeHTML(row.nip)}</strong><span class="text-slate-500 dark:text-slate-400 ml-2">${Number(row.total_hari || 0)} hari hadir</span></span><span class="text-[10px] font-black ${isTarget ? 'text-emerald-600' : 'text-amber-600'}">${isTarget ? 'DIPERTAHANKAN' : 'DIGABUNG'}</span></li>`;
+        }).join('');
+        return `<article class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800"><div class="flex flex-wrap items-start justify-between gap-3"><div><p class="font-black">${nama}</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Asal sama: ${asal}</p><p class="text-[10px] text-slate-400 mt-1">Target otomatis dipilih dari profil dengan riwayat hadir terbanyak.</p></div><button onclick="gabungkanKelompokAman(${index})" class="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-black"><i class="fa-solid fa-code-merge mr-1"></i>Gabungkan kelompok</button></div><ul class="mt-3 text-xs">${anggota}</ul></article>`;
+    }).join('');
+}
+
+async function gabungkanKelompokAman(index, tampilkanKonfirmasi = true) {
+    const group = duplikatMasterGroups[index];
+    const target = profilUtamaDuplikat(group);
+    const sources = (group?.rows || []).filter(row => row.nip !== target?.nip);
+    if (!target || !sources.length) return { berhasil: 0, gagal: 0 };
+    if (tampilkanKonfirmasi && !confirm(`Gabungkan ${sources.length} profil duplikat untuk ${target.nama} dari ${target.asal_organisasi}?\n\nNIP ${target.nip} dipertahankan. Riwayat absensi sumber dipindahkan lalu profil sumber dihapus.`)) return { dibatalkan: true };
+    let berhasil = 0;
+    let gagal = 0;
+    for (const source of sources) {
+        try {
+            const res = await callSupabaseRpc('merge_relawan', { p_sumber_nip: source.nip, p_target_nip: target.nip });
+            if (res.status !== 'success') throw new Error(res.message || 'Merge ditolak server');
+            berhasil += 1;
+        } catch (error) {
+            gagal += 1;
+            console.error('Merge duplikat aman:', source.nip, error);
+        }
+    }
+    return { berhasil, gagal };
+}
+
+async function gabungkanSemuaDuplikat() {
+    if (!duplikatMasterGroups.length) return;
+    const konfirmasi = confirm(`Gabungkan ${duplikatMasterGroups.length} kelompok duplikat aman?\n\nHanya profil dengan nama dan asal organisasi yang sama setelah normalisasi yang akan diproses. Nama sama dengan asal berbeda tidak akan digabung.`);
+    if (!konfirmasi) return;
+    const groups = [...duplikatMasterGroups];
+    let berhasil = 0;
+    let gagal = 0;
+    for (let index = 0; index < groups.length; index += 1) {
+        const hasil = await gabungkanKelompokAman(index, false);
+        berhasil += hasil.berhasil || 0;
+        gagal += hasil.gagal || 0;
+    }
+    showToast(`Perapian selesai: ${berhasil} profil digabung${gagal ? `, ${gagal} gagal` : ''}.`, gagal ? 'error' : 'success');
+    tutupModalRapikanMaster();
+    await loadMasterData();
 }
 
 // ==========================================
@@ -404,6 +545,7 @@ function renderRingkasanMaster() {
         const element = document.getElementById(id);
         if (element) element.textContent = Number(value).toLocaleString('id-ID');
     });
+    perbaruiRingkasanDuplikat();
 }
 
 function ubahUrutanMaster() {
@@ -412,6 +554,17 @@ function ubahUrutanMaster() {
     activeSortDirection = 'asc';
     currentPage = 1;
     terapkanFilterDanPaginasi();
+}
+
+function filterMasterWilayahKosong() {
+    isNewestFilter = false;
+    const limit = document.getElementById('limitData');
+    if (limit) limit.value = '50';
+    rowsPerPage = 50;
+    activeExcelFilters.kategori_wilayah = ['belum_dilengkapi'];
+    currentPage = 1;
+    terapkanFilterDanPaginasi();
+    showToast('Menampilkan personel yang wilayahnya belum dilengkapi.', 'info');
 }
 
 function deleteSingleMasterDariTombol(button) {
@@ -534,12 +687,21 @@ function bukaModalMergeDariTombol(button) {
     bukaModalMerge(button.dataset.nip || '', button.dataset.nama || '');
 }
 
-function siapkanDropdownMerge() {
+function siapkanDropdownMerge(sourceNip = '') {
     const list = document.getElementById('dropdownMergeList');
     if (!list) return;
     let html = '';
-    
-    const sortedMaster = [...masterData].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+
+    const source = masterData.find(row => row.nip === sourceNip);
+    const sourceKey = kunciIdentitasMaster(source);
+    const sortedMaster = [...masterData]
+        .filter(row => row.nip !== sourceNip && sourceKey && kunciIdentitasMaster(row) === sourceKey)
+        .sort(bandingkanProfilMaster);
+
+    if (!sortedMaster.length) {
+        list.innerHTML = '<li class="px-4 py-4 text-xs text-slate-500 dark:text-slate-400">Tidak ada kandidat aman. Nama sama dengan asal organisasi berbeda tetap dipisahkan.</li>';
+        return;
+    }
     
     sortedMaster.forEach(r => {
         const nipAttr = escapeAttribute(r.nip);
@@ -615,6 +777,7 @@ function bukaModalMerge(nip, nama) {
     document.getElementById('sumberNama').innerText = nama;
     document.getElementById('sumberNip').innerText = nip;
     
+    siapkanDropdownMerge(nip);
     resetInputMerge(); 
     toggleDropdownMerge(false); 
     
@@ -649,6 +812,7 @@ async function eksekusiMerge() {
     }
 
     const targetProfile = masterData.find(r => r.nip === targetNip);
+    const sourceProfile = masterData.find(r => r.nip === currentSourceNip);
 
     if (!targetProfile) {
         showToast("Profil tujuan tidak ditemukan. Muat ulang data Master.", "error");
@@ -777,6 +941,12 @@ function parseCSV(content) {
     const rows = parseCSVRows(content);
     if (rows.length === 0) {
         showToast("File CSV kosong!", "error");
+        return;
+    }
+
+    if (!sourceProfile || !kunciIdentitasMaster(sourceProfile) || kunciIdentitasMaster(sourceProfile) !== kunciIdentitasMaster(targetProfile)) {
+        showToast("Merge hanya diizinkan untuk nama dan asal organisasi yang sama.", "error");
+        resetInputMerge();
         return;
     }
     

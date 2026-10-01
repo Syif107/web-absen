@@ -40,6 +40,18 @@ riwayat absensi yang dihapus atau diubah.
 Setelah Fase 7, cache frontend menggunakan
 `relawansync-v20-ranking-seragam-optimasi-cache`.
 
+## Fase 8: Perapian Master Data
+
+Fase 8 menambahkan `db/fase8_master_data_rapi.sql` dan alur Rapikan Master.
+Sistem hanya menawarkan merge untuk pasangan dengan nama dan asal organisasi
+yang sama setelah normalisasi huruf besar dan spasi. Nama sama dengan asal
+berbeda, nama berbeda, atau asal kosong tetap dipisahkan.
+
+RPC `merge_relawan` juga memeriksa aturan tersebut di server sehingga merge
+lintas asal tidak dapat dilakukan lewat antarmuka lain. Penggabungan tetap
+memerlukan tindakan admin dan konfirmasi; tidak ada merge otomatis saat
+halaman dibuka.
+
 ## Mode frontend saja (Supabase dilewati)
 
 `FASE5_ENABLED` dan `FASE4_ENABLED` di `js/supabase-config.js` dibiarkan
@@ -60,8 +72,8 @@ migrasi SQL yang sesuai.
 4. Jalankan `db/audit_duplikat.sql` (read-only).
 5. Bila hasil audit mempunyai baris, tinjau dan gabungkan data secara manual.
 6. Jalankan `db/fase5_integritas_transaksi.sql`.
-7. Jalankan `db/fase6_ranking_seragam.sql`, lalu `db/fase7_operasional_optimasi.sql`.
-8. Uji input relawan lama, relawan baru, filter proyek, direktori, dan batch duplikat menggunakan akun admin.
+7. Jalankan `db/fase6_ranking_seragam.sql`, `db/fase7_operasional_optimasi.sql`, lalu `db/fase8_master_data_rapi.sql`.
+8. Uji input relawan lama, relawan baru, filter proyek, direktori, perapian duplikat, edit wilayah, dan batch duplikat menggunakan akun admin.
 9. Jika multi-user akan digunakan:
    - ganti `GANTI_EMAIL_ADMIN` di `db/fase4_multi_user.sql`;
    - jalankan migrasi tersebut;
