@@ -7,13 +7,75 @@ let riwayatData = [];
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('filterTanggal').valueAsDate = new Date();
     muatIdentitasLaporan();
+    populateFilterDropdowns();
     loadRiwayatData();
 
-    // Tambahkan event listener change agar otomatis memfilter saat tanggal diubah
+    // Event listener untuk filter tanggal
     document.getElementById('filterTanggal').addEventListener('change', () => {
         jalankanFilterDanSortRiwayat();
     });
+
+    // Event listener untuk filter bulan, tahun, lokasi, organisasi
+    ['filterBulan', 'filterTahun', 'filterLokasi', 'filterOrganisasi'].forEach(id => {
+        document.getElementById(id).addEventListener('change', () => {
+            jalankanFilterDanSortRiwayat();
+        });
+    });
+
+    // Event listener untuk pencarian real-time
+    document.getElementById('filterCari').addEventListener('input', () => {
+        jalankanFilterDanSortRiwayat();
+    });
 });
+
+// ==========================================
+// POPULATE FILTER DROPDOWNS
+// ==========================================
+function populateFilterDropdowns() {
+    // Populate tahun dari data yang ada
+    const tahunSelect = document.getElementById('filterTahun');
+    const tahunSet = new Set();
+    riwayatData.forEach(r => {
+        if (r.tanggal) {
+            tahunSet.add(r.tanggal.split('-')[0]);
+        }
+    });
+    const tahunList = Array.from(tahunSet).sort().reverse();
+    tahunList.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        tahunSelect.appendChild(opt);
+    });
+
+    // Populate lokasi
+    const lokasiSelect = document.getElementById('filterLokasi');
+    const lokasiSet = new Set();
+    riwayatData.forEach(r => {
+        if (r.lokasi) lokasiSet.add(r.lokasi);
+    });
+    const lokasiList = Array.from(lokasiSet).sort();
+    lokasiList.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l;
+        opt.textContent = l;
+        lokasiSelect.appendChild(opt);
+    });
+
+    // Populate organisasi
+    const orgSelect = document.getElementById('filterOrganisasi');
+    const orgSet = new Set();
+    riwayatData.forEach(r => {
+        if (r.organisasi) orgSet.add(r.organisasi);
+    });
+    const orgList = Array.from(orgSet).sort();
+    orgList.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o;
+        opt.textContent = o;
+        orgSelect.appendChild(opt);
+    });
+}
 
 // ==========================================
 // IDENTITAS LAPORAN RESMI (KOP & TTD)
@@ -38,6 +100,7 @@ function simpanIdentitasLaporan() {
     };
     localStorage.setItem(IDENTITAS_LAPORAN_KEY, JSON.stringify(data));
     showToast("Identitas laporan tersimpan.", "success");
+    tutupModalIdentitas();
 }
 
 function muatIdentitasLaporan() {
@@ -52,6 +115,15 @@ function muatIdentitasLaporan() {
     set('identNipJabatan', data.ttdJabatan);
 }
 
+function bukaModalIdentitas() {
+    muatIdentitasLaporan();
+    document.getElementById('modalIdentitas').classList.remove('hidden');
+}
+
+function tutupModalIdentitas() {
+    document.getElementById('modalIdentitas').classList.add('hidden');
+}
+
 function formatTanggalID(dateStr) {
     const bulan = {
         '01': 'Januari', '02': 'Februari', '03': 'Maret', '04': 'April',
@@ -63,15 +135,19 @@ function formatTanggalID(dateStr) {
     return `${parseInt(d, 10)} ${bulan[m] || m} ${y}`;
 }
 
+// ==========================================
+// LOAD DATA RIWAYAT
+// ==========================================
 async function loadRiwayatData() {
     const loading = document.getElementById('loadingOverlay');
     loading.classList.remove('hidden');
-    
+
     try {
         const res = await supabaseFetch(await terapkanFilterLokasi('log_absensi?select=*&order=id.desc'), 'GET');
         if (res.status === "success") {
             riwayatData = res.data;
-            jalankanFilterDanSortRiwayat(); 
+            populateFilterDropdowns();
+            jalankanFilterDanSortRiwayat();
             return true;
         } else {
             showToast("Gagal mengambil data riwayat.", "error");
@@ -85,12 +161,19 @@ async function loadRiwayatData() {
     }
 }
 
+// ==========================================
+// FILTER & SORT
+// ==========================================
 function terapkanFilterRiwayat() {
     jalankanFilterDanSortRiwayat();
 }
 
 function resetFilter() {
     document.getElementById('filterTanggal').value = '';
+    document.getElementById('filterBulan').value = '';
+    document.getElementById('filterTahun').value = '';
+    document.getElementById('filterLokasi').value = '';
+    document.getElementById('filterOrganisasi').value = '';
     document.getElementById('filterCari').value = '';
     activeExcelFilters = {};
     activeSortColumn = null;
@@ -99,15 +182,41 @@ function resetFilter() {
 
 function jalankanFilterDanSortRiwayat() {
     const filterTgl = document.getElementById('filterTanggal').value;
+    const filterBln = document.getElementById('filterBulan').value;
+    const filterThn = document.getElementById('filterTahun').value;
+    const filterLok = document.getElementById('filterLokasi').value;
+    const filterOrg = document.getElementById('filterOrganisasi').value;
     const globalKey = document.getElementById('filterCari').value.toLowerCase();
 
     let filtered = riwayatData.filter(r => {
+        // Filter tanggal spesifik
         let matchTgl = filterTgl ? r.tanggal === filterTgl : true;
-        let matchGlobal = globalKey ? 
+
+        // Filter bulan
+        let matchBln = true;
+        if (filterBln && r.tanggal) {
+            matchBln = r.tanggal.split('-')[1] === filterBln;
+        }
+
+        // Filter tahun
+        let matchThn = true;
+        if (filterThn && r.tanggal) {
+            matchThn = r.tanggal.split('-')[0] === filterThn;
+        }
+
+        // Filter lokasi
+        let matchLok = filterLok ? (r.lokasi === filterLok) : true;
+
+        // Filter organisasi
+        let matchOrg = filterOrg ? (r.organisasi === filterOrg) : true;
+
+        // Pencarian global
+        let matchGlobal = globalKey ?
             (r.nama && r.nama.toLowerCase().includes(globalKey)) ||
             (r.organisasi && r.organisasi.toLowerCase().includes(globalKey)) ||
             (r.lokasi && r.lokasi.toLowerCase().includes(globalKey)) : true;
-        return matchTgl && matchGlobal;
+
+        return matchTgl && matchBln && matchThn && matchLok && matchOrg && matchGlobal;
     });
 
     // Filter berdasarkan pop-up Excel (Checkbox kolom aktif)
@@ -128,12 +237,52 @@ function jalankanFilterDanSortRiwayat() {
     }
 
     renderTabelRiwayat(filtered);
+    updateSummaryCards(filtered);
 }
 
+// ==========================================
+// SUMMARY CARDS
+// ==========================================
+function updateSummaryCards(data) {
+    // Total data
+    document.getElementById('summaryTotal').textContent = data.length.toLocaleString('id-ID');
+
+    // Relawan unik
+    const namaUnik = new Set();
+    data.forEach(r => {
+        if (r.nama) namaUnik.add(r.nama);
+    });
+    document.getElementById('summaryUnik').textContent = namaUnik.size.toLocaleString('id-ID');
+
+    // Lokasi unik
+    const lokasiUnik = new Set();
+    data.forEach(r => {
+        if (r.lokasi) lokasiUnik.add(r.lokasi);
+    });
+    document.getElementById('summaryLokasi').textContent = lokasiUnik.size.toLocaleString('id-ID');
+
+    // Periode
+    if (data.length > 0) {
+        const tanggalList = data.map(r => r.tanggal).filter(t => t).sort();
+        const tglAwal = tanggalList[0];
+        const tglAkhir = tanggalList[tanggalList.length - 1];
+        if (tglAwal === tglAkhir) {
+            document.getElementById('summaryPeriode').textContent = formatTanggalID(tglAwal);
+        } else {
+            document.getElementById('summaryPeriode').textContent = `${formatTanggalID(tglAwal)} - ${formatTanggalID(tglAkhir)}`;
+        }
+    } else {
+        document.getElementById('summaryPeriode').textContent = '-';
+    }
+}
+
+// ==========================================
+// RENDER TABEL
+// ==========================================
 function renderTabelRiwayat(data) {
     const tbody = document.getElementById('riwayatBody');
     document.getElementById('totalDataInfo').innerText = `Menampilkan ${data.length.toLocaleString('id-ID')} riwayat absen`;
-    
+
     const checkAllBtn = document.getElementById('checkAll');
     if (checkAllBtn) checkAllBtn.checked = false;
     toggleBulkActionBanner();
@@ -149,23 +298,23 @@ function renderTabelRiwayat(data) {
         // Escape data untuk atribut HTML (onclick)
         const lokasiAmanAttr = r.lokasi ? r.lokasi.replace(/'/g, "\\'") : '';
         const orgAmanAttr = r.organisasi ? r.organisasi.replace(/'/g, "\\'") : '';
-        
+
         // Escape data untuk tampilan teks (Mencegah XSS)
         const namaTampil = escapeHTML(r.nama);
         const lokasiTampil = escapeHTML(r.lokasi);
         const orgTampil = escapeHTML(r.organisasi);
-        
+
         html += `
-            <tr class="hover:bg-slate-50 transition-colors">
-                <td class="no-print px-4 py-3 text-center bg-slate-50 border-r border-slate-100">
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                <td class="no-print px-4 py-3 text-center bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50">
                     <input type="checkbox" class="log-checkbox w-4 h-4 accent-primary cursor-pointer" value="${r.id}" onchange="toggleBulkActionBanner()">
                 </td>
-                <td class="px-4 py-3 text-center font-bold text-slate-400 bg-slate-50 border-r border-slate-100">${noUrut}</td>
+                <td class="px-4 py-3 text-center font-bold text-slate-400 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50">${noUrut}</td>
                 <td class="px-4 py-3 text-xs text-slate-500 font-mono">${r.tanggal || '-'}</td>
-                <td class="px-4 py-3 font-bold text-slate-800">${namaTampil}</td>
+                <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">${namaTampil}</td>
                 <td class="px-4 py-3 font-bold ${r.sesi === 'Siang' ? 'text-orange-500' : 'text-indigo-600'}">${r.sesi}</td>
-                <td class="px-4 py-3 text-slate-600 text-xs">${lokasiTampil}</td>
-                <td class="px-4 py-3 text-slate-600 text-xs font-semibold">${orgTampil}</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs">${lokasiTampil}</td>
+                <td class="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs font-semibold">${orgTampil}</td>
                 <td class="no-print px-4 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
                         <button onclick="bukaModalEditLog('${r.id}', '${r.tanggal}', '${r.sesi}', '${lokasiAmanAttr}', '${orgAmanAttr}')" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Edit">
@@ -182,17 +331,16 @@ function renderTabelRiwayat(data) {
     tbody.innerHTML = html;
 }
 
-// ------------------------------------------
+// ==========================================
 // ZONA EDIT DATA RIWAYAT
-// ------------------------------------------
-
+// ==========================================
 function bukaModalEditLog(id, tgl, sesi, lokasi, org) {
     document.getElementById('editLogId').value = id;
     document.getElementById('editLogTanggal').value = tgl;
     document.getElementById('editLogSesi').value = sesi;
     document.getElementById('editLogLokasi').value = lokasi;
     document.getElementById('editLogOrg').value = org;
-    
+
     document.getElementById('modalEditLog').classList.remove('hidden');
 }
 
@@ -230,25 +378,31 @@ async function simpanEditLog() {
     }
 }
 
-// ------------------------------------------
+// ==========================================
 // ZONA HAPUS MASSAL & EXPORT CSV
-// ------------------------------------------
+// ==========================================
+function toggleAll(source) {
+    document.querySelectorAll('.log-checkbox').forEach(cb => cb.checked = source.checked);
+    toggleBulkActionBanner();
+}
 
-function toggleAll(source) { 
-    document.querySelectorAll('.log-checkbox').forEach(cb => cb.checked = source.checked); 
-    toggleBulkActionBanner(); 
+function batalkanSeleksi() {
+    document.querySelectorAll('.log-checkbox').forEach(cb => cb.checked = false);
+    const checkAllBtn = document.getElementById('checkAll');
+    if (checkAllBtn) checkAllBtn.checked = false;
+    toggleBulkActionBanner();
 }
 
 function toggleBulkActionBanner() {
-    const count = document.querySelectorAll('.log-checkbox:checked').length; 
+    const count = document.querySelectorAll('.log-checkbox:checked').length;
     const banner = document.getElementById('bulkActionBanner');
-    if (count > 0) { 
-        banner.classList.remove('hidden'); 
-        document.getElementById('selectedCount').innerText = count; 
-    } else { 
-        banner.classList.add('hidden'); 
+    if (count > 0) {
+        banner.classList.remove('hidden');
+        document.getElementById('selectedCount').innerText = count;
+    } else {
+        banner.classList.add('hidden');
         const checkAllBtn = document.getElementById('checkAll');
-        if(checkAllBtn) checkAllBtn.checked = false; 
+        if (checkAllBtn) checkAllBtn.checked = false;
     }
 }
 
@@ -263,16 +417,16 @@ async function deleteSingleLog(id) {
             loadRiwayatData();
         }
     } catch (err) {
-        if(loading) loading.remove();
+        if (loading) loading.remove();
         showToast("Terjadi kesalahan jaringan.", "error");
     }
 }
 
 async function deleteBulkLogs() {
     const checked = document.querySelectorAll('.log-checkbox:checked');
-    if(checked.length === 0) return;
-    const konfirmasi = confirm(`⚠️ Yakin ingin menghapus ${checked.length} riwayat absen terpilih?`);
-    if(!konfirmasi) return;
+    if (checked.length === 0) return;
+    const konfirmasi = confirm(`Yakin ingin menghapus ${checked.length} riwayat absen terpilih?`);
+    if (!konfirmasi) return;
 
     let loading = showToast(`Menghapus ${checked.length} data...`, "loading");
     try {
@@ -297,9 +451,9 @@ function exportToCSV() {
     let csvContent = "data:text/csv;charset=utf-8,No,Tanggal,Nama Relawan,Sesi,Lokasi Proyek,Organisasi\n";
     barisTabel.forEach(row => {
         let cols = row.querySelectorAll("td");
-        if(cols.length > 0) {
+        if (cols.length > 0) {
             let rowArray = [
-                cols[1].innerText, cols[2].innerText, `"${cols[3].innerText}"`, 
+                cols[1].innerText, cols[2].innerText, `"${cols[3].innerText}"`,
                 cols[4].innerText, `"${cols[5].innerText}"`, `"${cols[6].innerText}"`
             ];
             csvContent += rowArray.join(",") + "\n";
@@ -379,7 +533,6 @@ async function cetakLaporanAbsen() {
 
         if (loading) loading.remove();
 
-        // Beri waktu browser menyelesaikan layout dan paint tabel sebelum mencetak.
         setTimeout(() => {
             window.print();
         }, 400);
@@ -404,7 +557,6 @@ function isiElemenLaporan() {
     setText('ttdLeftNama', ident.pjNama ? ident.pjNama : '(_______________)');
     setText('ttdRightJabatan', ident.ttdJabatan, 'Koordinator Lapangan');
 
-    // Nama & NIP sisi kanan tetap kosong agar bisa ditulis tangan saat dicetak
     const ttdNama = document.getElementById('ttdRightNama');
     if (ttdNama) ttdNama.textContent = '(_______________)';
 
@@ -419,7 +571,7 @@ function isiElemenLaporan() {
 
     let periode = 'Semua Periode';
     if (filterTgl) periode = `Periode: ${formatTanggalID(filterTgl)}`;
-    if (filterCari) periode += ` • Kata kunci: "${filterCari}"`;
+    if (filterCari) periode += ` - Kata kunci: "${filterCari}"`;
 
-    setText('printMetaInfo', `${periode} • Jumlah Data: ${jumlahData} • Dicetak: ${tglCetakStr}`, `${periode} • Dicetak: ${tglCetakStr}`);
+    setText('printMetaInfo', `${periode} - Jumlah Data: ${jumlahData} - Dicetak: ${tglCetakStr}`, `${periode} - Dicetak: ${tglCetakStr}`);
 }

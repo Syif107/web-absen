@@ -175,6 +175,45 @@ input[type="text"], textarea {
 .dark header { background-color: #0f172a !important; }
 .dark #mobileOverlay { background-color: rgba(0,0,0,0.7) !important; }
 
+/* --- Riwayat Page: Summary Cards --- */
+.summary-card {
+    transition: all 0.2s ease;
+}
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.dark .summary-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* --- Riwayat Page: Filter Bar --- */
+.filter-input {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.filter-input:focus {
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* --- Riwayat Page: Table Row Hover --- */
+.print-table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+/* --- Riwayat Page: Bulk Action Banner --- */
+#bulkActionBanner {
+    animation: slideDown 0.2s ease-out;
+}
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Riwayat Page: Modal Identitas --- */
+#modalIdentitas .modal-scale-in {
+    animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* ========================================== */
 /* STYLING CETAK / PRINT LAPORAN (RIWAYAT)    */
 /* ========================================== */
