@@ -115,7 +115,14 @@ async function supabaseFetch(endpoint, method = 'GET', data = null) {
         const result = await response.json();
         
         // Tangkap jika ada error dari database
-        if (!response.ok) throw new Error(result.message || result.error || "Gagal menghubungi database");
+        if (!response.ok) {
+            return {
+                status: "error",
+                httpStatus: response.status,
+                message: result.message || result.error || "Gagal menghubungi database",
+                details: result.details || result.hint || null
+            };
+        }
         
         return { status: "success", data: result };
     } catch (error) {
@@ -140,6 +147,16 @@ async function callSupabaseRpc(namaFungsi, params = {}) {
 }
 
 // ==============================================
+// FASE 5: INTEGRITAS TRANSAKSI
+// ----------------------------------------------
+// Tetap false selama db/fase5_integritas_transaksi.sql belum dijalankan.
+// Dalam mode false, aplikasi memakai kontrak database lama agar frontend
+// tetap dapat dipakai, tetapi simpan relawan baru + absensi dan import CSV
+// belum atomik.
+// ==============================================
+const FASE5_ENABLED = false;
+
+// ==============================================
 // FASE 4: MULTI-USER (ADMIN + KOORDINATOR)
 // ----------------------------------------------
 // DIHIDDEN / NONAKTIF secara default.
@@ -154,6 +171,7 @@ let _aksesUserCache = null;
  * Peran & lokasi akun yang sedang login.
  * Saat FASE4 nonaktif => selalu admin (perilaku lama, tanpa perubahan).
  * Saat aktif, koordinator hanya menyentuh lokasi_proyek miliknya.
+ * Akun tanpa profil atau kegagalan membaca profil selalu diblokir (fail closed).
  */
 async function getAksesUser() {
     if (!FASE4_ENABLED) return { role: 'admin', lokasi: null };
@@ -161,7 +179,7 @@ async function getAksesUser() {
 
     const payload = getCurrentSessionUser();
     if (!payload || !payload.sub) {
-        _aksesUserCache = { role: 'admin', lokasi: null };
+        _aksesUserCache = { role: 'blocked', lokasi: null };
         return _aksesUserCache;
     }
 
@@ -169,16 +187,49 @@ async function getAksesUser() {
         const res = await supabaseFetch(`profil?select=role,lokasi_proyek&id=eq.${payload.sub}&limit=1`, 'GET');
         if (res.status === 'success' && Array.isArray(res.data) && res.data.length) {
             _aksesUserCache = {
-                role: res.data[0].role === 'koordinator' ? 'koordinator' : 'admin',
+                role: ['admin', 'koordinator'].includes(res.data[0].role) ? res.data[0].role : 'blocked',
                 lokasi: (res.data[0].lokasi_proyek || '').trim()
             };
         } else {
-            _aksesUserCache = { role: 'admin', lokasi: null };
+            _aksesUserCache = { role: 'blocked', lokasi: null };
         }
     } catch (e) {
-        _aksesUserCache = { role: 'admin', lokasi: null };
+        _aksesUserCache = { role: 'blocked', lokasi: null };
     }
     return _aksesUserCache;
+}
+
+/**
+ * Mengambil seluruh hasil PostgREST secara bertahap agar laporan tidak diam-diam
+ * terpotong oleh batas maksimum baris Supabase. Gunakan hanya untuk endpoint
+ * daftar yang memang membutuhkan keseluruhan data.
+ */
+async function supabaseFetchAll(endpoint, pageSize = 1000) {
+    const allRows = [];
+    let offset = 0;
+    const separator = endpoint.includes('?') ? '&' : '?';
+
+    for (let page = 0; page < 1000; page++) {
+        const pageEndpoint = `${endpoint}${separator}limit=${pageSize}&offset=${offset}`;
+        const result = await supabaseFetch(pageEndpoint, 'GET');
+        if (result.status !== 'success') return result;
+        if (!Array.isArray(result.data)) {
+            return { status: 'error', message: 'Format respons daftar dari database tidak valid.' };
+        }
+
+        allRows.push(...result.data);
+        if (result.data.length < pageSize) {
+            return { status: 'success', data: allRows };
+        }
+        offset += pageSize;
+    }
+
+    return { status: 'error', message: 'Pengambilan data dihentikan karena melewati batas keamanan 1.000 halaman.' };
+}
+
+/** Pemeriksaan sinkron untuk render tombol sensitif setelah getAksesUser dipanggil. */
+function userIsAdmin() {
+    return !FASE4_ENABLED || (_aksesUserCache && _aksesUserCache.role === 'admin');
 }
 
 /**

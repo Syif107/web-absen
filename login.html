@@ -73,8 +73,10 @@
 
     <script src="js/supabase-config.js"></script>
     <script>
-        if (getAccessToken()) {
+        if (isSessionAlive()) {
             window.location.href = 'index.html';
+        } else if (getAccessToken()) {
+            supabaseLogout();
         }
 
         // Apply saved dark mode on login page

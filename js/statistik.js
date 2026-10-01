@@ -65,8 +65,8 @@ async function loadStatistikData() {
 
     try {
         const [masterRes, logRes] = await Promise.all([
-            supabaseFetch('master_relawan?select=*', 'GET'),
-            supabaseFetch(await terapkanFilterLokasi('log_absensi?select=*&order=id.desc'), 'GET')
+            supabaseFetchAll('master_relawan?select=*&order=nip.asc'),
+            supabaseFetchAll(await terapkanFilterLokasi('log_absensi?select=*&order=id.desc'))
         ]);
 
         if (masterRes.status === "success" && logRes.status === "success") {

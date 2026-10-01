@@ -308,12 +308,12 @@ async function exportRekapExcel() {
     btn.disabled = true;
 
     try {
-        let urlLog = `log_absensi?select=*&order=nama.asc&tanggal=gte.${tglAwal}&tanggal=lte.${tglAkhir}${queryLokasi}`;
+        let urlLog = `log_absensi?select=*&order=nama.asc,id.asc&tanggal=gte.${tglAwal}&tanggal=lte.${tglAkhir}${queryLokasi}`;
         urlLog = await terapkanFilterLokasi(urlLog);
 
         const [logRes, masterRes] = await Promise.all([
-            supabaseFetch(urlLog, 'GET'),
-            supabaseFetch('master_relawan?select=nip,nama,jabatan,asal_organisasi', 'GET')
+            supabaseFetchAll(urlLog),
+            supabaseFetchAll('master_relawan?select=nip,nama,jabatan,asal_organisasi&order=nip.asc')
         ]);
 
         if (logRes.status !== "success" || masterRes.status !== "success") {

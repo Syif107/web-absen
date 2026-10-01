@@ -85,7 +85,12 @@ function showToast(msg, type = 'success') {
     };
     
     toast.className = `toast-enter flex items-center gap-4 w-80 p-4 rounded-xl shadow-lg border-l-4 bg-white dark:bg-slate-800 ${config[type].b} text-slate-800 dark:text-slate-100 z-50 pointer-events-auto`;
-    toast.innerHTML = `<div>${config[type].i}</div><div class="text-sm font-bold">${msg}</div>`;
+    const icon = document.createElement('div');
+    icon.innerHTML = config[type].i;
+    const message = document.createElement('div');
+    message.className = 'text-sm font-bold';
+    message.textContent = String(msg || '');
+    toast.append(icon, message);
     
     container.appendChild(toast);
     
@@ -110,6 +115,47 @@ function logoutSystem() {
     setTimeout(() => {
         window.location.replace('login.html');
     }, 800);
+}
+
+// ==========================================
+// 5A. AKSES UI BERDASARKAN ROLE
+// ==========================================
+async function applyAccessUi() {
+    const akses = await getAksesUser();
+    document.documentElement.dataset.userRole = akses.role;
+
+    if (akses.role === 'blocked') {
+        supabaseLogout();
+        showToast("Akun belum diberi akses. Hubungi admin sistem.", "error");
+        setTimeout(() => window.location.replace('login.html'), 900);
+        return;
+    }
+
+    if (akses.role === 'koordinator') {
+        document.querySelectorAll('a[href="master.html"], button[onclick*="backupEverything"]')
+            .forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+
+        const lokasiInput = document.getElementById('inputLokasi');
+        if (lokasiInput && akses.lokasi) {
+            if (!Array.from(lokasiInput.options).some(option => option.value === akses.lokasi)) {
+                const option = document.createElement('option');
+                option.value = akses.lokasi;
+                option.textContent = akses.lokasi;
+                lokasiInput.appendChild(option);
+            }
+            lokasiInput.value = akses.lokasi;
+            lokasiInput.disabled = true;
+            const lokasiCustom = document.getElementById('inputLokasiCustom');
+            if (lokasiCustom) lokasiCustom.classList.add('hidden');
+            if (typeof simpanDraft === 'function') simpanDraft();
+        }
+
+        if (window.location.pathname.endsWith('/master.html')) {
+            showToast("Master Data hanya dapat dikelola admin.", "error");
+            setTimeout(() => window.location.replace('index.html'), 700);
+        }
+    }
 }
 
 // ==========================================
@@ -161,6 +207,8 @@ let activeSortColumn = null;
 let activeSortDirection = 'asc';
 
 document.addEventListener("DOMContentLoaded", () => {
+    applyAccessUi();
+
     if (!document.getElementById('excelFilterPopup')) {
         const popupDiv = document.createElement('div');
         popupDiv.id = 'excelFilterPopup';
@@ -220,10 +268,12 @@ function bukaExcelFilter(columnKey, event) {
 
     uniqueValues.forEach(val => {
         const isChecked = currentSelected.length === 0 || currentSelected.includes(val) ? 'checked' : '';
+        const valueAttr = escapeAttribute(val);
+        const valueText = escapeHTML(val);
         html += `
             <label class="popup-item-label flex items-center gap-2 p-1 hover:bg-white dark:hover:bg-slate-600 rounded cursor-pointer text-xs">
-                <input type="checkbox" value="${val}" data-col="${columnKey}" class="excel-filter-chk w-3.5 h-3.5 accent-primary rounded shrink-0" ${isChecked} onchange="terapkanExcelFilter()">
-                <span class="truncate text-slate-700 dark:text-slate-200 font-medium">${val}</span>
+                <input type="checkbox" value="${valueAttr}" data-col="${columnKey}" class="excel-filter-chk w-3.5 h-3.5 accent-primary rounded shrink-0" ${isChecked} onchange="terapkanExcelFilter()">
+                <span class="truncate text-slate-700 dark:text-slate-200 font-medium">${valueText}</span>
             </label>
         `;
     });
@@ -318,10 +368,12 @@ function bukaExcelFilterMaster(columnKey, event) {
 
     uniqueValues.forEach(val => {
         const isChecked = currentSelected.length === 0 || currentSelected.includes(val) ? 'checked' : '';
+        const valueAttr = escapeAttribute(val);
+        const valueText = escapeHTML(val);
         html += `
             <label class="popup-item-label-master flex items-center gap-2 p-1 hover:bg-white dark:hover:bg-slate-600 rounded cursor-pointer text-xs">
-                <input type="checkbox" value="${val}" data-col="${columnKey}" class="excel-filter-chk-master w-3.5 h-3.5 accent-primary rounded shrink-0" ${isChecked} onchange="terapkanExcelFilterMaster()">
-                <span class="truncate text-slate-700 dark:text-slate-200 font-medium">${val}</span>
+                <input type="checkbox" value="${valueAttr}" data-col="${columnKey}" class="excel-filter-chk-master w-3.5 h-3.5 accent-primary rounded shrink-0" ${isChecked} onchange="terapkanExcelFilterMaster()">
+                <span class="truncate text-slate-700 dark:text-slate-200 font-medium">${valueText}</span>
             </label>
         `;
     });
@@ -382,8 +434,8 @@ async function backupEverything() {
 
     try {
         const [masterRes, logRes] = await Promise.all([
-            supabaseFetch('master_relawan?select=*', 'GET'),
-            supabaseFetch(await terapkanFilterLokasi('log_absensi?select=*'), 'GET')
+            supabaseFetchAll('master_relawan?select=*&order=nip.asc'),
+            supabaseFetchAll(await terapkanFilterLokasi('log_absensi?select=*&order=id.asc'))
         ]);
 
         if (masterRes.status !== "success" || logRes.status !== "success") {
@@ -434,6 +486,16 @@ async function backupEverything() {
 // ==========================================
 function escapeHTML(str) {
     if (str === null || str === undefined || str === '') return '-';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function escapeAttribute(str) {
+    if (str === null || str === undefined) return '';
     return String(str)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')

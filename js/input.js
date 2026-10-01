@@ -125,7 +125,7 @@ function hapusDraft() {
 
 async function loadMasterDataUntukStaging() {
     try {
-        const res = await supabaseFetch('master_relawan?select=nip,nama,jabatan,asal_organisasi', 'GET');
+        const res = await supabaseFetchAll('master_relawan?select=nip,nama,jabatan,asal_organisasi&order=nip.asc');
         if (res.status === "success") {
             masterDataCache = res.data;
             bangunSetDikenal();
@@ -156,13 +156,21 @@ function populateDatalists() {
         if (r.jabatan && r.jabatan !== '-') bidangSet.add(r.jabatan);
     });
 
-    let orgHtml = '';
-    Array.from(orgSet).sort().forEach(org => orgHtml += `<option value="${org}">`);
-    document.getElementById('listOrgData').innerHTML = orgHtml;
+    const orgList = document.getElementById('listOrgData');
+    const bidangList = document.getElementById('listBidangData');
+    orgList.replaceChildren();
+    bidangList.replaceChildren();
 
-    let bidangHtml = '';
-    Array.from(bidangSet).sort().forEach(b => bidangHtml += `<option value="${b}">`);
-    document.getElementById('listBidangData').innerHTML = bidangHtml;
+    Array.from(orgSet).sort().forEach(org => {
+        const option = document.createElement('option');
+        option.value = org;
+        orgList.appendChild(option);
+    });
+    Array.from(bidangSet).sort().forEach(bidang => {
+        const option = document.createElement('option');
+        option.value = bidang;
+        bidangList.appendChild(option);
+    });
 }
 
 // ==========================================
@@ -247,10 +255,10 @@ async function muatLogHariIni(tanggal) {
     logHariIniTanggal = tanggal;
     if (!tanggal) return;
     try {
-        const res = await supabaseFetch(await terapkanFilterLokasi(`log_absensi?select=nama,sesi&tanggal=eq.${tanggal}`), 'GET');
+        const res = await supabaseFetch(await terapkanFilterLokasi(`log_absensi?select=nama,sesi,lokasi&tanggal=eq.${tanggal}`), 'GET');
         if (res.status === "success") {
             res.data.forEach(r => {
-                if (r.nama) logHariIniSet.add(normalizeNama(r.nama) + '|' + (r.sesi || ''));
+                if (r.nama) logHariIniSet.add(normalizeNama(r.nama) + '|' + (r.sesi || '') + '|' + (r.lokasi || ''));
             });
         }
     } catch (e) { /* non-fatal: lanjut tanpa deteksi duplikat */ }
@@ -370,6 +378,7 @@ async function generateStagingGrid() {
 
     const tanggal = document.getElementById('inputTanggal').value;
     const sesi = document.getElementById('inputSesi').value;
+    const lokasi = getLokasiTerpilih();
 
     await muatLogHariIni(tanggal);
 
@@ -406,7 +415,7 @@ async function generateStagingGrid() {
             orgFinal = p.org || globalOrg || 'Umum';
         }
 
-        const dupDb = logHariIniSet.has(kata + '|' + sesi);
+        const dupDb = logHariIniSet.has(kata + '|' + sesi + '|' + lokasi);
         const dupInput = dilihat.has(kata);
         dilihat.add(kata);
 
@@ -521,7 +530,8 @@ function revalBaris(idx) {
 
     const match = cariPencocok(kata);
     const sesi = document.getElementById('inputSesi').value;
-    const dupDb = logHariIniSet.has(kata + '|' + sesi);
+    const lokasi = getLokasiTerpilih();
+    const dupDb = logHariIniSet.has(kata + '|' + sesi + '|' + lokasi);
 
     let statusMode, isNew, nip;
     if (match.exact) {
@@ -819,25 +829,42 @@ async function submitDataToServer() {
     btn.disabled = true;
 
     try {
-        if (arrayDataMasterBaru.length > 0) {
-            await supabaseFetch('master_relawan', 'POST', arrayDataMasterBaru);
+        let resRpc;
+        if (FASE5_ENABLED) {
+            // Master baru dan log absensi disimpan oleh satu transaksi database.
+            resRpc = await callSupabaseRpc('insert_absensi_batch', {
+                p_logs: arrayDataAbsensi,
+                p_skip_duplikat: true,
+                p_master_baru: arrayDataMasterBaru
+            });
+        } else {
+            // Mode kompatibilitas untuk database lama. Alur ini belum atomik,
+            // tetapi menjaga frontend baru tetap dapat dipakai saat Fase 5
+            // sengaja belum diterapkan.
+            if (arrayDataMasterBaru.length > 0) {
+                const resMaster = await supabaseFetch('master_relawan', 'POST', arrayDataMasterBaru);
+                if (resMaster.status !== 'success') {
+                    throw new Error(resMaster.message || 'Gagal menyimpan relawan baru ke Master Data.');
+                }
+            }
+            resRpc = await callSupabaseRpc('insert_absensi_batch', {
+                p_logs: arrayDataAbsensi,
+                p_skip_duplikat: true
+            });
         }
-
-        // Simpan via fungsi server agar duplikat DB otomatis dilewati
-        const resRpc = await callSupabaseRpc('insert_absensi_batch', {
-            p_logs: arrayDataAbsensi,
-            p_skip_duplikat: true
-        });
 
         if (resRpc.status === "success") {
             const inserted = resRpc.inserted != null ? resRpc.inserted : arrayDataAbsensi.length;
             const skipped = resRpc.skipped != null ? resRpc.skipped : 0;
+            const masterInserted = resRpc.master_inserted != null
+                ? resRpc.master_inserted
+                : (!FASE5_ENABLED ? arrayDataMasterBaru.length : 0);
+            const masterSkipped = resRpc.master_skipped != null ? resRpc.master_skipped : 0;
 
             let pesanBerhasil = `${inserted} data absensi berhasil dicatat!`;
             if (skipped > 0) pesanBerhasil += ` (${skipped} dilewati karena sudah ada).`;
-            if (arrayDataMasterBaru.length > 0) {
-                pesanBerhasil += ` ${arrayDataMasterBaru.length} Relawan baru otomatis ditambahkan ke Master Data.`;
-            }
+            if (masterInserted > 0) pesanBerhasil += ` ${masterInserted} relawan baru ditambahkan ke Master Data.`;
+            if (masterSkipped > 0) pesanBerhasil += ` ${masterSkipped} data Master sudah ada dan dilewati.`;
             showToast(pesanBerhasil, "success");
 
             document.getElementById('daftarNama').value = "";

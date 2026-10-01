@@ -4,10 +4,10 @@
 
 let riwayatData = [];
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    await getAksesUser();
     document.getElementById('filterTanggal').valueAsDate = new Date();
     muatIdentitasLaporan();
-    populateFilterDropdowns();
     loadRiwayatData();
 
     // Event listener untuk filter tanggal
@@ -34,6 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function populateFilterDropdowns() {
     // Populate tahun dari data yang ada
     const tahunSelect = document.getElementById('filterTahun');
+    tahunSelect.innerHTML = '<option value="">Semua Tahun</option>';
     const tahunSet = new Set();
     riwayatData.forEach(r => {
         if (r.tanggal) {
@@ -50,6 +51,7 @@ function populateFilterDropdowns() {
 
     // Populate lokasi
     const lokasiSelect = document.getElementById('filterLokasi');
+    lokasiSelect.innerHTML = '<option value="">Semua Lokasi</option>';
     const lokasiSet = new Set();
     riwayatData.forEach(r => {
         if (r.lokasi) lokasiSet.add(r.lokasi);
@@ -64,6 +66,7 @@ function populateFilterDropdowns() {
 
     // Populate organisasi
     const orgSelect = document.getElementById('filterOrganisasi');
+    orgSelect.innerHTML = '<option value="">Semua Organisasi</option>';
     const orgSet = new Set();
     riwayatData.forEach(r => {
         if (r.organisasi) orgSet.add(r.organisasi);
@@ -143,7 +146,7 @@ async function loadRiwayatData() {
     loading.classList.remove('hidden');
 
     try {
-        const res = await supabaseFetch(await terapkanFilterLokasi('log_absensi?select=*&order=id.desc'), 'GET');
+        const res = await supabaseFetchAll(await terapkanFilterLokasi('log_absensi?select=*&order=id.desc'));
         if (res.status === "success") {
             riwayatData = res.data;
             populateFilterDropdowns();
@@ -295,32 +298,34 @@ function renderTabelRiwayat(data) {
     let html = '';
     data.forEach((r, idx) => {
         const noUrut = idx + 1;
-        // Escape data untuk atribut HTML (onclick)
-        const lokasiAmanAttr = r.lokasi ? r.lokasi.replace(/'/g, "\\'") : '';
-        const orgAmanAttr = r.organisasi ? r.organisasi.replace(/'/g, "\\'") : '';
-
-        // Escape data untuk tampilan teks (Mencegah XSS)
+        const idAttr = escapeAttribute(r.id);
+        const tanggalAttr = escapeAttribute(r.tanggal);
+        const sesiAttr = escapeAttribute(r.sesi);
+        const lokasiAttr = escapeAttribute(r.lokasi);
+        const orgAttr = escapeAttribute(r.organisasi);
+        const tanggalTampil = escapeHTML(r.tanggal);
+        const sesiTampil = escapeHTML(r.sesi);
         const namaTampil = escapeHTML(r.nama);
         const lokasiTampil = escapeHTML(r.lokasi);
         const orgTampil = escapeHTML(r.organisasi);
 
         html += `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                <td class="no-print px-4 py-3 text-center bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50">
-                    <input type="checkbox" class="log-checkbox w-4 h-4 accent-primary cursor-pointer" value="${r.id}" onchange="toggleBulkActionBanner()">
+                <td class="admin-only no-print px-4 py-3 text-center bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50">
+                    <input type="checkbox" class="log-checkbox w-4 h-4 accent-primary cursor-pointer" value="${idAttr}" onchange="toggleBulkActionBanner()">
                 </td>
                 <td class="px-4 py-3 text-center font-bold text-slate-400 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50">${noUrut}</td>
-                <td class="px-4 py-3 text-xs text-slate-500 font-mono">${r.tanggal || '-'}</td>
+                <td class="px-4 py-3 text-xs text-slate-500 font-mono">${tanggalTampil}</td>
                 <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">${namaTampil}</td>
-                <td class="px-4 py-3 font-bold ${r.sesi === 'Siang' ? 'text-orange-500' : 'text-indigo-600'}">${r.sesi}</td>
+                <td class="px-4 py-3 font-bold ${r.sesi === 'Siang' ? 'text-orange-500' : 'text-indigo-600'}">${sesiTampil}</td>
                 <td class="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs">${lokasiTampil}</td>
                 <td class="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs font-semibold">${orgTampil}</td>
-                <td class="no-print px-4 py-3 text-center">
+                <td class="admin-only no-print px-4 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
-                        <button onclick="bukaModalEditLog('${r.id}', '${r.tanggal}', '${r.sesi}', '${lokasiAmanAttr}', '${orgAmanAttr}')" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Edit">
+                        <button onclick="bukaModalEditLogDariTombol(this)" data-id="${idAttr}" data-tanggal="${tanggalAttr}" data-sesi="${sesiAttr}" data-lokasi="${lokasiAttr}" data-org="${orgAttr}" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Edit">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button>
-                        <button onclick="deleteSingleLog('${r.id}')" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Hapus">
+                        <button onclick="deleteSingleLogDariTombol(this)" data-id="${idAttr}" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Hapus">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
@@ -334,6 +339,16 @@ function renderTabelRiwayat(data) {
 // ==========================================
 // ZONA EDIT DATA RIWAYAT
 // ==========================================
+function bukaModalEditLogDariTombol(button) {
+    bukaModalEditLog(
+        button.dataset.id || '',
+        button.dataset.tanggal || '',
+        button.dataset.sesi || '',
+        button.dataset.lokasi || '',
+        button.dataset.org || ''
+    );
+}
+
 function bukaModalEditLog(id, tgl, sesi, lokasi, org) {
     document.getElementById('editLogId').value = id;
     document.getElementById('editLogTanggal').value = tgl;
@@ -349,6 +364,10 @@ function tutupModalEditLog() {
 }
 
 async function simpanEditLog() {
+    if (!userIsAdmin()) {
+        showToast("Hanya admin yang boleh mengubah riwayat.", "error");
+        return;
+    }
     const id = document.getElementById('editLogId').value;
     const tgl = document.getElementById('editLogTanggal').value;
     const sesi = document.getElementById('editLogSesi').value;
@@ -362,7 +381,7 @@ async function simpanEditLog() {
     const payload = { tanggal: tgl, sesi: sesi, lokasi: lokasi, organisasi: org };
 
     try {
-        const res = await supabaseFetch(`log_absensi?id=eq.${id}`, 'PATCH', payload);
+        const res = await supabaseFetch(`log_absensi?id=eq.${encodeURIComponent(id)}`, 'PATCH', payload);
         if (res.status === "success" || res.status === 204 || res.status === 201) {
             showToast("Riwayat absen berhasil diperbarui!", "success");
             tutupModalEditLog();
@@ -407,14 +426,20 @@ function toggleBulkActionBanner() {
 }
 
 async function deleteSingleLog(id) {
+    if (!userIsAdmin()) {
+        showToast("Hanya admin yang boleh menghapus riwayat.", "error");
+        return;
+    }
     if (!confirm("Hapus data absen ini secara permanen?")) return;
     let loading = showToast("Menghapus data...", "loading");
     try {
-        const res = await supabaseFetch(`log_absensi?id=eq.${id}`, 'DELETE');
+        const res = await supabaseFetch(`log_absensi?id=eq.${encodeURIComponent(id)}`, 'DELETE');
         loading.remove();
         if (res.status === "success" || res.status === 204 || res.status === 201) {
             showToast("Data absen berhasil dihapus!", "success");
             loadRiwayatData();
+        } else {
+            throw new Error(res.message || "Database menolak penghapusan");
         }
     } catch (err) {
         if (loading) loading.remove();
@@ -422,7 +447,15 @@ async function deleteSingleLog(id) {
     }
 }
 
+function deleteSingleLogDariTombol(button) {
+    deleteSingleLog(button.dataset.id || '');
+}
+
 async function deleteBulkLogs() {
+    if (!userIsAdmin()) {
+        showToast("Hanya admin yang boleh menghapus riwayat.", "error");
+        return;
+    }
     const checked = document.querySelectorAll('.log-checkbox:checked');
     if (checked.length === 0) return;
     const konfirmasi = confirm(`Yakin ingin menghapus ${checked.length} riwayat absen terpilih?`);
@@ -431,10 +464,15 @@ async function deleteBulkLogs() {
     let loading = showToast(`Menghapus ${checked.length} data...`, "loading");
     try {
         const ids = Array.from(checked).map(cb => cb.value);
-        const deletePromises = ids.map(id => supabaseFetch(`log_absensi?id=eq.${id}`, 'DELETE'));
-        await Promise.all(deletePromises);
+        const results = await Promise.all(ids.map(id => supabaseFetch(`log_absensi?id=eq.${encodeURIComponent(id)}`, 'DELETE')));
+        const berhasil = results.filter(r => r.status === 'success').length;
+        const gagal = results.length - berhasil;
         loading.remove();
-        showToast(`${checked.length} data berhasil dihapus!`, "success");
+        if (gagal > 0) {
+            showToast(`${berhasil} berhasil dihapus, ${gagal} gagal. Data dimuat ulang.`, "error");
+        } else {
+            showToast(`${berhasil} data berhasil dihapus!`, "success");
+        }
         loadRiwayatData();
     } catch (e) {
         loading.remove();

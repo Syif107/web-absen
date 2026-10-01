@@ -8,14 +8,16 @@ let currentPage = 1;
 let rowsPerPage = 50;
 let isNewestFilter = false;
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    const akses = await getAksesUser();
+    if (akses.role !== 'admin') return;
     loadMasterData();
 });
 
 // 1. Tarik Data Master Sekali di Awal
 async function loadMasterData() {
     try {
-        const res = await supabaseFetch('master_relawan?select=*', 'GET');
+        const res = await supabaseFetchAll('master_relawan?select=*&order=nip.asc');
         if (res.status === "success") {
             masterData = res.data;
             document.getElementById('totalMasterInfo').innerText = `Total: ${masterData.length} Relawan`;
@@ -128,12 +130,11 @@ function renderTabelMaster(data) {
     let html = '';
     dataPaginated.forEach((r, idx) => {
         const noUrut = startIndex + idx + 1;
-        // Escape data untuk atribut HTML (onclick)
-        const namaAmanAttr = r.nama ? r.nama.replace(/'/g, "\\'") : '';
-        const bidangAmanAttr = r.jabatan ? r.jabatan.replace(/'/g, "\\'") : '';
-        const orgAmanAttr = r.asal_organisasi ? r.asal_organisasi.replace(/'/g, "\\'") : '';
-        
-        // Escape data untuk tampilan teks (Mencegah XSS)
+        const nipAttr = escapeAttribute(r.nip);
+        const namaAttr = escapeAttribute(r.nama);
+        const bidangAttr = escapeAttribute(r.jabatan);
+        const orgAttr = escapeAttribute(r.asal_organisasi);
+        const nipTampil = escapeHTML(r.nip);
         const namaTampil = escapeHTML(r.nama);
         const orgTampil = escapeHTML(r.asal_organisasi);
         const bidangTampil = escapeHTML(r.jabatan);
@@ -141,22 +142,22 @@ function renderTabelMaster(data) {
         html += `
             <tr class="hover:bg-indigo-50/50 transition-colors">
                 <td class="px-4 py-3 text-center bg-slate-50 border-r border-slate-100">
-                    <input type="checkbox" class="master-checkbox w-4 h-4 accent-primary cursor-pointer" value="${r.nip}" onchange="toggleMasterBulkAction()">
+                    <input type="checkbox" class="master-checkbox w-4 h-4 accent-primary cursor-pointer" value="${nipAttr}" onchange="toggleMasterBulkAction()">
                 </td>
                 <td class="px-4 py-3 text-center text-slate-400 font-bold bg-slate-50 border-r border-slate-100">${noUrut}</td>
-                <td class="px-5 py-3 font-mono text-xs text-slate-500">${r.nip || '-'}</td>
+                <td class="px-5 py-3 font-mono text-xs text-slate-500">${nipTampil}</td>
                 <td class="px-5 py-3 font-bold text-slate-800">${namaTampil}</td>
                 <td class="px-5 py-3 text-slate-600 font-medium">${orgTampil}</td>
                 <td class="px-5 py-3 text-slate-600"><span class="bg-slate-100 px-2 py-1 rounded-md text-xs font-bold border border-slate-200">${bidangTampil}</span></td>
                 <td class="px-5 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
-                        <button onclick="bukaModalEdit('${r.nip}', '${namaAmanAttr}', '${bidangAmanAttr}', '${orgAmanAttr}')" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
+                        <button onclick="bukaModalEditDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" data-bidang="${bidangAttr}" data-org="${orgAttr}" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
                             <i class="fa-solid fa-pen-to-square"></i> Edit
                         </button>
-                        <button onclick="bukaModalMerge('${r.nip}', '${namaAmanAttr}')" class="bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-amber-200 shadow-sm flex items-center gap-1" title="Merge/Typo">
+                        <button onclick="bukaModalMergeDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" class="bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-amber-200 shadow-sm flex items-center gap-1" title="Merge/Typo">
                             <i class="fa-solid fa-code-merge"></i>
                         </button>
-                        <button onclick="deleteSingleMaster('${r.nip}', '${namaAmanAttr}')" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-200 shadow-sm flex items-center gap-1" title="Hapus">
+                        <button onclick="deleteSingleMasterDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-red-200 shadow-sm flex items-center gap-1" title="Hapus">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
@@ -222,10 +223,12 @@ function bukaExcelFilterMaster(columnKey, event) {
 
     uniqueValues.forEach(val => {
         const isChecked = currentSelected.length === 0 || currentSelected.includes(val) ? 'checked' : '';
+        const valueAttr = escapeAttribute(val);
+        const valueText = escapeHTML(val);
         html += `
             <label class="popup-item-label-master flex items-center gap-2 p-1 hover:bg-white dark:hover:bg-slate-600 rounded cursor-pointer text-xs">
-                <input type="checkbox" value="${val}" data-col="${columnKey}" class="excel-filter-chk-master w-3.5 h-3.5 accent-primary rounded shrink-0" ${isChecked} onchange="terapkanExcelFilterMaster()">
-                <span class="truncate text-slate-700 dark:text-slate-200 font-medium">${val}</span>
+                <input type="checkbox" value="${valueAttr}" data-col="${columnKey}" class="excel-filter-chk-master w-3.5 h-3.5 accent-primary rounded shrink-0" ${isChecked} onchange="terapkanExcelFilterMaster()">
+                <span class="truncate text-slate-700 dark:text-slate-200 font-medium">${valueText}</span>
             </label>
         `;
     });
@@ -325,11 +328,16 @@ async function deleteBulkMaster() {
     
     try {
         const nips = Array.from(checked).map(cb => cb.value);
-        const deletePromises = nips.map(nip => supabaseFetch(`master_relawan?nip=eq.${nip}`, 'DELETE'));
-        await Promise.all(deletePromises);
-        
+        const results = await Promise.all(nips.map(nip => supabaseFetch(`master_relawan?nip=eq.${encodeURIComponent(nip)}`, 'DELETE')));
+        const berhasil = results.filter(r => r.status === 'success').length;
+        const gagal = results.length - berhasil;
+
         loading.remove();
-        showToast(`${checked.length} data master berhasil dihapus!`, "success");
+        if (gagal > 0) {
+            showToast(`${berhasil} berhasil dihapus, ${gagal} gagal. Data dimuat ulang.`, "error");
+        } else {
+            showToast(`${berhasil} data master berhasil dihapus!`, "success");
+        }
         
         document.getElementById('checkAllMaster').checked = false;
         toggleMasterBulkAction();
@@ -340,13 +348,17 @@ async function deleteBulkMaster() {
     }
 }
 
+function deleteSingleMasterDariTombol(button) {
+    deleteSingleMaster(button.dataset.nip || '', button.dataset.nama || '');
+}
+
 async function deleteSingleMaster(nip, nama) {
     const konfirmasi = confirm(`⚠️ PERINGATAN HAPUS DATA\n\nApakah Anda yakin ingin menghapus personel "${nama}" (NIP: ${nip}) dari Master Data secara permanen?`);
     if (!konfirmasi) return;
 
     let loading = showToast("Menghapus data master...", "loading");
     try {
-        const res = await supabaseFetch(`master_relawan?nip=eq.${nip}`, 'DELETE');
+        const res = await supabaseFetch(`master_relawan?nip=eq.${encodeURIComponent(nip)}`, 'DELETE');
         loading.remove();
         
         if (res.status === "success" || res.status === 204 || res.status === 201) {
@@ -366,6 +378,15 @@ async function deleteSingleMaster(nip, nama) {
 // ------------------------------------------
 
 let currentEditNip = "";
+
+function bukaModalEditDariTombol(button) {
+    bukaModalEdit(
+        button.dataset.nip || '',
+        button.dataset.nama || '',
+        button.dataset.bidang || '',
+        button.dataset.org || ''
+    );
+}
 
 function bukaModalEdit(nip, nama, bidang, org) {
     currentEditNip = nip;
@@ -403,7 +424,7 @@ async function simpanEditMaster() {
     };
 
     try {
-        const res = await supabaseFetch(`master_relawan?nip=eq.${currentEditNip}`, 'PATCH', payloadUpdate);
+        const res = await supabaseFetch(`master_relawan?nip=eq.${encodeURIComponent(currentEditNip)}`, 'PATCH', payloadUpdate);
         
         if (res.status === "success" || res.status === 204 || res.status === 201) {
             showToast("Data profil berhasil diperbarui!", "success");
@@ -427,6 +448,10 @@ async function simpanEditMaster() {
 let currentSourceNip = "";
 let currentSourceName = "";
 
+function bukaModalMergeDariTombol(button) {
+    bukaModalMerge(button.dataset.nip || '', button.dataset.nama || '');
+}
+
 function siapkanDropdownMerge() {
     const list = document.getElementById('dropdownMergeList');
     if (!list) return;
@@ -435,13 +460,17 @@ function siapkanDropdownMerge() {
     const sortedMaster = [...masterData].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
     
     sortedMaster.forEach(r => {
-        const namaAman = r.nama ? r.nama.replace(/'/g, "\\'") : ''; 
-        const orgAman = r.asal_organisasi ? r.asal_organisasi.replace(/'/g, "\\'") : 'Umum';
+        const nipAttr = escapeAttribute(r.nip);
+        const namaAttr = escapeAttribute(r.nama);
+        const orgAttr = escapeAttribute(r.asal_organisasi || 'Umum');
+        const nipTampil = escapeHTML(r.nip);
+        const namaTampil = escapeHTML(r.nama);
+        const orgTampil = escapeHTML(r.asal_organisasi);
         
         html += `
-            <li onclick="pilihTargetMerge('${r.nip}', '${namaAman}', '${orgAman}')" class="merge-option px-4 py-3 hover:bg-amber-50 cursor-pointer border-b border-slate-100 last:border-0 transition-colors">
-                <p class="font-bold text-sm text-slate-800">${r.nama}</p>
-                <p class="text-[10px] text-slate-500 font-mono mt-0.5"><i class="fa-solid fa-sitemap mr-1"></i> ${r.asal_organisasi || '-'} | ${r.nip}</p>
+            <li onclick="pilihTargetMergeDariElemen(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" data-org="${orgAttr}" class="merge-option px-4 py-3 hover:bg-amber-50 cursor-pointer border-b border-slate-100 last:border-0 transition-colors">
+                <p class="font-bold text-sm text-slate-800">${namaTampil}</p>
+                <p class="text-[10px] text-slate-500 font-mono mt-0.5"><i class="fa-solid fa-sitemap mr-1"></i> ${orgTampil} | ${nipTampil}</p>
             </li>
         `;
     });
@@ -472,6 +501,14 @@ function toggleDropdownMerge(show) {
     if (!list) return;
     if (show) list.classList.remove('hidden');
     else list.classList.add('hidden');
+}
+
+function pilihTargetMergeDariElemen(element) {
+    pilihTargetMerge(
+        element.dataset.nip || '',
+        element.dataset.nama || '',
+        element.dataset.org || 'Umum'
+    );
 }
 
 function pilihTargetMerge(nip, nama, org) {
@@ -619,9 +656,44 @@ function handleFileCSV(event) {
     reader.readAsText(file);
 }
 
+function parseCSVRows(content) {
+    const rows = [];
+    let row = [];
+    let cell = '';
+    let quoted = false;
+    const text = String(content || '').replace(/^\uFEFF/, '');
+
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (ch === '"') {
+            if (quoted && text[i + 1] === '"') {
+                cell += '"';
+                i++;
+            } else {
+                quoted = !quoted;
+            }
+        } else if (ch === ',' && !quoted) {
+            row.push(cell.trim());
+            cell = '';
+        } else if ((ch === '\n' || ch === '\r') && !quoted) {
+            if (ch === '\r' && text[i + 1] === '\n') i++;
+            row.push(cell.trim());
+            if (row.some(value => value !== '')) rows.push(row);
+            row = [];
+            cell = '';
+        } else {
+            cell += ch;
+        }
+    }
+
+    row.push(cell.trim());
+    if (row.some(value => value !== '')) rows.push(row);
+    return rows;
+}
+
 function parseCSV(content) {
-    const lines = content.split('\n').filter(line => line.trim() !== '');
-    if (lines.length === 0) {
+    const rows = parseCSVRows(content);
+    if (rows.length === 0) {
         showToast("File CSV kosong!", "error");
         return;
     }
@@ -629,13 +701,13 @@ function parseCSV(content) {
     importCSVData = [];
     let startIndex = 0;
     
-    const firstLine = lines[0].toLowerCase();
+    const firstLine = rows[0].join(',').toLowerCase();
     if (firstLine.includes('nama') || firstLine.includes('name') || firstLine.includes('nip') || firstLine.includes('jabatan') || firstLine.includes('organisasi')) {
         startIndex = 1;
     }
     
-    for (let i = startIndex; i < lines.length; i++) {
-        const cols = lines[i].split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+    for (let i = startIndex; i < rows.length; i++) {
+        const cols = rows[i].map(c => c.trim());
         
         if (cols.length < 2) continue;
         
@@ -726,24 +798,44 @@ async function submitImportCSV() {
     
     try {
         if (newData.length > 0) {
-            const batchSize = 50;
-            for (let i = 0; i < newData.length; i += batchSize) {
-                const batch = newData.slice(i, i + batchSize).map(d => ({
+            const rows = newData.map(d => ({
                     nip: d.nip,
                     nama: d.nama,
                     jabatan: d.jabatan,
                     asal_organisasi: d.asal_organisasi
                 }));
-                await supabaseFetch('master_relawan', 'POST', batch);
+            let inserted = 0;
+            let skipped = 0;
+
+            if (FASE5_ENABLED) {
+                const res = await callSupabaseRpc('import_master_batch', { p_rows: rows });
+                if (res.status !== 'success') {
+                    throw new Error(res.message || 'Database menolak import Master Data');
+                }
+                inserted = res.inserted != null ? res.inserted : 0;
+                skipped = res.skipped != null ? res.skipped : 0;
+            } else {
+                // Kompatibel dengan database lama. Setiap batch diverifikasi,
+                // tetapi keseluruhan import belum menjadi satu transaksi.
+                const batchSize = 50;
+                for (let i = 0; i < rows.length; i += batchSize) {
+                    const batch = rows.slice(i, i + batchSize);
+                    const res = await supabaseFetch('master_relawan', 'POST', batch);
+                    if (res.status !== 'success') {
+                        throw new Error(`Import berhenti setelah ${inserted} data tersimpan. ${res.message || 'Database menolak batch berikutnya.'}`);
+                    }
+                    inserted += batch.length;
+                }
             }
+            showToast(`${inserted} data baru berhasil diimport${skipped ? `, ${skipped} dilewati` : ''}.`, "success");
+        } else {
+            showToast("Tidak ada data baru untuk diimport.", "info");
         }
-        
-        showToast(`${newData.length} data baru berhasil diimport!`, "success");
         tutupModalImportCSV();
         loadMasterData();
         
     } catch (err) {
-        showToast("Gagal mengimport data. Silakan coba lagi.", "error");
+        showToast(err.message || "Gagal mengimport data. Silakan coba lagi.", "error");
         console.error("Import Error:", err);
     } finally {
         btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Import ke Database';

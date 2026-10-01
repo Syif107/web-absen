@@ -21,7 +21,7 @@ async function loadKalenderData() {
     loading.classList.remove('hidden');
 
     try {
-        const res = await supabaseFetch(await terapkanFilterLokasi('log_absensi?select=*&order=tanggal.asc'), 'GET');
+        const res = await supabaseFetchAll(await terapkanFilterLokasi('log_absensi?select=*&order=tanggal.asc,id.asc'));
         if (res.status === "success") {
             allLogData = res.data;
             populateLocationFilter();

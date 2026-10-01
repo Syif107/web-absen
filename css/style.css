@@ -175,6 +175,12 @@ input[type="text"], textarea {
 .dark header { background-color: #0f172a !important; }
 .dark #mobileOverlay { background-color: rgba(0,0,0,0.7) !important; }
 
+/* Hak kelola hanya terlihat untuk admin saat mode multi-user aktif. */
+html[data-user-role="koordinator"] .admin-only,
+html[data-user-role="blocked"] .admin-only {
+    display: none !important;
+}
+
 /* --- Riwayat Page: Summary Cards --- */
 .summary-card {
     transition: all 0.2s ease;
