@@ -63,9 +63,22 @@
             <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
                 <div class="p-4 border-b border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div class="relative md:col-span-2"><i class="fa-solid fa-search absolute left-3 top-3 text-slate-400 text-sm"></i><input id="cariPeringkat" oninput="renderPeringkat()" type="text" placeholder="Cari nama, NIP, organisasi, atau daerah..." class="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm outline-none focus:border-primary"></div>
-                    <select id="filterKategoriPeringkat" onchange="renderPeringkat()" class="px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-bold outline-none"><option value="khususul_khusus">5 Proyek Khususul Khusus</option><option value="lainnya">Proyek Lainnya</option></select>
+                    <select id="filterProyekPeringkat" onchange="renderPeringkat()" class="px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-bold outline-none" aria-label="Filter proyek peringkat">
+                        <option value="semua">Semua Proyek</option>
+                        <option value="khususul_khusus">5 Proyek Khususul Khusus (gabungan)</option>
+                        <option value="lainnya">Semua Proyek Lainnya</option>
+                        <optgroup label="5 Proyek Khususul Khusus">
+                            <option value="proyek:Perpustakaan Tashawwuf">Perpustakaan Tashawwuf</option>
+                            <option value="proyek:Masjid Raya Fatchan Mubiina Chaddun 'Adhiim">Masjid Raya Fatchan Mubiina Chaddun 'Adhiim</option>
+                            <option value="proyek:Monumen Semboyan Sang Mursyid">Monumen Semboyan Sang Mursyid</option>
+                            <option value="proyek:Kanal Ta'at">Kanal Ta'at</option>
+                            <option value="proyek:Gapura Syukur">Gapura Syukur</option>
+                        </optgroup>
+                        <optgroup id="opsiLainnyaPeringkat" label="Proyek Lainnya"></optgroup>
+                    </select>
                     <select id="filterStatusPeringkat" onchange="renderPeringkat()" class="px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-bold outline-none"><option value="semua">Semua Status</option><option value="memenuhi">Memenuhi Syarat</option><option value="belum">Belum Memenuhi</option><option value="mendekati">30–39 Hari</option></select>
                 </div>
+                <p class="px-4 pb-3 text-[11px] text-slate-500 dark:text-slate-400">Filter proyek hanya menyaring personel yang pernah hadir di proyek tersebut. Target kelayakan tetap dihitung kumulatif per kelompok: 5 Proyek Khususul Khusus atau Proyek Lainnya.</p>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm min-w-[1050px]">
                         <thead class="bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 text-[10px] uppercase tracking-wide"><tr><th class="px-4 py-3 text-center">Rank</th><th class="px-4 py-3">Personel</th><th class="px-4 py-3">Wilayah</th><th class="px-4 py-3">Hari / Target</th><th class="px-4 py-3">Sesi</th><th class="px-4 py-3">Indeks</th><th class="px-4 py-3">Konsistensi</th><th class="px-4 py-3">Status</th><th class="px-4 py-3 text-center">Aksi</th></tr></thead>

@@ -7,6 +7,7 @@ let filteredData = []; // Menyimpan data setelah difilter/search
 let currentPage = 1;
 let rowsPerPage = 50;
 let isNewestFilter = false;
+let masterSortMode = 'nama';
 
 document.addEventListener("DOMContentLoaded", async () => {
     const akses = await getAksesUser();
@@ -17,13 +18,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 // 1. Tarik Data Master Sekali di Awal
 async function loadMasterData() {
     try {
-        const res = await supabaseFetchAll('master_relawan?select=*&order=nip.asc');
-        if (res.status === "success") {
-            masterData = res.data;
+        const [res, ringkasanRes] = await Promise.all([
+            supabaseFetchAll('master_relawan?select=*&order=nip.asc'),
+            supabaseFetchAll('v_ringkasan_personel?select=*&order=nama.asc')
+        ]);
+        if (ringkasanRes.status === "success") {
+            masterData = Array.isArray(ringkasanRes.data) ? ringkasanRes.data : [];
+            renderRingkasanMaster();
             document.getElementById('totalMasterInfo').innerText = `Total: ${masterData.length} Relawan`;
             
             terapkanFilterDanPaginasi();
             siapkanDropdownMerge(); 
+        } else if (res.status === "success") {
+            masterData = res.data || [];
+            renderRingkasanMaster();
+            document.getElementById('totalMasterInfo').innerText = `Total: ${masterData.length} Relawan`;
+            terapkanFilterDanPaginasi();
+            siapkanDropdownMerge();
         } else {
             showToast("Gagal mengambil data master.", "error");
         }
@@ -90,9 +101,11 @@ function terapkanFilterDanPaginasi() {
             filteredData = [...masterData].reverse();
         } else {
             filteredData.sort((a, b) => {
-                let namaA = a.nama || '';
-                let namaB = b.nama || '';
-                return namaA.localeCompare(namaB);
+                if (masterSortMode === 'total_hari') return Number(b.total_hari || 0) - Number(a.total_hari || 0) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
+                if (masterSortMode === 'persentase_hari') return Number(b.persentase_hari || 0) - Number(a.persentase_hari || 0) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
+                if (masterSortMode === 'hadir_pertama') return String(a.hadir_pertama || '9999-12-31').localeCompare(String(b.hadir_pertama || '9999-12-31')) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
+                if (masterSortMode === 'nip') return String(a.nip || '').localeCompare(String(b.nip || ''), 'id');
+                return String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
             });
         }
     }
@@ -114,7 +127,7 @@ function renderTabelMaster(data) {
     const btnNext = document.getElementById('btnNext');
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center p-8 text-slate-400 font-medium">Data tidak ditemukan.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center p-8 text-slate-400 font-medium">Data tidak ditemukan.</td></tr>';
         info.innerText = "Menampilkan 0 data";
         btnPrev.disabled = true;
         btnNext.disabled = true;
@@ -169,6 +182,9 @@ function renderTabelMaster(data) {
                 <td class="px-5 py-3 text-slate-600 font-medium">${orgTampil}</td>
                 <td class="px-5 py-3 text-slate-600"><span class="bg-slate-100 px-2 py-1 rounded-md text-xs font-bold border border-slate-200">${bidangTampil}</span></td>
                 <td class="px-5 py-3"><span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black ${warnaWilayah}">${escapeHTML(labelWilayah)}</span><p class="text-[10px] text-slate-400 mt-1">${daerahTampil}</p></td>
+                <td class="px-5 py-3 text-center"><p class="font-black text-slate-700">${Number(r.total_hari || 0).toLocaleString('id-ID')} hari</p><p class="text-[10px] text-slate-400">${Number(r.total_sesi || 0).toLocaleString('id-ID')} sesi • ${Number(r.jumlah_proyek || 0)} proyek</p></td>
+                <td class="px-5 py-3 text-center"><p class="font-black text-indigo-600">${Number(r.persentase_hari || 0).toFixed(1)}%</p><p class="text-[10px] text-slate-400">${Number(r.persentase_sesi || 0).toFixed(1)}% sesi</p></td>
+                <td class="px-5 py-3 text-xs text-slate-500">${r.hadir_pertama ? formatTanggalMaster(r.hadir_pertama) : '-'}<p class="text-[10px] text-slate-400 mt-1">Terakhir: ${r.hadir_terakhir ? formatTanggalMaster(r.hadir_terakhir) : '-'}</p></td>
                 <td class="px-5 py-3 font-black text-center">${ukuranTampil}</td>
                 <td class="px-5 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
@@ -191,6 +207,12 @@ function renderTabelMaster(data) {
     info.innerText = `Baris ${startIndex + 1}-${endIndex} dari ${data.length.toLocaleString('id-ID')} Data (Hal ${currentPage}/${totalPages})`;
     btnPrev.disabled = currentPage === 1;
     btnNext.disabled = currentPage === totalPages;
+}
+
+function formatTanggalMaster(value) {
+    if (!value) return '-';
+    const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 // ==========================================
@@ -367,6 +389,29 @@ async function deleteBulkMaster() {
         loading.remove();
         showToast("Gagal menghapus beberapa data.", "error");
     }
+}
+
+function renderRingkasanMaster() {
+    const countWilayah = key => masterData.filter(row => (row.kategori_wilayah || 'belum_dilengkapi') === key).length;
+    const values = {
+        ringkasanMasterGlobal: masterData.length,
+        ringkasanMasterJombang: countWilayah('jombang'),
+        ringkasanMasterLuarJombang: countWilayah('luar_jombang'),
+        ringkasanMasterZona4: countWilayah('zona_4'),
+        ringkasanMasterBelum: countWilayah('belum_dilengkapi')
+    };
+    Object.entries(values).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = Number(value).toLocaleString('id-ID');
+    });
+}
+
+function ubahUrutanMaster() {
+    masterSortMode = document.getElementById('sortMaster')?.value || 'nama';
+    activeSortColumn = '';
+    activeSortDirection = 'asc';
+    currentPage = 1;
+    terapkanFilterDanPaginasi();
 }
 
 function deleteSingleMasterDariTombol(button) {

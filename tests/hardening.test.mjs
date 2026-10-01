@@ -164,6 +164,29 @@ test('migrasi fase 6 aman, dapat diulang, dan memisahkan dua kategori ranking', 
     assert.match(source, /WHEN l\.sesi = 'Siang' THEN 'Pagi'/);
 });
 
+test('fase 7 menyediakan rincian proyek, ringkasan direktori, dan peringatan absen lama', () => {
+    const source = read('db/fase7_operasional_optimasi.sql');
+    const peringkat = read('js/peringkat.js');
+    const seragam = read('js/seragam.js');
+    const master = read('js/master.js');
+    const masterHtml = read('master.html');
+
+    assert.match(source, /CREATE OR REPLACE VIEW public\.v_kehadiran_proyek_personel/);
+    assert.match(source, /CREATE OR REPLACE VIEW public\.v_ringkasan_personel/);
+    assert.match(source, /CREATE OR REPLACE VIEW public\.v_status_seragam_operasional/);
+    assert.match(source, /tidak_hadir_30_hari/);
+    assert.match(peringkat, /filterProyekPeringkat/);
+    assert.match(peringkat, /v_kehadiran_proyek_personel/);
+    assert.match(seragam, /v_status_seragam_operasional/);
+    assert.match(seragam, /kpiSeragamAbsenLama/);
+    assert.match(seragam, /filterProyekSeragam/);
+    assert.match(master, /v_ringkasan_personel/);
+    assert.match(master, /ubahUrutanMaster/);
+    assert.match(masterHtml, /ringkasanMasterGlobal/);
+    assert.match(masterHtml, /Kehadiran terbanyak/);
+    assert.match(masterHtml, /Persentase hadir/);
+});
+
 test('input menggunakan Pagi dan nama baku lima proyek', () => {
     const html = read('input.html');
     const source = read('js/input.js');

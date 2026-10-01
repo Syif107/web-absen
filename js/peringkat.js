@@ -3,6 +3,15 @@
 // ================================================================
 
 let semuaPeringkat = [];
+let kehadiranProyekPeringkat = [];
+
+const PROYEK_KHUSUS_PERINGKAT = [
+    'Perpustakaan Tashawwuf',
+    "Masjid Raya Fatchan Mubiina Chaddun 'Adhiim",
+    'Monumen Semboyan Sang Mursyid',
+    "Kanal Ta'at",
+    'Gapura Syukur'
+];
 
 document.addEventListener('DOMContentLoaded', loadPeringkat);
 
@@ -13,15 +22,20 @@ async function loadPeringkat() {
     if (errorBox) errorBox.classList.add('hidden');
 
     try {
-        const res = await supabaseFetchAll('v_peringkat_personel?select=*&order=kategori.asc,memenuhi_syarat.desc,peringkat.asc.nullslast,indeks_keaktifan.desc');
-        if (res.status !== 'success') throw new Error(res.message || 'Gagal membaca view peringkat');
+        const [res, proyekRes] = await Promise.all([
+            supabaseFetchAll('v_peringkat_personel?select=*&order=kategori.asc,memenuhi_syarat.desc,peringkat.asc.nullslast,indeks_keaktifan.desc'),
+            supabaseFetchAll('v_kehadiran_proyek_personel?select=*&order=kategori.asc,nama_proyek.asc')
+        ]);
+        if (res.status !== 'success' || proyekRes.status !== 'success') throw new Error(res.message || proyekRes.message || 'Gagal membaca rincian peringkat');
         semuaPeringkat = Array.isArray(res.data) ? res.data : [];
+        kehadiranProyekPeringkat = Array.isArray(proyekRes.data) ? proyekRes.data : [];
+        siapkanFilterProyekPeringkat();
         renderKpiPeringkat();
         renderPeringkat();
     } catch (error) {
         console.error('Peringkat:', error);
         if (errorBox) {
-            errorBox.textContent = 'Fitur peringkat belum dapat dibaca. Pastikan migrasi Fase 6 sudah diterapkan di database, lalu muat ulang halaman.';
+            errorBox.textContent = 'Fitur peringkat belum dapat dibaca. Pastikan migrasi Fase 6 dan Fase 7 sudah diterapkan di database, lalu muat ulang halaman.';
             errorBox.classList.remove('hidden');
         }
         if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center text-red-500 font-bold">Data peringkat belum tersedia.</td></tr>';
@@ -70,14 +84,53 @@ function warnaAktif(tingkat) {
     return 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
 }
 
+function siapkanFilterProyekPeringkat() {
+    const select = document.getElementById('filterProyekPeringkat');
+    const group = document.getElementById('opsiLainnyaPeringkat');
+    if (!select || !group) return;
+    const selected = select.value || 'semua';
+    const names = [...new Set(kehadiranProyekPeringkat
+        .filter(row => row.kategori === 'lainnya' && row.nama_proyek)
+        .map(row => row.nama_proyek))]
+        .filter(name => !PROYEK_KHUSUS_PERINGKAT.includes(name))
+        .sort((a, b) => a.localeCompare(b, 'id'));
+    group.innerHTML = names.map(name => `<option value="${escapeAttribute(`proyek:${name}`)}">${escapeHTML(name)}</option>`).join('');
+    if ([...select.options].some(option => option.value === selected)) select.value = selected;
+}
+
+function labelFilterProyekPeringkat(value) {
+    if (value === 'semua') return 'Semua Proyek';
+    if (value === 'khususul_khusus') return '5 Proyek Khususul Khusus';
+    if (value === 'lainnya') return 'Semua Proyek Lainnya';
+    return String(value || '').replace(/^proyek:/, '');
+}
+
+function cocokFilterProyekPeringkat(row, value) {
+    if (!value || value === 'semua') return true;
+    if (value === 'khususul_khusus' || value === 'lainnya') return row.kategori === value;
+    if (!value.startsWith('proyek:')) return true;
+    const namaProyek = value.slice('proyek:'.length);
+    return kehadiranProyekPeringkat.some(proyek =>
+        proyek.nip === row.nip && proyek.kategori === row.kategori && proyek.nama_proyek === namaProyek
+    );
+}
+
+function statistikProyekPeringkat(row, value) {
+    if (!value || !value.startsWith('proyek:')) return null;
+    const namaProyek = value.slice('proyek:'.length);
+    return kehadiranProyekPeringkat.find(proyek =>
+        proyek.nip === row.nip && proyek.kategori === row.kategori && proyek.nama_proyek === namaProyek
+    ) || null;
+}
+
 function renderPeringkat() {
     const tbody = document.getElementById('tabelPeringkat');
     if (!tbody) return;
-    const kategori = document.getElementById('filterKategoriPeringkat')?.value || 'khususul_khusus';
+    const proyekFilter = document.getElementById('filterProyekPeringkat')?.value || 'semua';
     const status = document.getElementById('filterStatusPeringkat')?.value || 'semua';
     const keyword = (document.getElementById('cariPeringkat')?.value || '').trim().toLowerCase();
 
-    let rows = semuaPeringkat.filter(r => r.kategori === kategori);
+    let rows = semuaPeringkat.filter(r => cocokFilterProyekPeringkat(r, proyekFilter));
     if (status === 'memenuhi') rows = rows.filter(r => r.memenuhi_syarat);
     if (status === 'belum') rows = rows.filter(r => !r.memenuhi_syarat);
     if (status === 'mendekati') rows = rows.filter(r => !r.memenuhi_syarat && Number(r.total_hari) >= 30 && Number(r.total_hari) < 40);
@@ -98,6 +151,7 @@ function renderPeringkat() {
     }
 
     tbody.innerHTML = rows.map(r => {
+        const statistikProyek = statistikProyekPeringkat(r, proyekFilter);
         const target = r.kategori_wilayah === 'zona_4' ? 1 : 40;
         const progress = Math.min(100, Math.round(100 * Number(r.total_hari || 0) / target));
         const rank = r.memenuhi_syarat ? `#${Number(r.peringkat || 0)}` : '—';
@@ -109,16 +163,16 @@ function renderPeringkat() {
             <td class="px-4 py-3 text-center font-black text-lg ${r.memenuhi_syarat ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-300 dark:text-slate-600'}">${rank}</td>
             <td class="px-4 py-3"><p class="font-extrabold text-slate-800 dark:text-slate-100">${escapeHTML(r.nama)}</p><p class="text-[10px] text-slate-400 font-mono mt-0.5">${escapeHTML(r.nip)} • ${escapeHTML(r.asal_organisasi)}</p></td>
             <td class="px-4 py-3"><p class="font-bold text-xs ${wilayahClass}">${escapeHTML(labelWilayah(r.kategori_wilayah))}</p><p class="text-[10px] text-slate-400 mt-0.5">${escapeHTML(r.asal_daerah || 'Daerah belum diisi')}</p></td>
-            <td class="px-4 py-3 min-w-[140px]"><div class="flex justify-between text-xs font-bold mb-1"><span>${Number(r.total_hari || 0)} hari</span><span>${target} hari</span></div><div class="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden"><div class="h-full ${r.memenuhi_syarat ? 'bg-emerald-500' : 'bg-indigo-500'}" style="width:${progress}%"></div></div></td>
+            <td class="px-4 py-3 min-w-[140px]"><div class="flex justify-between text-xs font-bold mb-1"><span>${Number(r.total_hari || 0)} hari kumulatif</span><span>${target} hari</span></div><div class="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden"><div class="h-full ${r.memenuhi_syarat ? 'bg-emerald-500' : 'bg-indigo-500'}" style="width:${progress}%"></div></div>${statistikProyek ? `<p class="text-[10px] text-slate-400 mt-1">${Number(statistikProyek.total_hari_proyek || 0)} hari di proyek terpilih</p>` : ''}</td>
             <td class="px-4 py-3"><p class="font-black">${Number(r.total_sesi || 0)}</p><p class="text-[10px] text-slate-400">${Number(r.persentase_sesi_90 || 0).toFixed(1)}% / 90 hari</p></td>
             <td class="px-4 py-3"><p class="font-black text-lg">${Number(r.indeks_keaktifan || 0).toFixed(1)}</p><span class="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black ${warnaAktif(r.tingkat_keaktifan)}">${escapeHTML(r.tingkat_keaktifan)}</span></td>
             <td class="px-4 py-3 text-xs"><p><strong>${Number(r.streak_terpanjang || 0)}</strong> hari terpanjang</p><p class="text-slate-400 mt-1"><strong>${Number(r.minggu_aktif_12 || 0)}</strong> minggu aktif</p></td>
             <td class="px-4 py-3">${statusHtml}<p class="text-[10px] text-slate-400 mt-1">${r.tanggal_memenuhi ? formatTanggal(r.tanggal_memenuhi) : `${Math.max(0, 40 - Number(r.total_hari || 0))} hari lagi`}</p></td>
-            <td class="px-4 py-3 text-center whitespace-nowrap"><button data-nip="${escapeAttribute(r.nip)}" onclick="bukaDetailPeringkatDariTombol(this)" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary" title="Lihat rincian"><i class="fa-solid fa-eye"></i></button><a href="seragam.html?nip=${encodeURIComponent(r.nip)}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-200 ml-1" title="Kelola seragam"><i class="fa-solid fa-shirt"></i></a></td>
+            <td class="px-4 py-3 text-center whitespace-nowrap"><button data-nip="${escapeAttribute(r.nip)}" data-kategori="${escapeAttribute(r.kategori)}" onclick="bukaDetailPeringkatDariTombol(this)" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary" title="Lihat rincian"><i class="fa-solid fa-eye"></i></button><a href="seragam.html?nip=${encodeURIComponent(r.nip)}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-200 ml-1" title="Kelola seragam"><i class="fa-solid fa-shirt"></i></a></td>
         </tr>`;
     }).join('');
 
-    document.getElementById('infoPeringkat').textContent = `${rows.length.toLocaleString('id-ID')} personel • ${labelKategori(kategori)}`;
+    document.getElementById('infoPeringkat').textContent = `${rows.length.toLocaleString('id-ID')} personel • ${labelFilterProyekPeringkat(proyekFilter)}`;
 }
 
 function formatTanggal(value) {
@@ -129,11 +183,12 @@ function formatTanggal(value) {
 
 function bukaDetailPeringkatDariTombol(button) {
     const nip = button.dataset.nip || '';
-    const kategori = document.getElementById('filterKategoriPeringkat')?.value || 'khususul_khusus';
-    const r = semuaPeringkat.find(item => item.nip === nip && item.kategori === kategori);
+    const kategoriBaris = button.dataset.kategori || '';
+    const proyekFilter = document.getElementById('filterProyekPeringkat')?.value || 'semua';
+    const r = semuaPeringkat.find(item => item.nip === nip && (!kategoriBaris || item.kategori === kategoriBaris) && cocokFilterProyekPeringkat(item, proyekFilter));
     if (!r) return;
     document.getElementById('detailNama').textContent = r.nama || '-';
-    document.getElementById('detailSub').textContent = `${r.nip || '-'} • ${labelKategori(r.kategori)}`;
+    document.getElementById('detailSub').textContent = `${r.nip || '-'} • ${labelKategori(r.kategori)} • ${labelFilterProyekPeringkat(proyekFilter)}`;
     const items = [
         ['Total hari unik', `${Number(r.total_hari || 0)} hari`],
         ['Total sesi', `${Number(r.total_sesi || 0)} sesi`],

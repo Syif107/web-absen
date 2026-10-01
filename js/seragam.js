@@ -5,8 +5,17 @@
 let dataStatusSeragam = [];
 let dataStokSeragam = [];
 let dataPenerimaTersimpan = [];
+let kehadiranProyekSeragam = [];
 let nipSeragamAktif = '';
 let parameterSeragamSudahDibuka = false;
+
+const PROYEK_KHUSUS_SERAGAM = [
+    'Perpustakaan Tashawwuf',
+    "Masjid Raya Fatchan Mubiina Chaddun 'Adhiim",
+    'Monumen Semboyan Sang Mursyid',
+    "Kanal Ta'at",
+    'Gapura Syukur'
+];
 
 const LABEL_PROSES = {
     belum_memenuhi: 'Belum memenuhi', memenuhi_syarat: 'Memenuhi syarat',
@@ -29,17 +38,20 @@ async function loadSeragam() {
     if (errorBox) errorBox.classList.add('hidden');
 
     try {
-        const [statusRes, stokRes, penerimaRes] = await Promise.all([
-            supabaseFetchAll('v_status_seragam?select=*&order=memenuhi_syarat.desc,peringkat.asc.nullslast,nama.asc'),
+        const [statusRes, stokRes, penerimaRes, proyekRes] = await Promise.all([
+            supabaseFetchAll('v_status_seragam_operasional?select=*&order=memenuhi_syarat.desc,peringkat.asc.nullslast,nama.asc'),
             supabaseFetchAll('stok_seragam?select=*&order=ukuran.asc'),
-            supabaseFetchAll('seragam_penerima?select=*&order=updated_at.desc')
+            supabaseFetchAll('seragam_penerima?select=*&order=updated_at.desc'),
+            supabaseFetchAll('v_kehadiran_proyek_personel?select=*&order=kategori.asc,nama_proyek.asc')
         ]);
-        if (statusRes.status !== 'success' || stokRes.status !== 'success' || penerimaRes.status !== 'success') {
-            throw new Error(statusRes.message || stokRes.message || penerimaRes.message || 'Gagal membaca data seragam');
+        if (statusRes.status !== 'success' || stokRes.status !== 'success' || penerimaRes.status !== 'success' || proyekRes.status !== 'success') {
+            throw new Error(statusRes.message || stokRes.message || penerimaRes.message || proyekRes.message || 'Gagal membaca data seragam');
         }
         dataStatusSeragam = statusRes.data || [];
         dataStokSeragam = stokRes.data || [];
         dataPenerimaTersimpan = penerimaRes.data || [];
+        kehadiranProyekSeragam = proyekRes.data || [];
+        siapkanFilterProyekSeragam();
         renderKpiSeragam();
         renderSeragam();
         tampilkanNotifikasiSeragam();
@@ -47,7 +59,7 @@ async function loadSeragam() {
     } catch (error) {
         console.error('Kontrol Seragam:', error);
         if (errorBox) {
-            errorBox.textContent = 'Fitur seragam belum dapat dibaca. Pastikan migrasi Fase 6 sudah diterapkan di database, lalu muat ulang halaman.';
+            errorBox.textContent = 'Fitur seragam belum dapat dibaca. Pastikan migrasi Fase 6 dan Fase 7 sudah diterapkan di database, lalu muat ulang halaman.';
             errorBox.classList.remove('hidden');
         }
         if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="p-10 text-center text-red-500 font-bold">Data seragam belum tersedia.</td></tr>';
@@ -64,15 +76,57 @@ function renderKpiSeragam() {
     setKpi('kpiSeragamSelesai', uniqueNip(dataStatusSeragam.filter(r => r.status_proses === 'sudah_diserahkan')));
     setKpi('kpiSeragamTitip', uniqueNip(dataStatusSeragam.filter(r => r.status_penguasaan === 'dititipkan_kantor')));
     setKpi('kpiSeragamKembali', uniqueNip(dataStatusSeragam.filter(r => r.status_penguasaan === 'perlu_diserahkan_kembali')));
+    setKpi('kpiSeragamAbsenLama', uniqueNip(dataStatusSeragam.filter(r => r.tidak_hadir_30_hari)));
 }
 
 function tampilkanNotifikasiSeragam() {
     const alerts = dataStatusSeragam.filter(r => r.notifikasi_pengembalian || r.status_penguasaan === 'perlu_diserahkan_kembali');
     const box = document.getElementById('notifikasiSeragam');
-    if (!box) return;
-    if (!alerts.length) { box.classList.add('hidden'); return; }
-    document.getElementById('notifikasiSeragamText').textContent = `${alerts.length} personel luar Jombang kembali hadir saat seragamnya masih tercatat dititipkan di kantor. Buka data personel tersebut dan ubah menjadi “Dipegang personel” setelah seragam diserahkan kembali.`;
-    box.classList.remove('hidden');
+    if (box) {
+        if (!alerts.length) box.classList.add('hidden');
+        else {
+            document.getElementById('notifikasiSeragamText').textContent = `${alerts.length} personel luar Jombang kembali hadir saat seragamnya masih tercatat dititipkan di kantor. Buka data personel tersebut dan ubah menjadi “Dipegang personel” setelah seragam diserahkan kembali.`;
+            box.classList.remove('hidden');
+        }
+    }
+    const absenLama = dataStatusSeragam.filter(r => r.tidak_hadir_30_hari);
+    const absenBox = document.getElementById('notifikasiAbsenLama');
+    if (absenBox) {
+        if (!absenLama.length) absenBox.classList.add('hidden');
+        else {
+            document.getElementById('notifikasiAbsenLamaText').textContent = `${absenLama.length} penerima tercatat sudah menerima seragam, tetapi tidak memiliki kehadiran selama lebih dari 30 hari. Periksa status keberadaan dan hubungi petugas wilayah bila perlu.`;
+            absenBox.classList.remove('hidden');
+        }
+    }
+}
+
+function siapkanFilterProyekSeragam() {
+    const select = document.getElementById('filterProyekSeragam');
+    const group = document.getElementById('opsiLainnyaSeragam');
+    if (!select || !group) return;
+    const selected = select.value || 'semua';
+    const names = [...new Set(kehadiranProyekSeragam
+        .filter(row => row.kategori === 'lainnya' && row.nama_proyek)
+        .map(row => row.nama_proyek))]
+        .filter(name => !PROYEK_KHUSUS_SERAGAM.includes(name))
+        .sort((a, b) => a.localeCompare(b, 'id'));
+    group.innerHTML = names.map(name => `<option value="${escapeAttribute(`proyek:${name}`)}">${escapeHTML(name)}</option>`).join('');
+    if ([...select.options].some(option => option.value === selected)) select.value = selected;
+}
+
+function labelFilterProyekSeragam(value) {
+    if (value === 'semua') return 'Semua Proyek';
+    if (value === 'khususul_khusus') return '5 Proyek Khususul Khusus';
+    if (value === 'lainnya') return 'Semua Proyek Lainnya';
+    return String(value || '').replace(/^proyek:/, '');
+}
+
+function cocokFilterProyekSeragam(row, value) {
+    if (!value || value === 'semua') return true;
+    if (value === 'khususul_khusus' || value === 'lainnya') return row.jalur_kelayakan === value || kehadiranProyekSeragam.some(proyek => proyek.nip === row.nip && proyek.kategori === value);
+    if (!value.startsWith('proyek:')) return true;
+    const namaProyek = value.slice('proyek:'.length);
+    return kehadiranProyekSeragam.some(proyek => proyek.nip === row.nip && proyek.nama_proyek === namaProyek);
 }
 
 function warnaProses(status) {
@@ -95,14 +149,17 @@ function renderSeragam() {
     if (!tbody) return;
     const proses = document.getElementById('filterProsesSeragam')?.value || 'semua';
     const penguasaan = document.getElementById('filterPenguasaanSeragam')?.value || 'semua';
+    const proyekFilter = document.getElementById('filterProyekSeragam')?.value || 'semua';
     const keyword = (document.getElementById('cariSeragam')?.value || '').trim().toLowerCase();
     let rows = [...dataStatusSeragam];
+    rows = rows.filter(r => cocokFilterProyekSeragam(r, proyekFilter));
     if (proses !== 'semua') rows = rows.filter(r => r.status_proses === proses);
     if (penguasaan !== 'semua') rows = rows.filter(r => r.status_penguasaan === penguasaan);
     if (keyword) rows = rows.filter(r => [r.nama,r.nip,r.asal_daerah,r.asal_organisasi,r.ukuran_dibutuhkan,r.kode_seragam].some(v => String(v || '').toLowerCase().includes(keyword)));
 
     rows.sort((a, b) => {
         if (Boolean(a.notifikasi_pengembalian) !== Boolean(b.notifikasi_pengembalian)) return a.notifikasi_pengembalian ? -1 : 1;
+        if (Boolean(a.tidak_hadir_30_hari) !== Boolean(b.tidak_hadir_30_hari)) return a.tidak_hadir_30_hari ? -1 : 1;
         if (Boolean(a.memenuhi_syarat) !== Boolean(b.memenuhi_syarat)) return a.memenuhi_syarat ? -1 : 1;
         return Number(a.peringkat || 999999) - Number(b.peringkat || 999999) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
     });
@@ -117,19 +174,20 @@ function renderSeragam() {
         const kelayakan = r.memenuhi_syarat
             ? `<span class="font-black text-emerald-600 dark:text-emerald-300">Memenuhi</span><p class="text-[10px] text-slate-400">${escapeHTML(labelJalur(r.jalur_kelayakan))} • ${formatTanggalSeragam(r.tanggal_memenuhi)}</p>`
             : '<span class="font-bold text-slate-400">Belum memenuhi</span>';
-        const alertIcon = r.notifikasi_pengembalian ? '<i class="fa-solid fa-bell text-amber-500 mr-1" title="Perlu diserahkan kembali"></i>' : '';
-        return `<tr class="${r.notifikasi_pengembalian ? 'bg-amber-50/70 dark:bg-amber-500/5' : 'hover:bg-indigo-50/40 dark:hover:bg-indigo-500/5'}">
+        const alertIcon = r.notifikasi_pengembalian ? '<i class="fa-solid fa-bell text-amber-500 mr-1" title="Perlu diserahkan kembali"></i>' : (r.tidak_hadir_30_hari ? '<i class="fa-solid fa-user-clock text-rose-500 mr-1" title="Tidak hadir lebih dari 30 hari"></i>' : '');
+        const rowClass = r.notifikasi_pengembalian ? 'bg-amber-50/70 dark:bg-amber-500/5' : (r.tidak_hadir_30_hari ? 'bg-rose-50/70 dark:bg-rose-500/5' : 'hover:bg-indigo-50/40 dark:hover:bg-indigo-500/5');
+        return `<tr class="${rowClass}">
             <td class="px-4 py-3"><p class="font-extrabold">${alertIcon}${escapeHTML(r.nama)}</p><p class="text-[10px] text-slate-400 font-mono">${escapeHTML(r.nip)} • ${escapeHTML(labelWilayahSeragam(r.kategori_wilayah))}</p><p class="text-[10px] text-slate-400">${escapeHTML(r.asal_daerah || 'Daerah belum diisi')}</p></td>
             <td class="px-4 py-3 text-xs">${kelayakan}</td>
             <td class="px-4 py-3"><p class="font-black">${escapeHTML(r.ukuran_dibutuhkan || 'Belum diisi')}</p><p class="text-[10px] text-slate-400 font-mono">${escapeHTML(r.kode_seragam || 'Tanpa kode')}</p></td>
             <td class="px-4 py-3"><span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black ${warnaProses(r.status_proses)}">${escapeHTML(LABEL_PROSES[r.status_proses] || r.status_proses)}</span></td>
             <td class="px-4 py-3 text-xs font-bold ${warnaPenguasaan(r.status_penguasaan)}">${escapeHTML(LABEL_PENGUASAAN[r.status_penguasaan] || r.status_penguasaan)}</td>
-            <td class="px-4 py-3 text-xs"><p>${r.tanggal_diserahkan ? `Diserahkan ${formatTanggalSeragam(r.tanggal_diserahkan)}` : '-'}</p><p class="text-[10px] text-slate-400 mt-1">Hadir ${formatTanggalSeragam(r.tanggal_hadir_terakhir)}</p></td>
+            <td class="px-4 py-3 text-xs"><p>${r.tanggal_diserahkan ? `Diserahkan ${formatTanggalSeragam(r.tanggal_diserahkan)}` : '-'}</p><p class="text-[10px] text-slate-400 mt-1">Hadir ${formatTanggalSeragam(r.tanggal_hadir_terakhir)}</p>${r.tidak_hadir_30_hari ? `<p class="text-[10px] font-black text-rose-600 dark:text-rose-300 mt-1">Tidak hadir ${Number(r.hari_tidak_hadir || 0)} hari</p>` : ''}</td>
             <td class="px-4 py-3 text-xs text-slate-500 max-w-[180px]"><p class="line-clamp-2">${escapeHTML(r.catatan || '-')}</p></td>
             <td class="px-4 py-3 text-center"><button data-nip="${escapeAttribute(r.nip)}" onclick="bukaKelolaSeragamDariTombol(this)" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold"><i class="fa-solid fa-pen-to-square mr-1"></i> Kelola</button></td>
         </tr>`;
     }).join('');
-    document.getElementById('infoSeragam').textContent = `${rows.length.toLocaleString('id-ID')} personel ditampilkan`;
+    document.getElementById('infoSeragam').textContent = `${rows.length.toLocaleString('id-ID')} personel ditampilkan • ${labelFilterProyekSeragam(proyekFilter)}`;
 }
 
 function labelJalur(value) {
