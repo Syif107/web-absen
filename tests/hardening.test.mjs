@@ -187,7 +187,7 @@ test('fase 7 menyediakan rincian proyek, ringkasan direktori, dan peringatan abs
     assert.match(masterHtml, /Persentase hadir/);
 });
 
-test('fase 8 membatasi merge pada nama dan asal organisasi yang identik', () => {
+test('fase 8 tetap aman dan UI terbaru mengelompokkan nama identik per kabupaten', () => {
     const source = read('db/fase8_master_data_rapi.sql');
     const master = read('js/master.js');
     const masterHtml = read('master.html');
@@ -203,7 +203,8 @@ test('fase 8 membatasi merge pada nama dan asal organisasi yang identik', () => 
     assert.match(master, /normalisasiJabatanMaster/);
     assert.match(masterHtml, /Gabungkan Semua Aman/);
     assert.match(masterHtml, /modalRapikanMaster/);
-    assert.match(masterHtml, /Nama sama dengan asal berbeda/);
+    assert.match(masterHtml, /Nama identik setelah normalisasi tanda baca dan kapitalisasi/i);
+    assert.match(masterHtml, /Perlu diperiksa manual/);
     assert.match(masterHtml, /editDaerah/);
     assert.match(source, /= 'PUSAT'/);
     assert.match(source, /PJ \/ Admin/);
@@ -242,6 +243,44 @@ test('normalisasi Master hanya memetakan PUSAT dan menyatukan PJ dengan Admin', 
     assert.equal(context.normalisasiJabatanMaster('PJ'), 'PJ / Admin');
     assert.equal(context.normalisasiJabatanMaster('admin'), 'PJ / Admin');
     assert.equal(context.normalisasiJabatanMaster('Koordinator'), 'Koordinator');
+    assert.equal(context.normalisasiNamaMaster('  A. Gunawan '), 'AGUNAWAN');
+    assert.equal(context.kabupatenMaster({ asal_organisasi: 'DPC PLOSO' }), 'JOMBANG');
+    assert.equal(context.jarakNamaMaksimalSatu('TEGUH', 'TEGU'), true);
+    assert.equal(context.jarakNamaMaksimalSatu('TEGUH', 'GUNAWAN'), false);
+});
+
+test('fase 10 menyediakan koreksi kehadiran, peringkat umum, dan stok seragam set', () => {
+    const source = read('db/fase10_koreksi_stok_dan_deduplikasi.sql');
+    const riwayat = read('js/riwayat.js');
+    const riwayatHtml = read('riwayat.html');
+    const peringkat = read('js/peringkat.js');
+    const seragam = read('js/seragam.js');
+    const seragamHtml = read('seragam.html');
+
+    assert.match(source, /BEGIN;/);
+    assert.match(source, /COMMIT;/);
+    assert.match(source, /backup_fase10_master_relawan_20261002/);
+    assert.match(source, /CREATE OR REPLACE VIEW public\.v_kandidat_duplikat_personel/);
+    assert.match(source, /CREATE OR REPLACE VIEW public\.v_peringkat_personel_umum/);
+    assert.match(source, /CREATE TABLE IF NOT EXISTS public\.kehadiran_historis/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.simpan_koreksi_kehadiran/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.simpan_kehadiran_historis/);
+    assert.match(source, /CREATE TABLE IF NOT EXISTS public\.stok_item_seragam/);
+    assert.match(source, /CREATE TABLE IF NOT EXISTS public\.mutasi_stok_seragam/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.catat_mutasi_stok_seragam/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.simpan_status_seragam_set/);
+    assert.match(source, /ukuran_atasan/);
+    assert.match(source, /ukuran_bawahan/);
+    assert.match(riwayat, /simpan_koreksi_kehadiran/);
+    assert.match(riwayat, /simpan_kehadiran_historis/);
+    assert.match(riwayatHtml, /Kelola Kehadiran/);
+    assert.match(riwayatHtml, /Kehadiran historis tanpa tanggal pasti/);
+    assert.match(peringkat, /v_peringkat_personel_umum/);
+    assert.match(seragam, /catat_mutasi_stok_seragam/);
+    assert.match(seragam, /simpan_status_seragam_set/);
+    assert.match(seragamHtml, /Ukuran Atasan/);
+    assert.match(seragamHtml, /Ukuran Bawahan/);
+    assert.match(seragamHtml, /Riwayat Mutasi Terakhir/);
 });
 
 test('input menggunakan Pagi dan nama baku lima proyek', () => {

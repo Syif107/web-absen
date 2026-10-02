@@ -3,6 +3,7 @@
 // ================================================================
 
 let semuaPeringkat = [];
+let semuaPeringkatUmum = [];
 let kehadiranProyekPeringkat = [];
 
 const PROYEK_KHUSUS_PERINGKAT = [
@@ -22,12 +23,18 @@ async function loadPeringkat() {
     if (errorBox) errorBox.classList.add('hidden');
 
     try {
-        const [res, proyekRes] = await Promise.all([
+        const [operasionalRes, legacyRes, umumRes, proyekRes] = await Promise.all([
+            supabaseFetchAll('v_peringkat_personel_operasional?select=*&order=kategori.asc,memenuhi_syarat.desc,peringkat.asc.nullslast,indeks_keaktifan.desc'),
             supabaseFetchAll('v_peringkat_personel?select=*&order=kategori.asc,memenuhi_syarat.desc,peringkat.asc.nullslast,indeks_keaktifan.desc'),
+            supabaseFetchAll('v_peringkat_personel_umum?select=*&order=memenuhi_syarat.desc,peringkat.asc.nullslast,indeks_keaktifan.desc'),
             supabaseFetchAll('v_kehadiran_proyek_personel?select=*&order=kategori.asc,nama_proyek.asc')
         ]);
+        const res = operasionalRes.status === 'success' ? operasionalRes : legacyRes;
         if (res.status !== 'success' || proyekRes.status !== 'success') throw new Error(res.message || proyekRes.message || 'Gagal membaca rincian peringkat');
         semuaPeringkat = Array.isArray(res.data) ? res.data : [];
+        semuaPeringkatUmum = umumRes.status === 'success' && Array.isArray(umumRes.data)
+            ? umumRes.data
+            : buatPeringkatUmumKompatibel(semuaPeringkat);
         kehadiranProyekPeringkat = Array.isArray(proyekRes.data) ? proyekRes.data : [];
         siapkanFilterProyekPeringkat();
         renderKpiPeringkat();
@@ -42,17 +49,60 @@ async function loadPeringkat() {
     }
 }
 
+// Fallback sebelum migrasi Fase 10 diterapkan. Tetap memastikan filter
+// "Semua Proyek" hanya menampilkan satu baris per NIP.
+function buatPeringkatUmumKompatibel(rows) {
+    const groups = new Map();
+    rows.forEach(row => {
+        if (!row?.nip) return;
+        if (!groups.has(row.nip)) groups.set(row.nip, []);
+        groups.get(row.nip).push(row);
+    });
+    const hasil = [...groups.values()].map(group => {
+        const utama = [...group].sort((a, b) =>
+            Number(Boolean(b.memenuhi_syarat)) - Number(Boolean(a.memenuhi_syarat))
+            || Number(b.indeks_keaktifan || 0) - Number(a.indeks_keaktifan || 0)
+            || Number(b.total_hari || 0) - Number(a.total_hari || 0)
+        )[0];
+        const memenuhi = group.some(item => item.memenuhi_syarat);
+        const tanggalMemenuhi = group.map(item => item.tanggal_memenuhi).filter(Boolean).sort()[0] || null;
+        return {
+            ...utama,
+            kategori: 'semua',
+            total_hari: group.reduce((total, item) => total + Number(item.total_hari || 0), 0),
+            total_sesi: group.reduce((total, item) => total + Number(item.total_sesi || 0), 0),
+            hari_historis: group.reduce((total, item) => total + Number(item.hari_historis || 0), 0),
+            hari_menuju_syarat: Math.max(...group.map(item => Number(item.total_hari || 0))),
+            memenuhi_syarat: memenuhi,
+            tanggal_memenuhi: tanggalMemenuhi,
+            peringkat: null
+        };
+    });
+    const memenuhi = hasil.filter(row => row.memenuhi_syarat).sort((a, b) =>
+        Number(b.indeks_keaktifan || 0) - Number(a.indeks_keaktifan || 0)
+        || String(a.tanggal_memenuhi || '9999-12-31').localeCompare(String(b.tanggal_memenuhi || '9999-12-31'))
+        || Number(b.total_hari || 0) - Number(a.total_hari || 0)
+        || String(a.nip).localeCompare(String(b.nip), 'id')
+    );
+    memenuhi.forEach((row, index) => { row.peringkat = index + 1; });
+    return hasil;
+}
+
 function uniquePersonCount(rows) {
     return new Set(rows.map(r => r.nip).filter(Boolean)).size;
 }
 
 function renderKpiPeringkat() {
-    const eligible = semuaPeringkat.filter(r => r.memenuhi_syarat);
-    const zona4 = semuaPeringkat.filter(r => r.kategori_wilayah === 'zona_4');
-    const mendekati = semuaPeringkat.filter(r => !r.memenuhi_syarat && Number(r.total_hari) >= 30 && Number(r.total_hari) < 40);
-    const wilayahKosong = semuaPeringkat.filter(r => !r.kategori_wilayah || r.kategori_wilayah === 'belum_dilengkapi');
+    const sumber = semuaPeringkatUmum.length ? semuaPeringkatUmum : semuaPeringkat;
+    const eligible = sumber.filter(r => r.memenuhi_syarat);
+    const zona4 = sumber.filter(r => r.kategori_wilayah === 'zona_4');
+    const mendekati = sumber.filter(r => {
+        const hari = Number(r.hari_menuju_syarat ?? r.total_hari ?? 0);
+        return !r.memenuhi_syarat && hari >= 30 && hari < 40;
+    });
+    const wilayahKosong = sumber.filter(r => !r.kategori_wilayah || r.kategori_wilayah === 'belum_dilengkapi');
 
-    setText('kpiPersonel', uniquePersonCount(semuaPeringkat));
+    setText('kpiPersonel', uniquePersonCount(sumber));
     setText('kpiMemenuhi', uniquePersonCount(eligible));
     setText('kpiZona4', uniquePersonCount(zona4));
     setText('kpiMendekati', uniquePersonCount(mendekati));
@@ -130,10 +180,15 @@ function renderPeringkat() {
     const status = document.getElementById('filterStatusPeringkat')?.value || 'semua';
     const keyword = (document.getElementById('cariPeringkat')?.value || '').trim().toLowerCase();
 
-    let rows = semuaPeringkat.filter(r => cocokFilterProyekPeringkat(r, proyekFilter));
+    let rows = proyekFilter === 'semua'
+        ? [...semuaPeringkatUmum]
+        : semuaPeringkat.filter(r => cocokFilterProyekPeringkat(r, proyekFilter));
     if (status === 'memenuhi') rows = rows.filter(r => r.memenuhi_syarat);
     if (status === 'belum') rows = rows.filter(r => !r.memenuhi_syarat);
-    if (status === 'mendekati') rows = rows.filter(r => !r.memenuhi_syarat && Number(r.total_hari) >= 30 && Number(r.total_hari) < 40);
+    if (status === 'mendekati') rows = rows.filter(r => {
+        const hari = Number(r.hari_menuju_syarat ?? r.total_hari ?? 0);
+        return !r.memenuhi_syarat && hari >= 30 && hari < 40;
+    });
     if (keyword) {
         rows = rows.filter(r => [r.nama, r.nip, r.asal_organisasi, r.asal_daerah].some(v => String(v || '').toLowerCase().includes(keyword)));
     }
@@ -141,7 +196,8 @@ function renderPeringkat() {
     rows.sort((a, b) => {
         if (Boolean(a.memenuhi_syarat) !== Boolean(b.memenuhi_syarat)) return a.memenuhi_syarat ? -1 : 1;
         if (a.memenuhi_syarat && b.memenuhi_syarat) return Number(a.peringkat || 999999) - Number(b.peringkat || 999999);
-        return Number(b.total_hari || 0) - Number(a.total_hari || 0) || Number(b.indeks_keaktifan || 0) - Number(a.indeks_keaktifan || 0);
+        return Number(b.hari_menuju_syarat ?? b.total_hari ?? 0) - Number(a.hari_menuju_syarat ?? a.total_hari ?? 0)
+            || Number(b.indeks_keaktifan || 0) - Number(a.indeks_keaktifan || 0);
     });
 
     if (!rows.length) {
@@ -153,7 +209,8 @@ function renderPeringkat() {
     tbody.innerHTML = rows.map(r => {
         const statistikProyek = statistikProyekPeringkat(r, proyekFilter);
         const target = r.kategori_wilayah === 'zona_4' ? 1 : 40;
-        const progress = Math.min(100, Math.round(100 * Number(r.total_hari || 0) / target));
+        const hariKelayakan = proyekFilter === 'semua' ? Number(r.hari_menuju_syarat ?? r.total_hari ?? 0) : Number(r.total_hari || 0);
+        const progress = Math.min(100, Math.round(100 * hariKelayakan / target));
         const rank = r.memenuhi_syarat ? `#${Number(r.peringkat || 0)}` : '—';
         const statusHtml = r.memenuhi_syarat
             ? `<span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">MEMENUHI</span>`
@@ -163,11 +220,11 @@ function renderPeringkat() {
             <td class="px-4 py-3 text-center font-black text-lg ${r.memenuhi_syarat ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-300 dark:text-slate-600'}">${rank}</td>
             <td class="px-4 py-3"><p class="font-extrabold text-slate-800 dark:text-slate-100">${escapeHTML(r.nama)}</p><p class="text-[10px] text-slate-400 font-mono mt-0.5">${escapeHTML(r.nip)} • ${escapeHTML(r.asal_organisasi)}</p></td>
             <td class="px-4 py-3"><p class="font-bold text-xs ${wilayahClass}">${escapeHTML(labelWilayah(r.kategori_wilayah))}</p><p class="text-[10px] text-slate-400 mt-0.5">${escapeHTML(r.asal_daerah || 'Daerah belum diisi')}</p></td>
-            <td class="px-4 py-3 min-w-[140px]"><div class="flex justify-between text-xs font-bold mb-1"><span>${Number(r.total_hari || 0)} hari kumulatif</span><span>${target} hari</span></div><div class="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden"><div class="h-full ${r.memenuhi_syarat ? 'bg-emerald-500' : 'bg-indigo-500'}" style="width:${progress}%"></div></div>${statistikProyek ? `<p class="text-[10px] text-slate-400 mt-1">${Number(statistikProyek.total_hari_proyek || 0)} hari di proyek terpilih</p>` : ''}</td>
+            <td class="px-4 py-3 min-w-[140px]"><div class="flex justify-between text-xs font-bold mb-1"><span>${proyekFilter === 'semua' ? `${Number(r.total_hari || 0)} hari global` : `${Number(r.total_hari || 0)} hari kumulatif`}</span><span>${target} hari</span></div><div class="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden"><div class="h-full ${r.memenuhi_syarat ? 'bg-emerald-500' : 'bg-indigo-500'}" style="width:${progress}%"></div></div>${proyekFilter === 'semua' ? `<p class="text-[10px] text-slate-400 mt-1">${hariKelayakan} hari pada jalur kelayakan terbaik</p>` : ''}${Number(r.hari_historis || 0) > 0 ? `<p class="text-[10px] text-amber-600 dark:text-amber-300 mt-1">Termasuk ${Number(r.hari_historis)} hari historis</p>` : ''}${statistikProyek ? `<p class="text-[10px] text-slate-400 mt-1">${Number(statistikProyek.total_hari_proyek || 0)} hari di proyek terpilih</p>` : ''}</td>
             <td class="px-4 py-3"><p class="font-black">${Number(r.total_sesi || 0)}</p><p class="text-[10px] text-slate-400">${Number(r.persentase_sesi_90 || 0).toFixed(1)}% / 90 hari</p></td>
             <td class="px-4 py-3"><p class="font-black text-lg">${Number(r.indeks_keaktifan || 0).toFixed(1)}</p><span class="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black ${warnaAktif(r.tingkat_keaktifan)}">${escapeHTML(r.tingkat_keaktifan)}</span></td>
             <td class="px-4 py-3 text-xs"><p><strong>${Number(r.streak_terpanjang || 0)}</strong> hari terpanjang</p><p class="text-slate-400 mt-1"><strong>${Number(r.minggu_aktif_12 || 0)}</strong> minggu aktif</p></td>
-            <td class="px-4 py-3">${statusHtml}<p class="text-[10px] text-slate-400 mt-1">${r.tanggal_memenuhi ? formatTanggal(r.tanggal_memenuhi) : `${Math.max(0, 40 - Number(r.total_hari || 0))} hari lagi`}</p></td>
+            <td class="px-4 py-3">${statusHtml}<p class="text-[10px] text-slate-400 mt-1">${r.tanggal_memenuhi ? formatTanggal(r.tanggal_memenuhi) : `${Math.max(0, target - hariKelayakan)} hari lagi`}</p></td>
             <td class="px-4 py-3 text-center whitespace-nowrap"><button data-nip="${escapeAttribute(r.nip)}" data-kategori="${escapeAttribute(r.kategori)}" onclick="bukaDetailPeringkatDariTombol(this)" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary" title="Lihat rincian"><i class="fa-solid fa-eye"></i></button><a href="seragam.html?nip=${encodeURIComponent(r.nip)}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-200 ml-1" title="Kelola seragam"><i class="fa-solid fa-shirt"></i></a></td>
         </tr>`;
     }).join('');
@@ -185,12 +242,15 @@ function bukaDetailPeringkatDariTombol(button) {
     const nip = button.dataset.nip || '';
     const kategoriBaris = button.dataset.kategori || '';
     const proyekFilter = document.getElementById('filterProyekPeringkat')?.value || 'semua';
-    const r = semuaPeringkat.find(item => item.nip === nip && (!kategoriBaris || item.kategori === kategoriBaris) && cocokFilterProyekPeringkat(item, proyekFilter));
+    const sumber = proyekFilter === 'semua' ? semuaPeringkatUmum : semuaPeringkat;
+    const r = sumber.find(item => item.nip === nip && (!kategoriBaris || item.kategori === kategoriBaris) && cocokFilterProyekPeringkat(item, proyekFilter));
     if (!r) return;
     document.getElementById('detailNama').textContent = r.nama || '-';
-    document.getElementById('detailSub').textContent = `${r.nip || '-'} • ${labelKategori(r.kategori)} • ${labelFilterProyekPeringkat(proyekFilter)}`;
+    document.getElementById('detailSub').textContent = `${r.nip || '-'} • ${r.kategori === 'semua' ? 'Semua Proyek' : labelKategori(r.kategori)} • ${labelFilterProyekPeringkat(proyekFilter)}`;
     const items = [
-        ['Total hari unik', `${Number(r.total_hari || 0)} hari`],
+        [r.kategori === 'semua' ? 'Total hari global' : 'Total hari unik', `${Number(r.total_hari || 0)} hari`],
+        ...(r.kategori === 'semua' ? [['Jalur kelayakan terbaik', `${Number(r.hari_menuju_syarat || 0)} dari ${r.kategori_wilayah === 'zona_4' ? 1 : 40} hari`]] : []),
+        ['Kehadiran historis', `${Number(r.hari_historis || 0)} hari tanpa tanggal pasti`],
         ['Total sesi', `${Number(r.total_sesi || 0)} sesi`],
         ['Kehadiran 90 hari', `${Number(r.persentase_hari_90 || 0).toFixed(1)}%`],
         ['Partisipasi sesi 90 hari', `${Number(r.persentase_sesi_90 || 0).toFixed(1)}%`],

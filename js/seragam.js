@@ -4,10 +4,12 @@
 
 let dataStatusSeragam = [];
 let dataStokSeragam = [];
+let dataMutasiStokSeragam = [];
 let dataPenerimaTersimpan = [];
 let kehadiranProyekSeragam = [];
 let nipSeragamAktif = '';
 let parameterSeragamSudahDibuka = false;
+let stokSeragamFase10Aktif = false;
 
 const PROYEK_KHUSUS_SERAGAM = [
     'Perpustakaan Tashawwuf',
@@ -38,9 +40,10 @@ async function loadSeragam() {
     if (errorBox) errorBox.classList.add('hidden');
 
     try {
-        const [statusRes, stokRes, penerimaRes, proyekRes] = await Promise.all([
-            supabaseFetchAll('v_status_seragam_operasional?select=*&order=memenuhi_syarat.desc,peringkat.asc.nullslast,nama.asc'),
-            supabaseFetchAll('stok_seragam?select=*&order=ukuran.asc'),
+        const [statusRes, stokRes, mutasiRes, penerimaRes, proyekRes] = await Promise.all([
+            muatStatusSeragamKompatibel(),
+            muatStokSeragamKompatibel(),
+            supabaseFetch('mutasi_stok_seragam?select=*&order=dibuat_pada.desc&limit=100', 'GET'),
             supabaseFetchAll('seragam_penerima?select=*&order=updated_at.desc'),
             supabaseFetchAll('v_kehadiran_proyek_personel?select=*&order=kategori.asc,nama_proyek.asc')
         ]);
@@ -49,6 +52,7 @@ async function loadSeragam() {
         }
         dataStatusSeragam = statusRes.data || [];
         dataStokSeragam = stokRes.data || [];
+        dataMutasiStokSeragam = mutasiRes.status === 'success' ? (mutasiRes.data || []) : [];
         dataPenerimaTersimpan = penerimaRes.data || [];
         kehadiranProyekSeragam = proyekRes.data || [];
         siapkanFilterProyekSeragam();
@@ -59,11 +63,29 @@ async function loadSeragam() {
     } catch (error) {
         console.error('Kontrol Seragam:', error);
         if (errorBox) {
-            errorBox.textContent = 'Fitur seragam belum dapat dibaca. Pastikan migrasi Fase 6 dan Fase 7 sudah diterapkan di database, lalu muat ulang halaman.';
+            errorBox.textContent = 'Fitur seragam belum dapat dibaca. Pastikan migrasi database sampai Fase 10 sudah diterapkan, lalu muat ulang halaman.';
             errorBox.classList.remove('hidden');
         }
         if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="p-10 text-center text-red-500 font-bold">Data seragam belum tersedia.</td></tr>';
     }
+}
+
+async function muatStatusSeragamKompatibel() {
+    const fase10 = await supabaseFetchAll('v_status_seragam_set?select=*&order=memenuhi_syarat.desc,peringkat.asc.nullslast,nama.asc');
+    if (fase10.status === 'success') return fase10;
+    return supabaseFetchAll('v_status_seragam_operasional?select=*&order=memenuhi_syarat.desc,peringkat.asc.nullslast,nama.asc');
+}
+
+async function muatStokSeragamKompatibel() {
+    const fase10 = await supabaseFetchAll('stok_item_seragam?select=*&order=jenis.asc,ukuran.asc');
+    if (fase10.status === 'success') {
+        stokSeragamFase10Aktif = true;
+        return fase10;
+    }
+    stokSeragamFase10Aktif = false;
+    const lama = await supabaseFetchAll('stok_seragam?select=*&order=ukuran.asc');
+    if (lama.status === 'success') lama.data = (lama.data || []).map(row => ({ ...row, jenis: 'atasan' }));
+    return lama;
 }
 
 function uniqueNip(rows) { return new Set(rows.map(r => r.nip).filter(Boolean)).size; }
@@ -155,7 +177,11 @@ function renderSeragam() {
     rows = rows.filter(r => cocokFilterProyekSeragam(r, proyekFilter));
     if (proses !== 'semua') rows = rows.filter(r => r.status_proses === proses);
     if (penguasaan !== 'semua') rows = rows.filter(r => r.status_penguasaan === penguasaan);
-    if (keyword) rows = rows.filter(r => [r.nama,r.nip,r.asal_daerah,r.asal_organisasi,r.ukuran_dibutuhkan,r.kode_seragam].some(v => String(v || '').toLowerCase().includes(keyword)));
+    if (keyword) rows = rows.filter(r => [
+        r.nama, r.nip, r.asal_daerah, r.asal_organisasi,
+        r.ukuran_atasan || r.ukuran_dibutuhkan, r.ukuran_bawahan,
+        r.kode_atasan || r.kode_seragam, r.kode_bawahan
+    ].some(v => String(v || '').toLowerCase().includes(keyword)));
 
     rows.sort((a, b) => {
         if (Boolean(a.notifikasi_pengembalian) !== Boolean(b.notifikasi_pengembalian)) return a.notifikasi_pengembalian ? -1 : 1;
@@ -176,10 +202,14 @@ function renderSeragam() {
             : '<span class="font-bold text-slate-400">Belum memenuhi</span>';
         const alertIcon = r.notifikasi_pengembalian ? '<i class="fa-solid fa-bell text-amber-500 mr-1" title="Perlu diserahkan kembali"></i>' : (r.tidak_hadir_30_hari ? '<i class="fa-solid fa-user-clock text-rose-500 mr-1" title="Tidak hadir lebih dari 30 hari"></i>' : '');
         const rowClass = r.notifikasi_pengembalian ? 'bg-amber-50/70 dark:bg-amber-500/5' : (r.tidak_hadir_30_hari ? 'bg-rose-50/70 dark:bg-rose-500/5' : 'hover:bg-indigo-50/40 dark:hover:bg-indigo-500/5');
+        const ukuranAtasan = r.ukuran_atasan || r.ukuran_dibutuhkan || '';
+        const kodeAtasan = r.kode_atasan || r.kode_seragam || '';
+        const ukuranBawahan = r.ukuran_bawahan || '';
+        const kodeBawahan = r.kode_bawahan || '';
         return `<tr class="${rowClass}">
             <td class="px-4 py-3"><p class="font-extrabold">${alertIcon}${escapeHTML(r.nama)}</p><p class="text-[10px] text-slate-400 font-mono">${escapeHTML(r.nip)} • ${escapeHTML(labelWilayahSeragam(r.kategori_wilayah))}</p><p class="text-[10px] text-slate-400">${escapeHTML(r.asal_daerah || 'Daerah belum diisi')}</p></td>
             <td class="px-4 py-3 text-xs">${kelayakan}</td>
-            <td class="px-4 py-3"><p class="font-black">${escapeHTML(r.ukuran_dibutuhkan || 'Belum diisi')}</p><p class="text-[10px] text-slate-400 font-mono">${escapeHTML(r.kode_seragam || 'Tanpa kode')}</p></td>
+            <td class="px-4 py-3"><p class="font-black">Atasan: ${escapeHTML(ukuranAtasan || 'Belum diisi')}</p><p class="text-[10px] text-slate-400 font-mono">${escapeHTML(kodeAtasan || 'Tanpa kode')}</p><p class="font-black mt-1">Bawahan: ${escapeHTML(ukuranBawahan || 'Belum diisi')}</p><p class="text-[10px] text-slate-400 font-mono">${escapeHTML(kodeBawahan || 'Tanpa kode')}</p></td>
             <td class="px-4 py-3"><span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black ${warnaProses(r.status_proses)}">${escapeHTML(LABEL_PROSES[r.status_proses] || r.status_proses)}</span></td>
             <td class="px-4 py-3 text-xs font-bold ${warnaPenguasaan(r.status_penguasaan)}">${escapeHTML(LABEL_PENGUASAAN[r.status_penguasaan] || r.status_penguasaan)}</td>
             <td class="px-4 py-3 text-xs"><p>${r.tanggal_diserahkan ? `Diserahkan ${formatTanggalSeragam(r.tanggal_diserahkan)}` : '-'}</p><p class="text-[10px] text-slate-400 mt-1">Hadir ${formatTanggalSeragam(r.tanggal_hadir_terakhir)}</p>${r.tidak_hadir_30_hari ? `<p class="text-[10px] font-black text-rose-600 dark:text-rose-300 mt-1">Tidak hadir ${Number(r.hari_tidak_hadir || 0)} hari</p>` : ''}</td>
@@ -212,9 +242,11 @@ async function bukaKelolaSeragam(nip) {
     document.getElementById('seragamNip').value = nip;
     document.getElementById('modalSeragamNama').textContent = `${row.nama || '-'} • ${nip} • ${labelWilayahSeragam(row.kategori_wilayah)}`;
     document.getElementById('seragamStatusProses').value = row.status_proses || 'belum_memenuhi';
-    document.getElementById('seragamUkuran').value = row.ukuran_dibutuhkan || '';
+    document.getElementById('seragamUkuranAtasan').value = row.ukuran_atasan || row.ukuran_dibutuhkan || '';
+    document.getElementById('seragamUkuranBawahan').value = row.ukuran_bawahan || '';
     document.getElementById('seragamStatusPenguasaan').value = row.status_penguasaan || 'belum_memiliki';
-    document.getElementById('seragamKode').value = row.kode_seragam || '';
+    document.getElementById('seragamKodeAtasan').value = row.kode_atasan || row.kode_seragam || '';
+    document.getElementById('seragamKodeBawahan').value = row.kode_bawahan || '';
     document.getElementById('seragamTanggalRencana').value = String(row.tanggal_rencana || '').slice(0,10);
     document.getElementById('seragamTanggalDiserahkan').value = String(row.tanggal_diserahkan || '').slice(0,10);
     document.getElementById('seragamCatatan').value = row.catatan || '';
@@ -250,23 +282,27 @@ async function simpanSeragam(event) {
     event.preventDefault();
     const btn = document.getElementById('btnSimpanSeragam');
     const status = document.getElementById('seragamStatusProses').value;
-    const ukuran = document.getElementById('seragamUkuran').value;
+    const ukuranAtasan = document.getElementById('seragamUkuranAtasan').value.trim();
+    const ukuranBawahan = document.getElementById('seragamUkuranBawahan').value.trim();
     const dataLama = document.getElementById('seragamDataLama').checked;
-    if (status === 'sudah_diserahkan' && !ukuran) { showToast('Ukuran seragam wajib diisi.', 'error'); return; }
+    if (status === 'sudah_diserahkan' && !ukuranAtasan) { showToast('Ukuran atasan wajib diisi.', 'error'); return; }
+    if (status === 'sudah_diserahkan' && !dataLama && !ukuranBawahan) { showToast('Ukuran bawahan wajib diisi untuk penyerahan baru.', 'error'); return; }
     if (status === 'sudah_diserahkan' && document.getElementById('seragamStatusPenguasaan').value === 'belum_memiliki') { showToast('Pilih keberadaan seragam setelah diserahkan.', 'error'); return; }
     if (status === 'sudah_diserahkan' && !dataLama && !document.getElementById('seragamAturan').checked) { showToast('Konfirmasi ketentuan seragam terlebih dahulu.', 'error'); return; }
 
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Menyimpan...';
     try {
-        const res = await callSupabaseRpc('simpan_status_seragam', {
+        const res = await callSupabaseRpc('simpan_status_seragam_set', {
             p_nip: nipSeragamAktif,
             p_status_proses: status,
-            p_ukuran: ukuran,
+            p_ukuran_atasan: ukuranAtasan,
+            p_ukuran_bawahan: ukuranBawahan,
             p_status_penguasaan: document.getElementById('seragamStatusPenguasaan').value,
             p_tanggal_rencana: document.getElementById('seragamTanggalRencana').value || null,
             p_tanggal_diserahkan: document.getElementById('seragamTanggalDiserahkan').value || null,
-            p_kode_seragam: document.getElementById('seragamKode').value.trim().toUpperCase() || null,
+            p_kode_atasan: document.getElementById('seragamKodeAtasan').value.trim().toUpperCase() || null,
+            p_kode_bawahan: document.getElementById('seragamKodeBawahan').value.trim().toUpperCase() || null,
             p_catatan: document.getElementById('seragamCatatan').value.trim() || null,
             p_aturan_disetujui: document.getElementById('seragamAturan').checked,
             p_data_lama: dataLama,
@@ -286,35 +322,72 @@ async function simpanSeragam(event) {
 }
 
 function bukaModalStok() {
-    const sizes = ['S','M','L','XL','XXL','XXXL','Khusus'];
-    document.getElementById('formStokSeragam').innerHTML = sizes.map(size => {
-        const row = dataStokSeragam.find(item => item.ukuran === size) || {};
-        return `<label class="rounded-xl border border-slate-200 dark:border-slate-700 p-3"><span class="text-xs font-black">Ukuran ${escapeHTML(size)}</span><input data-ukuran="${escapeAttribute(size)}" type="number" min="0" value="${Number(row.jumlah_tersedia || 0)}" class="stok-input mt-2 w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 font-black"></label>`;
-    }).join('');
+    renderRingkasanStok();
+    renderMutasiStok();
+    sesuaikanPilihanUkuranStok();
+    if (!stokSeragamFase10Aktif) showToast('Saldo lama masih dapat dilihat. Terapkan migrasi Fase 10 untuk mencatat transaksi stok atasan dan bawahan.', 'warning');
     document.getElementById('modalStokSeragam').classList.remove('hidden');
 }
 function tutupModalStok() { document.getElementById('modalStokSeragam')?.classList.add('hidden'); }
 
+function renderRingkasanStok() {
+    const box = document.getElementById('ringkasanStokSeragam');
+    if (!box) return;
+    const rows = [...dataStokSeragam].sort((a, b) => String(a.jenis).localeCompare(String(b.jenis), 'id') || String(a.ukuran).localeCompare(String(b.ukuran), 'id', { numeric: true }));
+    box.innerHTML = rows.length ? rows.map(row => `<div class="rounded-xl border border-slate-200 dark:border-slate-700 p-3"><p class="text-[9px] font-black uppercase text-slate-400">${row.jenis === 'bawahan' ? 'Bawahan' : 'Atasan'}</p><p class="font-black mt-1">${escapeHTML(row.ukuran)}</p><p class="text-lg font-black ${Number(row.jumlah_tersedia || 0) > 0 ? 'text-emerald-600' : 'text-rose-500'}">${Number(row.jumlah_tersedia || 0).toLocaleString('id-ID')}</p></div>`).join('') : '<p class="col-span-full text-xs text-slate-400">Belum ada saldo stok.</p>';
+}
+
+function labelTipeMutasi(value) {
+    return {
+        saldo_awal: 'Saldo awal', masuk: 'Stok masuk', keluar_penyerahan: 'Penyerahan',
+        koreksi_tambah: 'Koreksi tambah', koreksi_kurang: 'Koreksi kurang',
+        retur_permanen: 'Kembali ke stok', rusak_hilang: 'Rusak/hilang'
+    }[value] || value || '-';
+}
+
+function renderMutasiStok() {
+    const tbody = document.getElementById('riwayatMutasiStok');
+    if (!tbody) return;
+    const rows = dataMutasiStokSeragam.slice(0, 30);
+    tbody.innerHTML = rows.length ? rows.map(row => `<tr class="border-t border-slate-100 dark:border-slate-700"><td class="p-2 whitespace-nowrap">${new Date(row.dibuat_pada).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</td><td class="p-2 font-bold">${row.jenis === 'bawahan' ? 'Bawahan' : 'Atasan'} ${escapeHTML(row.ukuran)}</td><td class="p-2">${escapeHTML(labelTipeMutasi(row.tipe))}</td><td class="p-2 text-right font-black ${Number(row.perubahan) >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${Number(row.perubahan) >= 0 ? '+' : ''}${Number(row.perubahan || 0)}</td><td class="p-2 text-right font-black">${Number(row.saldo_setelah || 0)}</td><td class="p-2 text-slate-500">${escapeHTML(row.catatan || '-')}</td></tr>`).join('') : '<tr><td colspan="6" class="p-5 text-center text-slate-400">Belum ada riwayat mutasi.</td></tr>';
+}
+
+function sesuaikanPilihanUkuranStok() {
+    const jenis = document.getElementById('stokJenis')?.value || 'atasan';
+    const values = jenis === 'atasan'
+        ? ['S','M','L','XL','XXL','XXXL','Khusus']
+        : ['20','22','24','26','28','30','32','34','36','38','40','Khusus'];
+    const list = document.getElementById('daftarUkuranStok');
+    if (list) list.innerHTML = values.map(value => `<option value="${escapeAttribute(value)}"></option>`).join('');
+    const input = document.getElementById('stokUkuran');
+    if (input && input.value && !values.includes(input.value)) input.value = '';
+}
+
 async function simpanStokSeragam(event) {
     event.preventDefault();
     const btn = document.getElementById('btnSimpanStok');
+    if (!stokSeragamFase10Aktif) { showToast('Migrasi Fase 10 perlu diterapkan sebelum transaksi stok dapat disimpan.', 'error'); return; }
+    const jenis = document.getElementById('stokJenis').value;
+    const ukuran = document.getElementById('stokUkuran').value.trim();
+    const tipe = document.getElementById('stokTipe').value;
+    const jumlah = Number.parseInt(document.getElementById('stokJumlah').value, 10);
+    if (!ukuran || !Number.isInteger(jumlah) || jumlah <= 0) { showToast('Isi ukuran dan jumlah transaksi dengan benar.', 'error'); return; }
     btn.disabled = true;
-    btn.textContent = 'Menyimpan...';
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Menyimpan...';
     try {
-        for (const input of document.querySelectorAll('.stok-input')) {
-            const ukuran = input.dataset.ukuran;
-            const jumlah = Math.max(0, Number.parseInt(input.value, 10) || 0);
-            const exists = dataStokSeragam.some(row => row.ukuran === ukuran);
-            const res = exists
-                ? await supabaseFetch(`stok_seragam?ukuran=eq.${encodeURIComponent(ukuran)}`, 'PATCH', { jumlah_tersedia: jumlah })
-                : await supabaseFetch('stok_seragam', 'POST', { ukuran, jumlah_tersedia: jumlah });
-            if (res.status !== 'success') throw new Error(res.message || `Gagal menyimpan stok ${ukuran}`);
-        }
-        showToast('Stok seragam berhasil diperbarui.', 'success');
+        const res = await callSupabaseRpc('catat_mutasi_stok_seragam', {
+            p_jenis: jenis,
+            p_ukuran: ukuran,
+            p_tipe: tipe,
+            p_jumlah: jumlah,
+            p_catatan: document.getElementById('stokCatatan').value.trim() || null
+        });
+        if (res.status !== 'success' || res.ok === false) throw new Error(res.message || 'Database menolak transaksi stok');
+        showToast('Transaksi stok berhasil dicatat.', 'success');
         tutupModalStok();
         await loadSeragam();
     } catch (error) { showToast(error.message || 'Gagal menyimpan stok.', 'error'); }
-    finally { btn.disabled = false; btn.textContent = 'Simpan Stok'; }
+    finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-right-left mr-1"></i> Catat Transaksi'; }
 }
 
 function bukaDariParameter() {

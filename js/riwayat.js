@@ -3,6 +3,16 @@
 // ==========================================
 
 let riwayatData = [];
+let koreksiMasterData = [];
+let koreksiAwal = new Set();
+
+const LOKASI_UTAMA_KOREKSI = [
+    'Perpustakaan Tashawwuf',
+    "Masjid Raya Fatchan Mubiina Chaddun 'Adhiim",
+    'Monumen Semboyan Sang Mursyid',
+    "Kanal Ta'at",
+    'Gapura Syukur'
+];
 
 document.addEventListener("DOMContentLoaded", async () => {
     await getAksesUser();
@@ -27,6 +37,185 @@ document.addEventListener("DOMContentLoaded", async () => {
         jalankanFilterDanSortRiwayat();
     });
 });
+
+// ==========================================
+// KELOLA KEHADIRAN BULANAN & HISTORIS
+// ==========================================
+async function bukaModalKelolaKehadiran() {
+    if (!userIsAdmin()) {
+        showToast('Hanya admin yang boleh mengoreksi kehadiran.', 'error');
+        return;
+    }
+    const modal = document.getElementById('modalKelolaKehadiran');
+    modal?.classList.remove('hidden');
+    modal?.classList.add('flex');
+    const bulanSekarang = tanggalLokalHariIni().slice(0, 7);
+    document.getElementById('koreksiBulan').value ||= bulanSekarang;
+    document.getElementById('historisBulan').value ||= bulanSekarang;
+    document.getElementById('koreksiLokasi').value ||= LOKASI_UTAMA_KOREKSI[0];
+
+    if (!koreksiMasterData.length) {
+        const res = await supabaseFetchAll('master_relawan?select=nip,nama,jabatan,asal_organisasi&order=nama.asc');
+        if (res.status !== 'success') {
+            showToast(res.message || 'Gagal memuat daftar personel.', 'error');
+            return;
+        }
+        koreksiMasterData = res.data || [];
+        const select = document.getElementById('koreksiPersonel');
+        select.innerHTML = koreksiMasterData.map(row => `<option value="${escapeAttribute(row.nip)}">${escapeHTML(row.nama)} — ${escapeHTML(row.asal_organisasi || '-')}</option>`).join('');
+    }
+
+    const lokasi = [...new Set([
+        ...LOKASI_UTAMA_KOREKSI,
+        ...riwayatData.map(row => String(row.lokasi || '').trim()).filter(Boolean)
+    ])].sort((a, b) => a.localeCompare(b, 'id'));
+    document.getElementById('daftarLokasiKoreksi').innerHTML = lokasi.map(item => `<option value="${escapeAttribute(item)}"></option>`).join('');
+}
+
+function tutupModalKelolaKehadiran() {
+    const modal = document.getElementById('modalKelolaKehadiran');
+    modal?.classList.add('hidden');
+    modal?.classList.remove('flex');
+}
+
+function tanggalLokalHariIni() {
+    const sekarang = new Date();
+    const y = sekarang.getFullYear();
+    const m = String(sekarang.getMonth() + 1).padStart(2, '0');
+    const d = String(sekarang.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+async function muatKoreksiBulanan() {
+    const nip = document.getElementById('koreksiPersonel').value;
+    const bulan = document.getElementById('koreksiBulan').value;
+    const lokasi = document.getElementById('koreksiLokasi').value.trim();
+    if (!nip || !bulan || !lokasi) {
+        showToast('Personel, bulan, dan lokasi wajib dipilih.', 'error');
+        return;
+    }
+
+    const [tahunText, bulanText] = bulan.split('-');
+    const tahun = Number(tahunText);
+    const nomorBulan = Number(bulanText);
+    const jumlahHari = new Date(tahun, nomorBulan, 0).getDate();
+    const awal = `${bulan}-01`;
+    const akhir = `${bulan}-${String(jumlahHari).padStart(2, '0')}`;
+    const res = await supabaseFetchAll(`log_absensi?select=id,tanggal,sesi,lokasi&nip=eq.${encodeURIComponent(nip)}&tanggal=gte.${awal}&tanggal=lte.${akhir}&lokasi=eq.${encodeURIComponent(lokasi)}`);
+    if (res.status !== 'success') {
+        showToast(res.message || 'Gagal membaca kalender kehadiran.', 'error');
+        return;
+    }
+
+    koreksiAwal = new Set((res.data || []).map(row => `${String(row.tanggal).slice(0, 10)}|${row.sesi === 'Siang' ? 'Pagi' : row.sesi}`));
+    const hariPertama = new Date(tahun, nomorBulan - 1, 1).getDay();
+    const offsetSenin = (hariPertama + 6) % 7;
+    const hariIni = tanggalLokalHariIni();
+    const namaHari = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+    let html = namaHari.map(nama => `<div class="hidden lg:block text-center text-[10px] font-black uppercase text-slate-400 py-1">${nama}</div>`).join('');
+    html += Array.from({ length: offsetSenin }, () => '<div class="hidden lg:block"></div>').join('');
+    for (let hari = 1; hari <= jumlahHari; hari += 1) {
+        const tanggal = `${bulan}-${String(hari).padStart(2, '0')}`;
+        const future = tanggal > hariIni;
+        const pagi = koreksiAwal.has(`${tanggal}|Pagi`);
+        const malam = koreksiAwal.has(`${tanggal}|Malam`);
+        const labelHari = namaHari[(new Date(tahun, nomorBulan - 1, hari).getDay() + 6) % 7];
+        html += `<article class="rounded-xl border ${future ? 'border-slate-100 opacity-45' : 'border-slate-200 dark:border-slate-700'} bg-slate-50 dark:bg-slate-700/40 p-2.5"><div class="flex justify-between items-center"><span class="font-black">${hari}</span><span class="text-[9px] text-slate-400 lg:hidden">${labelHari}</span></div><label class="mt-2 flex items-center gap-2 text-[11px] font-bold"><input class="koreksi-sesi accent-amber-500" data-tanggal="${tanggal}" data-sesi="Pagi" type="checkbox" ${pagi ? 'checked' : ''} ${future ? 'disabled' : ''}>Pagi</label><label class="mt-1.5 flex items-center gap-2 text-[11px] font-bold"><input class="koreksi-sesi accent-violet-500" data-tanggal="${tanggal}" data-sesi="Malam" type="checkbox" ${malam ? 'checked' : ''} ${future ? 'disabled' : ''}>Malam</label></article>`;
+    }
+    document.getElementById('kalenderKoreksi').innerHTML = html;
+    document.getElementById('infoKoreksiKalender').textContent = `${koreksiAwal.size} sesi sudah tercatat`;
+}
+
+function tandaiSemuaSesiKoreksi(sesi) {
+    document.querySelectorAll(`.koreksi-sesi[data-sesi="${sesi}"]:not(:disabled)`).forEach(input => { input.checked = true; });
+}
+
+function bersihkanKoreksiBulanan() {
+    document.querySelectorAll('.koreksi-sesi:not(:disabled)').forEach(input => { input.checked = false; });
+}
+
+async function simpanKoreksiBulanan() {
+    const nip = document.getElementById('koreksiPersonel').value;
+    const lokasi = document.getElementById('koreksiLokasi').value.trim();
+    const catatan = document.getElementById('catatanKoreksi').value.trim();
+    const perubahan = [...document.querySelectorAll('.koreksi-sesi')].map(input => {
+        const key = `${input.dataset.tanggal}|${input.dataset.sesi}`;
+        const sebelumnya = koreksiAwal.has(key);
+        if (input.checked === sebelumnya) return null;
+        return { tanggal: input.dataset.tanggal, sesi: input.dataset.sesi, hadir: input.checked };
+    }).filter(Boolean);
+    if (!nip || !lokasi || !catatan) {
+        showToast('Personel, lokasi, dan alasan koreksi wajib diisi.', 'error');
+        return;
+    }
+    if (!perubahan.length) {
+        showToast('Belum ada perubahan pada kalender.', 'info');
+        return;
+    }
+    const tambah = perubahan.filter(item => item.hadir).length;
+    const hapus = perubahan.length - tambah;
+    if (!confirm(`Simpan koreksi kehadiran?\n\nTambah: ${tambah} sesi\nHapus: ${hapus} sesi\nLokasi: ${lokasi}`)) return;
+    const btn = document.getElementById('btnSimpanKoreksi');
+    btn.disabled = true;
+    btn.textContent = 'Menyimpan...';
+    try {
+        const res = await callSupabaseRpc('simpan_koreksi_kehadiran', {
+            p_nip: nip,
+            p_lokasi: lokasi,
+            p_perubahan: perubahan,
+            p_catatan: catatan
+        });
+        if (res.status !== 'success') throw new Error(res.message || 'Database menolak koreksi. Pastikan migrasi Fase 10 sudah diterapkan.');
+        showToast('Kehadiran berhasil diperbarui.', 'success');
+        await loadRiwayatData();
+        await muatKoreksiBulanan();
+    } catch (error) {
+        showToast(error.message || 'Gagal menyimpan koreksi.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i>Simpan Perubahan';
+    }
+}
+
+async function simpanKehadiranHistoris() {
+    const nip = document.getElementById('koreksiPersonel').value;
+    const bulan = document.getElementById('historisBulan').value;
+    const lokasi = document.getElementById('koreksiLokasi').value.trim();
+    const jumlah = Number.parseInt(document.getElementById('historisJumlahHari').value, 10);
+    const catatan = document.getElementById('historisCatatan').value.trim();
+    if (!nip || !bulan || !lokasi || !jumlah || !catatan) {
+        showToast('Lengkapi personel, bulan, lokasi, jumlah hari, dan sumber data.', 'error');
+        return;
+    }
+    const [tahun, nomorBulan] = bulan.split('-').map(Number);
+    const jumlahHariBulan = new Date(tahun, nomorBulan, 0).getDate();
+    if (jumlah < 1 || jumlah > jumlahHariBulan) {
+        showToast(`Jumlah hari untuk bulan tersebut harus 1–${jumlahHariBulan}.`, 'error');
+        return;
+    }
+    if (!confirm(`Catat ${jumlah} hari historis tanpa tanggal pasti untuk bulan ${bulan}?\n\nData ini hanya menambah hari kumulatif kelayakan.`)) return;
+    const btn = document.getElementById('btnSimpanHistoris');
+    btn.disabled = true;
+    btn.textContent = 'Menyimpan...';
+    try {
+        const res = await callSupabaseRpc('simpan_kehadiran_historis', {
+            p_nip: nip,
+            p_bulan: `${bulan}-01`,
+            p_lokasi: lokasi,
+            p_jumlah_hari: jumlah,
+            p_catatan: catatan
+        });
+        if (res.status !== 'success') throw new Error(res.message || 'Database menolak pencatatan historis.');
+        showToast('Kehadiran historis berhasil dicatat.', 'success');
+        document.getElementById('historisJumlahHari').value = '';
+        document.getElementById('historisCatatan').value = '';
+    } catch (error) {
+        showToast(error.message || 'Gagal mencatat kehadiran historis.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-plus mr-1"></i>Catat Kredit Historis';
+    }
+}
 
 // ==========================================
 // POPULATE FILTER DROPDOWNS

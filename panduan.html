@@ -171,7 +171,7 @@
                         <li>Masukkan <strong>email & password</strong> akun Supabase Anda, lalu tekan tombol masuk.</li>
                         <li>Sesi berjalan otomatis; bila sesi kedaluwarsa, aplikasi langsung mengembalikan ke layar login.</li>
                         <li>Tombol <strong>Keluar (Lock)</strong> di sidebar bawah mengunci sistem dan kembali ke login.</li>
-                        <li><strong>Backup Data</strong> mengunduh seluruh data (Master + Log) sebagai file <code>.json</code> — lakukan rutin.</li>
+                        <li><strong>Backup Data</strong> mengunduh Master, log, koreksi kehadiran, penerima, stok, dan riwayat seragam sebagai file <code>.json</code> — lakukan rutin.</li>
                         <li><strong>Mode Gelap</strong> menyimpan preferensi tampilan terang/gelap di perangkat.</li>
                     </ul>
                 </section>
@@ -244,6 +244,7 @@
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Filter Tanggal & Cari</td><td class="px-3 py-2">Atur rentang tanggal, ketik kata kunci nama/instansi/lokasi pada kotak cari.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Filter Per Kolom</td><td class="px-3 py-2">Klik <i class="fa-solid fa-filter"></i> di judul kolom → urutkan A→Z / Z→A, pilih nilai via checkbox, atau Reset.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Edit Log</td><td class="px-3 py-2">Ubah nama/tanggal/sesi data yang salah input langsung dari baris tabel.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Kelola Kehadiran</td><td class="px-3 py-2">Pilih personel, bulan, dan proyek; centang Pagi/Malam pada kalender lalu isi alasan. Sistem hanya menyimpan sesi yang berubah. Jika tanggal lama tidak diketahui, gunakan kredit historis dan tulis sumbernya.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Hapus</td><td class="px-3 py-2">Hapus satu baris, atau centang beberapa baris lalu hapus massal (banner aksi massal muncul di atas tabel).</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Export</td><td class="px-3 py-2">Unduh data terfilter sebagai <strong>CSV</strong> atau <strong>Excel (XLSX)</strong>.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Cetak / PDF</td><td class="px-3 py-2">Tombol cetak membuka tampilan laporan siap print; simpan sebagai PDF dari dialog browser.</td></tr>
@@ -315,7 +316,7 @@
                             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Import CSV</td><td class="px-3 py-2">Unggah file CSV (kolom: NIP, Nama, Bidang, Organisasi, dsb.) → preview → sistem menandai baris duplikat sebelum disimpan.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Edit & Hapus</td><td class="px-3 py-2">Tombol <strong>Edit</strong> membuka seluruh profil: nama, asal organisasi, jabatan, kabupaten/kota asal, kategori wilayah, ukuran, dan catatan. Hapus satu atau massal hanya bila benar-benar yakin.</td></tr>
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Rapikan Master</td><td class="px-3 py-2">Sistem hanya menawarkan merge untuk <strong>nama + asal organisasi yang sama</strong>. Nama sama dengan asal berbeda tetap dipisah; asal kosong tidak digabung otomatis.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Rapikan Master</td><td class="px-3 py-2">Nama identik setelah huruf besar/kecil dan tanda baca dinormalisasi dapat digabung otomatis hanya jika kabupatennya sama. Bidang boleh berbeda. Perbedaan satu huruf hanya ditampilkan untuk tinjauan manual.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Merge dari Checkbox</td><td class="px-3 py-2">Centang minimal dua profil → klik <strong>Gabungkan Terpilih</strong> → pilih ID utama → atur nama, organisasi, jabatan, daerah, kategori wilayah, ukuran, dan catatan hasil akhir. Gunakan hanya setelah memastikan semua pilihan adalah orang yang sama.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Pusat & Jabatan</td><td class="px-3 py-2"><strong>PUSAT</strong> masuk kategori Jombang, tetapi DPD JOMBANG/Jombang tidak otomatis Pusat. Istilah <strong>PJ</strong> dan <strong>Admin</strong> disatukan menjadi <strong>PJ / Admin</strong>.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Filter & Sort</td><td class="px-3 py-2">Gunakan pencarian, filter judul kolom, serta urutan nama, kehadiran, persentase, tanggal pertama, atau ID. Kartu <strong>Belum diisi</strong> menampilkan data wilayah yang perlu dilengkapi.</td></tr>
@@ -332,6 +333,8 @@
                     <ul class="text-sm text-slate-600 dark:text-slate-300 space-y-2 list-disc pl-5">
                         <li>Dropdown proyek menyediakan semua proyek, gabungan 5 proyek khusus, setiap proyek khusus, dan proyek lainnya. Masing-masing kelompok memiliki target 40 hari unik.</li>
                         <li>Hadir Pagi dan Malam dihitung dua sesi, tetapi tetap satu hari. Hadir di beberapa lokasi pada tanggal sama juga tetap satu hari per kategori.</li>
+                        <li>Tampilan <strong>Semua Proyek</strong> hanya menampilkan satu baris per NIP. Filter kategori/proyek tetap memperlihatkan hitungan spesifik.</li>
+                        <li>Kredit historis menambah hari kumulatif menuju 40 hari, tetapi tidak menambah sesi, streak, atau persentase 90 hari karena tanggalnya tidak diketahui.</li>
                         <li>Zona 4 memenuhi syarat sejak hari pertama. Ranking berikutnya mempertimbangkan indeks keaktifan, tanggal memenuhi syarat, lalu total hari.</li>
                         <li>Klik ikon mata untuk rincian atau ikon seragam untuk membuka pengelolaan penerima.</li>
                     </ul>
@@ -342,7 +345,8 @@
                     <div class="flex items-center gap-2 text-violet-600"><i class="fa-solid fa-shirt"></i><span class="text-xs font-black uppercase tracking-wider">9. Kontrol Seragam</span></div>
                     <h3 class="text-slate-800 dark:text-slate-100">Stok, penyerahan, dan penitipan (<code>seragam.html</code>)</h3>
                     <ul class="text-sm text-slate-600 dark:text-slate-300 space-y-2 list-disc pl-5">
-                        <li>Masukkan stok nyata melalui <strong>Atur Stok</strong>. Saat penyerahan baru, stok ukuran terkait berkurang otomatis.</li>
+                        <li>Masukkan stok melalui <strong>Kelola Stok</strong>: pilih atasan atau bawahan, ukuran, jenis transaksi, jumlah, dan catatan. Saldo tidak ditimpa; setiap perubahan masuk riwayat mutasi.</li>
+                        <li>Atasan memakai ukuran huruf (S, M, L, XL, dan seterusnya), sedangkan bawahan memakai nomor. Penyerahan baru wajib satu set dan mengurangi masing-masing satu stok secara bersamaan.</li>
                         <li>Untuk seragam yang sudah telanjur dibagikan, centang <strong>pencatatan seragam lama</strong> agar stok kantor tidak berkurang.</li>
                         <li>Personel luar Jombang dan Zona 4 wajib tercatat <strong>Dititipkan di kantor</strong> saat meninggalkan proyek.</li>
                         <li>Gunakan filter proyek untuk melihat penerima terkait; penerima yang sudah diserahi seragam tetapi absen lebih dari 30 hari diberi peringatan merah.</li>

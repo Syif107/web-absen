@@ -81,6 +81,9 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
+                <button onclick="bukaModalKelolaKehadiran()" class="admin-only text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 shadow-sm" title="Tambahkan atau koreksi kehadiran per personel">
+                    <i class="fa-solid fa-calendar-check"></i> <span class="hidden md:inline">Kelola Kehadiran</span>
+                </button>
                 <button onclick="exportToCSV()" class="text-sm bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 shadow-sm" title="Export ke CSV">
                     <i class="fa-solid fa-file-csv"></i> <span class="hidden sm:inline">CSV</span>
                 </button>
@@ -340,6 +343,35 @@
                         <i class="fa-solid fa-floppy-disk"></i> Simpan
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <!-- MODAL KELOLA KEHADIRAN BULANAN DAN HISTORIS -->
+        <div id="modalKelolaKehadiran" class="fixed inset-0 bg-slate-900/60 z-[60] hidden flex-col items-center justify-center backdrop-blur-sm p-3 sm:p-6 transition-opacity">
+            <div class="bg-white dark:bg-slate-800 w-full max-w-6xl max-h-[94vh] rounded-2xl shadow-2xl flex flex-col modal-scale-in overflow-hidden border border-slate-200 dark:border-slate-700/50">
+                <div class="p-5 border-b border-slate-100 dark:border-slate-700/50 bg-indigo-50 dark:bg-indigo-500/10 flex items-start justify-between gap-4 shrink-0">
+                    <div><h3 class="font-black text-xl text-indigo-700 dark:text-indigo-300"><i class="fa-solid fa-calendar-check mr-2"></i>Kelola Kehadiran</h3><p class="text-xs text-indigo-600/80 dark:text-indigo-300/80 mt-1">Isi tanggal yang diketahui melalui kalender. Gunakan kredit historis hanya jika tanggal pastinya tidak tersedia.</p></div>
+                    <button onclick="tutupModalKelolaKehadiran()" class="w-9 h-9 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="flex-1 overflow-y-auto custom-scroll p-5 space-y-5">
+                    <section class="rounded-2xl border border-slate-200 dark:border-slate-700 p-4">
+                        <div class="grid md:grid-cols-4 gap-3">
+                            <div class="md:col-span-2"><label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Personel</label><select id="koreksiPersonel" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-bold"></select></div>
+                            <div><label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Bulan</label><input id="koreksiBulan" type="month" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-bold"></div>
+                            <div><label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Proyek / Lokasi</label><input id="koreksiLokasi" list="daftarLokasiKoreksi" placeholder="Pilih atau ketik lokasi" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-bold"><datalist id="daftarLokasiKoreksi"></datalist></div>
+                        </div>
+                        <div class="mt-3 flex flex-wrap items-center gap-2"><button onclick="muatKoreksiBulanan()" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black"><i class="fa-solid fa-rotate mr-1"></i>Muat Kalender</button><button onclick="tandaiSemuaSesiKoreksi('Pagi')" class="px-3 py-2 rounded-lg bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 text-xs font-black">Pagi Semua</button><button onclick="tandaiSemuaSesiKoreksi('Malam')" class="px-3 py-2 rounded-lg bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300 text-xs font-black">Malam Semua</button><button onclick="bersihkanKoreksiBulanan()" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-black">Kosongkan</button><span id="infoKoreksiKalender" class="text-xs text-slate-400"></span></div>
+                        <div id="kalenderKoreksi" class="mt-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2"><p class="col-span-full text-sm text-slate-400">Pilih personel, bulan, dan proyek lalu muat kalender.</p></div>
+                        <div class="mt-4 grid md:grid-cols-[1fr_auto] gap-3 items-end"><div><label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Alasan / Sumber Koreksi *</label><textarea id="catatanKoreksi" rows="2" placeholder="Contoh: direkap ulang dari daftar hadir proyek April" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm"></textarea></div><button id="btnSimpanKoreksi" onclick="simpanKoreksiBulanan()" class="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-black"><i class="fa-solid fa-floppy-disk mr-1"></i>Simpan Perubahan</button></div>
+                    </section>
+
+                    <section class="rounded-2xl border border-amber-200 dark:border-amber-500/30 bg-amber-50/60 dark:bg-amber-500/5 p-4">
+                        <div class="flex items-start gap-3"><i class="fa-solid fa-clock-rotate-left text-amber-600 mt-1"></i><div><h4 class="font-black text-amber-800 dark:text-amber-200">Kehadiran historis tanpa tanggal pasti</h4><p class="text-xs text-amber-700/80 dark:text-amber-300/80 mt-1">Menambah hari kumulatif kelayakan, tetapi tidak menambah sesi Pagi/Malam, persentase 90 hari, atau streak.</p></div></div>
+                        <div class="mt-4 grid md:grid-cols-4 gap-3"><div><label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Bulan</label><input id="historisBulan" type="month" class="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-700 border border-amber-300 dark:border-amber-500/30 text-sm font-bold"></div><div><label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Jumlah Hari</label><input id="historisJumlahHari" type="number" min="1" max="31" class="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-700 border border-amber-300 dark:border-amber-500/30 text-sm font-bold"></div><div class="md:col-span-2"><label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Sumber / Keterangan *</label><input id="historisCatatan" type="text" placeholder="Contoh: konfirmasi PJ proyek dan rekap manual" class="w-full px-3 py-2.5 rounded-xl bg-white dark:bg-slate-700 border border-amber-300 dark:border-amber-500/30 text-sm"></div></div>
+                        <div class="mt-3 flex justify-end"><button id="btnSimpanHistoris" onclick="simpanKehadiranHistoris()" class="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-black"><i class="fa-solid fa-plus mr-1"></i>Catat Kredit Historis</button></div>
+                    </section>
+                </div>
+                <div class="p-4 border-t border-slate-100 dark:border-slate-700/50 flex justify-end"><button onclick="tutupModalKelolaKehadiran()" class="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-bold text-sm">Tutup</button></div>
             </div>
         </div>
 

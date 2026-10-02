@@ -66,6 +66,30 @@ tersedia lewat `merge_relawan_manual`, memerlukan akun admin, pilihan checkbox,
 pengaturan data akhir, dan konfirmasi. Tidak ada merge otomatis saat halaman
 dibuka.
 
+## Fase 10: Koreksi kehadiran, identitas kabupaten, dan stok seragam set
+
+Fase 10 menambahkan `db/fase10_koreksi_stok_dan_deduplikasi.sql`. Jalankan
+setelah Fase 9. Migrasi ini membuat backup baru sebelum perubahan dan tidak
+melakukan merge personel secara otomatis. Fitur yang diaktifkan:
+
+- nama identik setelah normalisasi huruf/tanda baca dikelompokkan berdasarkan
+  kabupaten; perbedaan satu huruf hanya menjadi kandidat tinjauan manual;
+- `PUSAT` dipetakan ke Jombang tetapi tetap berbeda dari `DPD JOMBANG` sebagai
+  organisasi; DPC/desa/kecamatan yang telah diverifikasi dipetakan ke kabupaten;
+- koreksi kehadiran bulanan dapat menambah atau menghapus sesi Pagi/Malam dengan
+  alasan audit wajib;
+- kredit historis untuk kehadiran tanpa tanggal pasti menambah hari kumulatif,
+  tetapi tidak memalsukan sesi, streak, atau persentase 90 hari;
+- peringkat umum memakai satu baris per NIP sehingga orang yang sama tidak
+  muncul dua kali pada tampilan “Semua Proyek”;
+- stok dipisah menjadi atasan (S, M, L, dan seterusnya) dan bawahan (nomor),
+  serta seluruh masuk/keluar/koreksi disimpan sebagai mutasi;
+- penyerahan baru mengurangi satu atasan dan satu bawahan secara atomik.
+
+Setelah migrasi, jalankan query verifikasi di bagian akhir file. Periksa hasil
+pemetaan organisasi sebelum memakai tombol “Gabungkan Semua Aman”; kandidat
+beda satu huruf harus tetap ditinjau satu per satu.
+
 ## Mode frontend saja (Supabase dilewati)
 
 `FASE5_ENABLED` dan `FASE4_ENABLED` di `js/supabase-config.js` dibiarkan
@@ -86,8 +110,8 @@ migrasi SQL yang sesuai.
 4. Jalankan `db/audit_duplikat.sql` (read-only).
 5. Bila hasil audit mempunyai baris, tinjau dan gabungkan data secara manual.
 6. Jalankan `db/fase5_integritas_transaksi.sql`.
-7. Jalankan `db/fase6_ranking_seragam.sql`, `db/fase7_operasional_optimasi.sql`, `db/fase8_master_data_rapi.sql`, lalu `db/fase9_merge_manual_terpilih.sql`.
-8. Uji input relawan lama, relawan baru, filter proyek, direktori, perapian duplikat, merge dari checkbox, edit wilayah, dan batch duplikat menggunakan akun admin.
+7. Jalankan `db/fase6_ranking_seragam.sql`, `db/fase7_operasional_optimasi.sql`, `db/fase8_master_data_rapi.sql`, `db/fase9_merge_manual_terpilih.sql`, lalu `db/fase10_koreksi_stok_dan_deduplikasi.sql`.
+8. Uji input relawan lama, relawan baru, filter proyek, direktori, perapian duplikat, merge dari checkbox, edit wilayah, koreksi kehadiran, kredit historis, dan mutasi stok atasan–bawahan menggunakan akun admin.
 9. Jika multi-user akan digunakan:
    - ganti `GANTI_EMAIL_ADMIN` di `db/fase4_multi_user.sql`;
    - jalankan migrasi tersebut;
@@ -96,13 +120,18 @@ migrasi SQL yang sesuai.
    - ubah `FASE4_ENABLED` di `js/supabase-config.js` menjadi `true`.
 10. Deploy frontend.
 11. Buka ulang aplikasi dua kali agar service worker versi baru mengambil alih,
-    kemudian pastikan cache lama sebelum `relawansync-v20-ranking-seragam-optimasi-cache` sudah terhapus.
+    kemudian pastikan cache lama sebelum `relawansync-v21-koreksi-stok-set-cache` sudah terhapus.
 
 ## Smoke test wajib
 
 - Anonim tidak dapat membaca Master atau log.
 - Akun tanpa profil tidak dapat masuk ketika Fase 4 aktif.
 - Admin dapat input, edit, hapus, merge, import, dan export.
+- Koreksi kehadiran menambah/menghapus hanya sesi yang dipilih dan tercatat
+  dalam `koreksi_kehadiran_batch`.
+- Kredit historis menaikkan total hari kelayakan tanpa menaikkan total sesi.
+- Penyerahan seragam baru gagal seluruhnya bila stok atasan atau bawahan kosong.
+- Setiap transaksi stok menghasilkan saldo dan baris mutasi yang sesuai.
 - Koordinator hanya melihat serta mengisi lokasi miliknya.
 - Dua pengiriman batch yang sama hanya menghasilkan satu absensi.
 - Relawan baru dan log-nya sama-sama tersimpan atau sama-sama batal.

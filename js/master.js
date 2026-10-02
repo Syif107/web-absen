@@ -9,6 +9,7 @@ let rowsPerPage = 50;
 let isNewestFilter = false;
 let masterSortMode = 'nama';
 let duplikatMasterGroups = [];
+let duplikatMasterMirip = [];
 let manualMergeSelectedNips = new Set();
 let manualMergeTargetNip = '';
 
@@ -16,11 +17,52 @@ function normalisasiKunciMaster(value) {
     return String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
 }
 
+function normalisasiNamaMaster(value) {
+    return normalisasiKunciMaster(value).replace(/[^A-Z0-9]/g, '');
+}
+
+const ORGANISASI_JOMBANG_MASTER = new Set([
+    'PUSAT', 'DPD JOMBANG', 'DPC KABUH', 'OPSHID KABUH', 'DPC PLOSO',
+    'DCP PLOSO', 'DPC KUDU', 'DPC PLANDAAN', 'DPC TEMBELANG',
+    'DPC NGUSIKAN', 'DPC MEGALUH', 'DPC KESAMBEN', 'DPC DADITUNGGAL',
+    'DPC GABUS BANARAN', 'DPC JATIROWO', 'DPC KLECO'
+]);
+
+function kabupatenMaster(row) {
+    const tersimpan = normalisasiKunciMaster(row?.kabupaten_normalisasi);
+    if (tersimpan) return tersimpan;
+    const org = normalisasiKunciMaster(row?.asal_organisasi);
+    if (ORGANISASI_JOMBANG_MASTER.has(org)) return 'JOMBANG';
+    if (/^DPD\s+/.test(org) && org !== 'DPD ORSHID') {
+        return org.replace(/^DPD\s+(?:KAB(?:UPATEN)?\s+)?/, '').trim();
+    }
+    return normalisasiKunciMaster(row?.asal_daerah);
+}
+
 function kunciIdentitasMaster(row) {
-    const nama = normalisasiKunciMaster(row?.nama);
-    const asal = normalisasiKunciMaster(row?.asal_organisasi);
-    if (!nama || !asal) return '';
-    return `${nama}\u241F${asal}`;
+    const nama = normalisasiNamaMaster(row?.nama);
+    const kabupaten = kabupatenMaster(row);
+    if (!nama || !kabupaten) return '';
+    return `${nama}\u241F${kabupaten}`;
+}
+
+function jarakNamaMaksimalSatu(a, b) {
+    const kiri = normalisasiNamaMaster(a);
+    const kanan = normalisasiNamaMaster(b);
+    if (!kiri || !kanan || kiri === kanan || Math.abs(kiri.length - kanan.length) > 1) return false;
+    let i = 0;
+    let j = 0;
+    let beda = 0;
+    while (i < kiri.length && j < kanan.length) {
+        if (kiri[i] === kanan[j]) { i += 1; j += 1; continue; }
+        beda += 1;
+        if (beda > 1) return false;
+        if (kiri.length > kanan.length) i += 1;
+        else if (kanan.length > kiri.length) j += 1;
+        else { i += 1; j += 1; }
+    }
+    if (i < kiri.length || j < kanan.length) beda += 1;
+    return beda === 1;
 }
 
 function kategoriWilayahEfektif(row) {
@@ -292,21 +334,46 @@ function buatGrupDuplikatAman() {
         .sort((a, b) => String(a.rows[0]?.nama || '').localeCompare(String(b.rows[0]?.nama || ''), 'id'));
 }
 
+function buatKandidatNamaMirip() {
+    const perKabupaten = new Map();
+    masterData.forEach(row => {
+        const kabupaten = kabupatenMaster(row);
+        const nama = normalisasiNamaMaster(row?.nama);
+        if (!kabupaten || !nama) return;
+        if (!perKabupaten.has(kabupaten)) perKabupaten.set(kabupaten, []);
+        perKabupaten.get(kabupaten).push(row);
+    });
+    const hasil = [];
+    perKabupaten.forEach((rows, kabupaten) => {
+        for (let i = 0; i < rows.length; i += 1) {
+            for (let j = i + 1; j < rows.length; j += 1) {
+                if (normalisasiNamaMaster(rows[i].nama) === normalisasiNamaMaster(rows[j].nama)) continue;
+                if (jarakNamaMaksimalSatu(rows[i].nama, rows[j].nama)) {
+                    hasil.push({ key: `${rows[i].nip}\u241F${rows[j].nip}`, kabupaten, rows: [rows[i], rows[j]].sort(bandingkanProfilMaster) });
+                }
+            }
+        }
+    });
+    return hasil.sort((a, b) => String(a.rows[0]?.nama || '').localeCompare(String(b.rows[0]?.nama || ''), 'id'));
+}
+
 function profilUtamaDuplikat(group) {
     return [...(group?.rows || [])].sort(bandingkanProfilMaster)[0] || null;
 }
 
 function perbaruiRingkasanDuplikat() {
     duplikatMasterGroups = buatGrupDuplikatAman();
+    duplikatMasterMirip = buatKandidatNamaMirip();
     const jumlahProfil = duplikatMasterGroups.reduce((total, group) => total + group.rows.length, 0);
     const duplicateCard = document.getElementById('ringkasanMasterDuplikat');
     const duplicateBadge = document.getElementById('badgeDuplikatMaster');
     if (duplicateCard) duplicateCard.textContent = Number(jumlahProfil).toLocaleString('id-ID');
-    if (duplicateBadge) duplicateBadge.textContent = Number(duplikatMasterGroups.length).toLocaleString('id-ID');
+    if (duplicateBadge) duplicateBadge.textContent = Number(duplikatMasterGroups.length + duplikatMasterMirip.length).toLocaleString('id-ID');
 }
 
 function bukaModalRapikanMaster() {
     duplikatMasterGroups = buatGrupDuplikatAman();
+    duplikatMasterMirip = buatKandidatNamaMirip();
     renderDuplikatMaster();
     document.getElementById('modalRapikanMaster')?.classList.remove('hidden');
 }
@@ -319,23 +386,32 @@ function renderDuplikatMaster() {
     const list = document.getElementById('duplikatMasterList');
     const count = document.getElementById('jumlahGrupDuplikat');
     const bulkButton = document.getElementById('btnGabungSemuaDuplikat');
+    const miripList = document.getElementById('duplikatMasterMiripList');
+    const miripCount = document.getElementById('jumlahKandidatMirip');
     if (!list) return;
-    if (count) count.textContent = `${duplikatMasterGroups.length.toLocaleString('id-ID')} kelompok aman`;
+    if (count) count.textContent = `${duplikatMasterGroups.length.toLocaleString('id-ID')} kelompok identik`;
+    if (miripCount) miripCount.textContent = `${duplikatMasterMirip.length.toLocaleString('id-ID')} kandidat beda 1 huruf`;
     if (bulkButton) bulkButton.disabled = duplikatMasterGroups.length === 0;
     if (!duplikatMasterGroups.length) {
-        list.innerHTML = '<div class="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-500/30 p-5 text-sm text-emerald-700 dark:text-emerald-300"><i class="fa-solid fa-circle-check mr-2"></i>Tidak ada duplikat aman. Data dengan nama sama tetapi asal berbeda tetap dipisahkan.</div>';
-        return;
-    }
-    list.innerHTML = duplikatMasterGroups.map((group, index) => {
-        const target = profilUtamaDuplikat(group);
-        const nama = escapeHTML(target?.nama || '-');
-        const asal = escapeHTML(target?.asal_organisasi || '-');
-        const anggota = group.rows.map(row => {
-            const isTarget = row.nip === target?.nip;
-            return `<li class="flex items-center justify-between gap-3 py-2 border-b border-slate-100 dark:border-slate-700 last:border-0"><span><strong>${escapeHTML(row.nip)}</strong><span class="text-slate-500 dark:text-slate-400 ml-2">${Number(row.total_hari || 0)} hari hadir</span></span><span class="text-[10px] font-black ${isTarget ? 'text-emerald-600' : 'text-amber-600'}">${isTarget ? 'DIPERTAHANKAN' : 'DIGABUNG'}</span></li>`;
+        list.innerHTML = '<div class="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-500/30 p-5 text-sm text-emerald-700 dark:text-emerald-300"><i class="fa-solid fa-circle-check mr-2"></i>Tidak ada nama identik dalam kabupaten yang sama.</div>';
+    } else {
+        list.innerHTML = duplikatMasterGroups.map((group, index) => {
+            const target = profilUtamaDuplikat(group);
+            const nama = escapeHTML(target?.nama || '-');
+            const kabupaten = escapeHTML(kabupatenMaster(target) || '-');
+            const anggota = group.rows.map(row => {
+                const isTarget = row.nip === target?.nip;
+                return `<li class="py-2 border-b border-slate-100 dark:border-slate-700 last:border-0"><div class="flex items-center justify-between gap-3"><span><strong>${escapeHTML(row.nip)}</strong><span class="text-slate-500 dark:text-slate-400 ml-2">${Number(row.total_hari || 0)} hari</span></span><span class="text-[10px] font-black ${isTarget ? 'text-emerald-600' : 'text-amber-600'}">${isTarget ? 'DIPERTAHANKAN' : 'DIGABUNG'}</span></div><p class="text-[10px] text-slate-400 mt-1">${escapeHTML(row.asal_organisasi || '-')} • ${escapeHTML(row.jabatan || '-')}</p></li>`;
+            }).join('');
+            return `<article class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800"><div class="flex flex-wrap items-start justify-between gap-3"><div><p class="font-black">${nama}</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Kabupaten: ${kabupaten}</p><p class="text-[10px] text-slate-400 mt-1">Bidang boleh berbeda; profil dengan riwayat terbanyak dipertahankan.</p></div><button onclick="gabungkanKelompokAman(${index})" class="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-black"><i class="fa-solid fa-code-merge mr-1"></i>Gabungkan kelompok</button></div><ul class="mt-3 text-xs">${anggota}</ul></article>`;
         }).join('');
-        return `<article class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800"><div class="flex flex-wrap items-start justify-between gap-3"><div><p class="font-black">${nama}</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Asal sama: ${asal}</p><p class="text-[10px] text-slate-400 mt-1">Target otomatis dipilih dari profil dengan riwayat hadir terbanyak.</p></div><button onclick="gabungkanKelompokAman(${index})" class="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-black"><i class="fa-solid fa-code-merge mr-1"></i>Gabungkan kelompok</button></div><ul class="mt-3 text-xs">${anggota}</ul></article>`;
-    }).join('');
+    }
+
+    if (miripList) {
+        miripList.innerHTML = duplikatMasterMirip.length
+            ? duplikatMasterMirip.map((group, index) => `<article class="rounded-xl border border-violet-200 dark:border-violet-500/30 p-4 bg-violet-50/60 dark:bg-violet-500/5"><div class="flex flex-wrap items-center justify-between gap-3"><div><p class="font-black">${escapeHTML(group.rows[0].nama)} <span class="text-slate-400">↔</span> ${escapeHTML(group.rows[1].nama)}</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Kabupaten ${escapeHTML(group.kabupaten)} • ${escapeHTML(group.rows[0].asal_organisasi || '-')} / ${escapeHTML(group.rows[1].asal_organisasi || '-')}</p></div><button onclick="tinjauKandidatNamaMirip(${index})" class="px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-black"><i class="fa-solid fa-magnifying-glass mr-1"></i>Tinjau & Atur Merge</button></div></article>`).join('')
+            : '<p class="text-sm text-slate-400">Tidak ada kandidat nama berbeda satu huruf dalam kabupaten yang sama.</p>';
+    }
 }
 
 async function gabungkanKelompokAman(index, tampilkanKonfirmasi = true) {
@@ -344,24 +420,45 @@ async function gabungkanKelompokAman(index, tampilkanKonfirmasi = true) {
     const sources = (group?.rows || []).filter(row => row.nip !== target?.nip);
     if (!target || !sources.length) return { berhasil: 0, gagal: 0 };
     if (tampilkanKonfirmasi && !confirm(`Gabungkan ${sources.length} profil duplikat untuk ${target.nama} dari ${target.asal_organisasi}?\n\nNIP ${target.nip} dipertahankan. Riwayat absensi sumber dipindahkan lalu profil sumber dihapus.`)) return { dibatalkan: true };
-    let berhasil = 0;
-    let gagal = 0;
-    for (const source of sources) {
-        try {
-            const res = await callSupabaseRpc('merge_relawan', { p_sumber_nip: source.nip, p_target_nip: target.nip });
-            if (res.status !== 'success') throw new Error(res.message || 'Merge ditolak server');
-            berhasil += 1;
-        } catch (error) {
-            gagal += 1;
-            console.error('Merge duplikat aman:', source.nip, error);
-        }
+    try {
+        const res = await callSupabaseRpc('merge_relawan_manual', {
+            p_nips: group.rows.map(row => row.nip),
+            p_target_nip: target.nip,
+            p_profile: {
+                nama: target.nama,
+                asal_organisasi: target.asal_organisasi,
+                jabatan: normalisasiJabatanMaster(target.jabatan),
+                asal_daerah: target.asal_daerah || null,
+                kabupaten_normalisasi: kabupatenMaster(target) || null,
+                kategori_wilayah: kategoriWilayahEfektif(target),
+                ukuran_seragam: target.ukuran_seragam || null,
+                catatan_seragam: target.catatan_seragam || null
+            }
+        });
+        if (res.status !== 'success') throw new Error(res.message || 'Merge ditolak server');
+        return { berhasil: sources.length, gagal: 0 };
+    } catch (error) {
+        console.error('Merge duplikat kabupaten:', error);
+        if (tampilkanKonfirmasi) showToast(error.message || 'Merge gagal.', 'error');
+        return { berhasil: 0, gagal: sources.length };
     }
-    return { berhasil, gagal };
+}
+
+function tinjauKandidatNamaMirip(index) {
+    const group = duplikatMasterMirip[index];
+    if (!group || group.rows.length < 2) return;
+    manualMergeSelectedNips = new Set(group.rows.map(row => row.nip));
+    const target = profilUtamaDuplikat(group);
+    manualMergeTargetNip = target.nip;
+    renderPengaturanMergeManual();
+    isiFormMergeManual(target);
+    tutupModalRapikanMaster();
+    document.getElementById('modalMergeManual')?.classList.remove('hidden');
 }
 
 async function gabungkanSemuaDuplikat() {
     if (!duplikatMasterGroups.length) return;
-    const konfirmasi = confirm(`Gabungkan ${duplikatMasterGroups.length} kelompok duplikat aman?\n\nHanya profil dengan nama dan asal organisasi yang sama setelah normalisasi yang akan diproses. Nama sama dengan asal berbeda tidak akan digabung.`);
+    const konfirmasi = confirm(`Gabungkan ${duplikatMasterGroups.length} kelompok nama identik dalam kabupaten yang sama?\n\nBidang boleh berbeda. Kandidat nama berbeda satu huruf tidak ikut digabung otomatis dan tetap harus ditinjau manual.`);
     if (!konfirmasi) return;
     const groups = [...duplikatMasterGroups];
     let berhasil = 0;
@@ -686,23 +783,29 @@ async function simpanEditMaster() {
         jabatan: bidangBaru,
         asal_organisasi: orgBaru,
         asal_daerah: daerahBaru || null,
+        kabupaten_normalisasi: normalisasiKunciMaster(daerahBaru) || kabupatenMaster({ asal_organisasi: orgBaru }) || null,
         kategori_wilayah: kategoriWilayahBaru,
         ukuran_seragam: ukuranSeragamBaru || null,
         catatan_seragam: catatanSeragamBaru || null
     };
 
     try {
-        const res = await supabaseFetch(`master_relawan?nip=eq.${encodeURIComponent(currentEditNip)}`, 'PATCH', payloadUpdate);
+        let res = await supabaseFetch(`master_relawan?nip=eq.${encodeURIComponent(currentEditNip)}`, 'PATCH', payloadUpdate);
+        if (res.status !== 'success' && /kabupaten_normalisasi|schema cache|column/i.test(String(res.message || ''))) {
+            const payloadKompatibel = { ...payloadUpdate };
+            delete payloadKompatibel.kabupaten_normalisasi;
+            res = await supabaseFetch(`master_relawan?nip=eq.${encodeURIComponent(currentEditNip)}`, 'PATCH', payloadKompatibel);
+        }
         
         if (res.status === "success" || res.status === 204 || res.status === 201) {
             showToast("Data profil berhasil diperbarui!", "success");
             tutupModalEdit();
             loadMasterData(); 
         } else {
-            throw new Error("Gagal mengupdate ke database.");
+            throw new Error(res.message || "Gagal mengupdate ke database.");
         }
     } catch (err) {
-        showToast("Terjadi kesalahan saat mengupdate data.", "error");
+        showToast(err.message || "Terjadi kesalahan saat mengupdate data.", "error");
     } finally {
         btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan';
         btn.disabled = false;
@@ -820,6 +923,7 @@ async function eksekusiMergeManual() {
                 asal_organisasi: asalOrganisasi,
                 jabatan,
                 asal_daerah: asalDaerah || null,
+                kabupaten_normalisasi: normalisasiKunciMaster(asalDaerah) || kabupatenMaster({ asal_organisasi: asalOrganisasi }) || null,
                 kategori_wilayah: kategoriWilayah,
                 ukuran_seragam: ukuranSeragam || null,
                 catatan_seragam: catatanSeragam || null

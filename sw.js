@@ -1,4 +1,4 @@
-const CACHE_NAME = "relawansync-v20-ranking-seragam-optimasi-cache";
+const CACHE_NAME = "relawansync-v21-koreksi-stok-set-cache";
 const PRECACHE_URLS = [
     "manifest.json",
     "assets/icon.png",

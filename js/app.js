@@ -445,12 +445,16 @@ async function backupEverything() {
     let loading = showToast("Menyiapkan file backup, mohon tunggu...", "loading");
 
     try {
-        const [masterRes, logRes, seragamRes, stokRes, riwayatSeragamRes] = await Promise.all([
+        const [masterRes, logRes, seragamRes, stokRes, riwayatSeragamRes, stokItemRes, mutasiStokRes, historisRes, koreksiRes] = await Promise.all([
             supabaseFetchAll('master_relawan?select=*&order=nip.asc'),
             supabaseFetchAll(await terapkanFilterLokasi('log_absensi?select=*&order=id.asc')),
             supabaseFetchAll('seragam_penerima?select=*&order=nip.asc'),
             supabaseFetchAll('stok_seragam?select=*&order=ukuran.asc'),
-            supabaseFetchAll('seragam_riwayat?select=*&order=id.asc')
+            supabaseFetchAll('seragam_riwayat?select=*&order=id.asc'),
+            supabaseFetchAll('stok_item_seragam?select=*&order=jenis.asc,ukuran.asc'),
+            supabaseFetchAll('mutasi_stok_seragam?select=*&order=id.asc'),
+            supabaseFetchAll('kehadiran_historis?select=*&order=id.asc'),
+            supabaseFetchAll('koreksi_kehadiran_batch?select=*&order=id.asc')
         ]);
 
         if (masterRes.status !== "success" || logRes.status !== "success") {
@@ -467,7 +471,11 @@ async function backupEverything() {
                 log_absensi: logRes.data,
                 seragam_penerima: seragamRes.status === 'success' ? seragamRes.data : [],
                 stok_seragam: stokRes.status === 'success' ? stokRes.data : [],
-                seragam_riwayat: riwayatSeragamRes.status === 'success' ? riwayatSeragamRes.data : []
+                seragam_riwayat: riwayatSeragamRes.status === 'success' ? riwayatSeragamRes.data : [],
+                stok_item_seragam: stokItemRes.status === 'success' ? stokItemRes.data : [],
+                mutasi_stok_seragam: mutasiStokRes.status === 'success' ? mutasiStokRes.data : [],
+                kehadiran_historis: historisRes.status === 'success' ? historisRes.data : [],
+                koreksi_kehadiran_batch: koreksiRes.status === 'success' ? koreksiRes.data : []
             }
         };
 
