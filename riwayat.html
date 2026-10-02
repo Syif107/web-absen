@@ -169,11 +169,12 @@
                         <button onclick="resetFilter()" class="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg font-bold transition-colors text-sm shadow-sm flex items-center gap-2">
                             <i class="fa-solid fa-rotate-left"></i> Reset
                         </button>
+                        <label class="ml-auto flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-xs font-black text-rose-700 dark:text-rose-300 cursor-pointer"><input id="filterYatim" type="checkbox" class="accent-rose-600">Hanya belum terhubung</label>
                     </div>
                 </div>
 
                 <!-- SUMMARY CARDS -->
-                <div class="no-print grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="no-print grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700/50">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-500/10 flex items-center justify-center">
@@ -184,6 +185,9 @@
                                 <p class="text-xl font-black text-slate-800 dark:text-slate-100" id="summaryTotal">0</p>
                             </div>
                         </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-rose-200 dark:border-rose-500/30">
+                        <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-500/10 flex items-center justify-center"><i class="fa-solid fa-link-slash text-rose-600"></i></div><div><p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Belum Terhubung</p><p class="text-xl font-black text-rose-600" id="summaryYatim">0</p></div></div>
                     </div>
                     <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700/50">
                         <div class="flex items-center gap-3">
@@ -384,6 +388,12 @@
                 </div>
                 <div class="p-6 space-y-4">
                     <input type="hidden" id="editLogId">
+                    <input type="hidden" id="editLogNipLama">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Hubungkan ke Personel</label>
+                        <select id="editLogPersonel" onchange="sinkronkanPersonelEditLog()" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-2.5 font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"></select>
+                        <p class="text-[10px] text-slate-400 mt-1">Pilih profil untuk memperbaiki NIP, nama, bidang, dan organisasi log ini. Biarkan pilihan “Pertahankan” jika hanya mengedit tanggal/sesi.</p>
+                    </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Tanggal</label>
                         <input type="date" id="editLogTanggal" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-2.5 font-bold text-slate-800 dark:text-slate-100 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">

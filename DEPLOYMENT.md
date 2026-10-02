@@ -16,7 +16,7 @@ Pagi/Malam, stok ukuran, dan pengingat penitipan membutuhkan migrasi
 Urutan rilis Fase 6: jalankan migrasi database, pastikan query verifikasi di
 bagian akhir berhasil, kemudian commit dan push frontend. Setelah GitHub Pages
 selesai membangun, buka ulang web dua kali agar service worker
-`relawansync-v20-ranking-seragam-optimasi-cache` aktif.
+`relawansync-v24-master-linking-cache` aktif.
 
 Script migrasi disimpan di repository untuk audit dan pengulangan. Terapkan dan
 verifikasi database lebih dahulu, kemudian frontend, agar kontrak view/RPC tetap
@@ -38,7 +38,7 @@ Migrasi ini hanya menambah index/view dan hak baca terautentikasi. Tidak ada
 riwayat absensi yang dihapus atau diubah.
 
 Setelah Fase 7, cache frontend menggunakan
-`relawansync-v20-ranking-seragam-optimasi-cache`.
+`relawansync-v24-master-linking-cache`.
 
 ## Fase 8: Perapian Master Data
 
@@ -102,6 +102,18 @@ atomik, unique constraint baru belum aktif, dan pembatasan admin/koordinator
 belum tersedia. Jangan mengubah kedua flag menjadi `true` tanpa menjalankan
 migrasi SQL yang sesuai.
 
+## Fase 11: Perapian aman Master dan kehadiran yatim
+
+`db/fase11_perapian_aman_master.sql` dapat dijalankan setelah Fase 9 dan tidak
+bergantung pada kolom Fase 10. Migrasi membuat backup baru, membakukan huruf,
+spasi, alias organisasi yang tidak ambigu, serta istilah `PJ / Admin`.
+
+Kehadiran dengan NIP yang sudah tidak ada hanya ditautkan kembali ketika nama
+dan organisasinya menghasilkan tepat satu profil. Jika target
+sudah mempunyai tanggal, sesi, dan lokasi yang sama, baris yatim tidak dihapus
+dan tetap menunggu tinjauan manual. Migrasi ini tidak menggabungkan nama yang
+hanya mirip, tidak menghapus profil, dan tidak menghapus riwayat absensi.
+
 ## Urutan rilis
 
 1. Pastikan branch dan commit yang akan dirilis sudah ditetapkan.
@@ -110,7 +122,7 @@ migrasi SQL yang sesuai.
 4. Jalankan `db/audit_duplikat.sql` (read-only).
 5. Bila hasil audit mempunyai baris, tinjau dan gabungkan data secara manual.
 6. Jalankan `db/fase5_integritas_transaksi.sql`.
-7. Jalankan `db/fase6_ranking_seragam.sql`, `db/fase7_operasional_optimasi.sql`, `db/fase8_master_data_rapi.sql`, `db/fase9_merge_manual_terpilih.sql`, lalu `db/fase10_koreksi_stok_dan_deduplikasi.sql`.
+7. Jalankan `db/fase6_ranking_seragam.sql`, `db/fase7_operasional_optimasi.sql`, `db/fase8_master_data_rapi.sql`, `db/fase9_merge_manual_terpilih.sql`, `db/fase10_koreksi_stok_dan_deduplikasi.sql`, lalu `db/fase11_perapian_aman_master.sql`.
 8. Uji input relawan lama, relawan baru, filter proyek, direktori, perapian duplikat, merge dari checkbox, edit wilayah, koreksi kehadiran, kredit historis, dan mutasi stok atasan–bawahan menggunakan akun admin.
 9. Jika multi-user akan digunakan:
    - ganti `GANTI_EMAIL_ADMIN` di `db/fase4_multi_user.sql`;
@@ -120,7 +132,7 @@ migrasi SQL yang sesuai.
    - ubah `FASE4_ENABLED` di `js/supabase-config.js` menjadi `true`.
 10. Deploy frontend.
 11. Buka ulang aplikasi dua kali agar service worker versi baru mengambil alih,
-    kemudian pastikan cache lama sebelum `relawansync-v21-koreksi-stok-set-cache` sudah terhapus.
+    kemudian pastikan cache lama sebelum `relawansync-v24-master-linking-cache` sudah terhapus.
 
 ## Smoke test wajib
 

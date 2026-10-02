@@ -5,6 +5,7 @@
 let riwayatData = [];
 let koreksiMasterData = [];
 let koreksiAwal = new Set();
+let riwayatMasterNips = new Set();
 
 const LOKASI_UTAMA_KOREKSI = [
     'Perpustakaan Tashawwuf',
@@ -34,6 +35,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Event listener untuk pencarian real-time
     document.getElementById('filterCari').addEventListener('input', () => {
+        jalankanFilterDanSortRiwayat();
+    });
+    document.getElementById('filterYatim')?.addEventListener('change', () => {
         jalankanFilterDanSortRiwayat();
     });
 });
@@ -335,7 +339,15 @@ async function loadRiwayatData() {
     loading.classList.remove('hidden');
 
     try {
-        const res = await supabaseFetchAll(await terapkanFilterLokasi('log_absensi?select=*&order=id.desc'));
+        const logUrl = await terapkanFilterLokasi('log_absensi?select=*&order=id.desc');
+        const [res, masterRes] = await Promise.all([
+            supabaseFetchAll(logUrl),
+            supabaseFetchAll('master_relawan?select=nip,nama,jabatan,asal_organisasi&order=nama.asc')
+        ]);
+        if (masterRes.status === 'success') {
+            koreksiMasterData = masterRes.data || [];
+            riwayatMasterNips = new Set(koreksiMasterData.map(row => String(row.nip || '')));
+        }
         if (res.status === "success") {
             riwayatData = res.data;
             populateFilterDropdowns();
@@ -367,6 +379,8 @@ function resetFilter() {
     document.getElementById('filterLokasi').value = '';
     document.getElementById('filterOrganisasi').value = '';
     document.getElementById('filterCari').value = '';
+    const filterYatim = document.getElementById('filterYatim');
+    if (filterYatim) filterYatim.checked = false;
     activeExcelFilters = {};
     activeSortColumn = null;
     jalankanFilterDanSortRiwayat();
@@ -379,6 +393,7 @@ function jalankanFilterDanSortRiwayat() {
     const filterLok = document.getElementById('filterLokasi').value;
     const filterOrg = document.getElementById('filterOrganisasi').value;
     const globalKey = document.getElementById('filterCari').value.toLowerCase();
+    const hanyaYatim = document.getElementById('filterYatim')?.checked || false;
 
     let filtered = riwayatData.filter(r => {
         // Filter tanggal spesifik
@@ -408,7 +423,9 @@ function jalankanFilterDanSortRiwayat() {
             (r.organisasi && r.organisasi.toLowerCase().includes(globalKey)) ||
             (r.lokasi && r.lokasi.toLowerCase().includes(globalKey)) : true;
 
-        return matchTgl && matchBln && matchThn && matchLok && matchOrg && matchGlobal;
+        const matchYatim = hanyaYatim ? !riwayatMasterNips.has(String(r.nip || '')) : true;
+
+        return matchTgl && matchBln && matchThn && matchLok && matchOrg && matchGlobal && matchYatim;
     });
 
     // Filter berdasarkan pop-up Excel (Checkbox kolom aktif)
@@ -438,6 +455,9 @@ function jalankanFilterDanSortRiwayat() {
 function updateSummaryCards(data) {
     // Total data
     document.getElementById('summaryTotal').textContent = data.length.toLocaleString('id-ID');
+    const yatim = data.filter(row => !riwayatMasterNips.has(String(row.nip || ''))).length;
+    const summaryYatim = document.getElementById('summaryYatim');
+    if (summaryYatim) summaryYatim.textContent = yatim.toLocaleString('id-ID');
 
     // Relawan unik
     const namaUnik = new Set();
@@ -493,6 +513,9 @@ function renderTabelRiwayat(data) {
         const sesiAttr = escapeAttribute(sesiNormal);
         const lokasiAttr = escapeAttribute(r.lokasi);
         const orgAttr = escapeAttribute(r.organisasi);
+        const nipAttr = escapeAttribute(r.nip || '');
+        const namaAttr = escapeAttribute(r.nama || '');
+        const belumTerhubung = !riwayatMasterNips.has(String(r.nip || ''));
         const tanggalTampil = escapeHTML(r.tanggal);
         const sesiTampil = escapeHTML(sesiNormal);
         const namaTampil = escapeHTML(r.nama);
@@ -500,19 +523,19 @@ function renderTabelRiwayat(data) {
         const orgTampil = escapeHTML(r.organisasi);
 
         html += `
-            <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+            <tr class="${belumTerhubung ? 'bg-rose-50/70 dark:bg-rose-500/5' : ''} hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                 <td class="admin-only no-print px-4 py-3 text-center bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50">
                     <input type="checkbox" class="log-checkbox w-4 h-4 accent-primary cursor-pointer" value="${idAttr}" onchange="toggleBulkActionBanner()">
                 </td>
                 <td class="px-4 py-3 text-center font-bold text-slate-400 bg-slate-50 dark:bg-slate-800/50 border-r border-slate-100 dark:border-slate-700/50">${noUrut}</td>
                 <td class="px-4 py-3 text-xs text-slate-500 font-mono">${tanggalTampil}</td>
-                <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">${namaTampil}</td>
+                <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">${namaTampil}${belumTerhubung ? '<span class="ml-2 px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 text-[9px] font-black">BELUM TERHUBUNG</span>' : ''}</td>
                 <td class="px-4 py-3 font-bold ${(r.sesi === 'Pagi' || r.sesi === 'Siang') ? 'text-orange-500' : 'text-indigo-600'}">${sesiTampil}</td>
                 <td class="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs">${lokasiTampil}</td>
                 <td class="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs font-semibold">${orgTampil}</td>
                 <td class="admin-only no-print px-4 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
-                        <button onclick="bukaModalEditLogDariTombol(this)" data-id="${idAttr}" data-tanggal="${tanggalAttr}" data-sesi="${sesiAttr}" data-lokasi="${lokasiAttr}" data-org="${orgAttr}" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Edit">
+                        <button onclick="bukaModalEditLogDariTombol(this)" data-id="${idAttr}" data-nip="${nipAttr}" data-nama="${namaAttr}" data-tanggal="${tanggalAttr}" data-sesi="${sesiAttr}" data-lokasi="${lokasiAttr}" data-org="${orgAttr}" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Edit atau hubungkan personel">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button>
                         <button onclick="deleteSingleLogDariTombol(this)" data-id="${idAttr}" class="bg-red-100 text-red-700 hover:bg-red-200 text-xs font-bold p-2 rounded-lg transition-colors shadow-sm" title="Hapus">
@@ -532,6 +555,8 @@ function renderTabelRiwayat(data) {
 function bukaModalEditLogDariTombol(button) {
     bukaModalEditLog(
         button.dataset.id || '',
+        button.dataset.nip || '',
+        button.dataset.nama || '',
         button.dataset.tanggal || '',
         button.dataset.sesi || '',
         button.dataset.lokasi || '',
@@ -539,14 +564,25 @@ function bukaModalEditLogDariTombol(button) {
     );
 }
 
-function bukaModalEditLog(id, tgl, sesi, lokasi, org) {
+function bukaModalEditLog(id, nip, nama, tgl, sesi, lokasi, org) {
     document.getElementById('editLogId').value = id;
+    document.getElementById('editLogNipLama').value = nip;
+    const personelSelect = document.getElementById('editLogPersonel');
+    personelSelect.innerHTML = `<option value="">Pertahankan: ${escapeHTML(nama || '-')} — ${escapeHTML(nip || 'NIP kosong')}</option>`
+        + koreksiMasterData.map(row => `<option value="${escapeAttribute(row.nip)}">${escapeHTML(row.nama)} — ${escapeHTML(row.asal_organisasi || '-')}</option>`).join('');
+    personelSelect.value = riwayatMasterNips.has(String(nip || '')) ? String(nip) : '';
     document.getElementById('editLogTanggal').value = tgl;
     document.getElementById('editLogSesi').value = sesi;
     document.getElementById('editLogLokasi').value = lokasi;
     document.getElementById('editLogOrg').value = org;
 
     document.getElementById('modalEditLog').classList.remove('hidden');
+}
+
+function sinkronkanPersonelEditLog() {
+    const nip = document.getElementById('editLogPersonel')?.value || '';
+    const personel = koreksiMasterData.find(row => String(row.nip) === nip);
+    if (personel) document.getElementById('editLogOrg').value = personel.asal_organisasi || '';
 }
 
 function tutupModalEditLog() {
@@ -563,12 +599,26 @@ async function simpanEditLog() {
     const sesi = document.getElementById('editLogSesi').value;
     const lokasi = document.getElementById('editLogLokasi').value;
     const org = document.getElementById('editLogOrg').value;
+    const personelNip = document.getElementById('editLogPersonel')?.value || '';
 
     const btn = document.getElementById('btnSimpanEditLog');
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
     btn.disabled = true;
 
     const payload = { tanggal: tgl, sesi: sesi, lokasi: lokasi, organisasi: org };
+    if (personelNip) {
+        const personel = koreksiMasterData.find(row => String(row.nip) === personelNip);
+        if (!personel) {
+            showToast('Profil personel tujuan tidak ditemukan.', 'error');
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan';
+            btn.disabled = false;
+            return;
+        }
+        payload.nip = personel.nip;
+        payload.nama = personel.nama;
+        payload.bidang = personel.jabatan || '';
+        payload.organisasi = personel.asal_organisasi || org;
+    }
 
     try {
         const res = await supabaseFetch(`log_absensi?id=eq.${encodeURIComponent(id)}`, 'PATCH', payload);
@@ -577,10 +627,10 @@ async function simpanEditLog() {
             tutupModalEditLog();
             loadRiwayatData();
         } else {
-            throw new Error("Gagal update");
+            throw new Error(res.message || "Gagal update");
         }
     } catch (err) {
-        showToast("Terjadi kesalahan saat mengupdate.", "error");
+        showToast(err.message || "Terjadi kesalahan saat mengupdate.", "error");
     } finally {
         btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan';
         btn.disabled = false;

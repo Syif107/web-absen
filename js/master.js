@@ -21,6 +21,22 @@ function normalisasiNamaMaster(value) {
     return normalisasiKunciMaster(value).replace(/[^A-Z0-9]/g, '');
 }
 
+const ALIAS_ORGANISASI_MASTER = new Map([
+    ['DCP PLOSO', 'DPC PLOSO'],
+    ['MQ12', 'MQ 12'],
+    ['MQ13', 'MQ 13'],
+    ['IMQ25', 'IMQ 25']
+]);
+
+function rapikanNamaMaster(value) {
+    return normalisasiKunciMaster(value);
+}
+
+function rapikanOrganisasiMaster(value) {
+    const key = normalisasiKunciMaster(value);
+    return ALIAS_ORGANISASI_MASTER.get(key) || key;
+}
+
 const ORGANISASI_JOMBANG_MASTER = new Set([
     'PUSAT', 'DPD JOMBANG', 'DPC KABUH', 'OPSHID KABUH', 'DPC PLOSO',
     'DCP PLOSO', 'DPC KUDU', 'DPC PLANDAAN', 'DPC TEMBELANG',
@@ -357,6 +373,62 @@ function buatKandidatNamaMirip() {
     return hasil.sort((a, b) => String(a.rows[0]?.nama || '').localeCompare(String(b.rows[0]?.nama || ''), 'id'));
 }
 
+function ringkasJaringanKandidatNamaMirip(groups = duplikatMasterMirip) {
+    const rowsByNip = new Map();
+    const adjacency = new Map();
+
+    (groups || []).forEach(group => {
+        const rows = (group?.rows || []).filter(row => row?.nip);
+        rows.forEach(row => {
+            rowsByNip.set(row.nip, row);
+            if (!adjacency.has(row.nip)) adjacency.set(row.nip, new Set());
+        });
+        for (let i = 0; i < rows.length; i += 1) {
+            for (let j = i + 1; j < rows.length; j += 1) {
+                adjacency.get(rows[i].nip).add(rows[j].nip);
+                adjacency.get(rows[j].nip).add(rows[i].nip);
+            }
+        }
+    });
+
+    const visited = new Set();
+    const components = [];
+    adjacency.forEach((_, startNip) => {
+        if (visited.has(startNip)) return;
+        const queue = [startNip];
+        const members = [];
+        visited.add(startNip);
+        while (queue.length) {
+            const nip = queue.shift();
+            members.push(rowsByNip.get(nip));
+            (adjacency.get(nip) || []).forEach(nextNip => {
+                if (visited.has(nextNip)) return;
+                visited.add(nextNip);
+                queue.push(nextNip);
+            });
+        }
+        components.push(members.filter(Boolean));
+    });
+
+    components.sort((a, b) => b.length - a.length
+        || String(a[0]?.nama || '').localeCompare(String(b[0]?.nama || ''), 'id'));
+    const terbesar = components[0] || [];
+    const ukuranJaringanPerNip = new Map();
+    components.forEach(component => component.forEach(row => ukuranJaringanPerNip.set(row.nip, component.length)));
+    return {
+        pasangan: (groups || []).length,
+        profil: rowsByNip.size,
+        jaringan: components.length,
+        terbesar: terbesar.length,
+        ukuranJaringanPerNip,
+        contohTerbesar: terbesar
+            .map(row => String(row?.nama || '').trim())
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b, 'id'))
+            .slice(0, 8)
+    };
+}
+
 function profilUtamaDuplikat(group) {
     return [...(group?.rows || [])].sort(bandingkanProfilMaster)[0] || null;
 }
@@ -388,9 +460,29 @@ function renderDuplikatMaster() {
     const bulkButton = document.getElementById('btnGabungSemuaDuplikat');
     const miripList = document.getElementById('duplikatMasterMiripList');
     const miripCount = document.getElementById('jumlahKandidatMirip');
+    const miripRisk = document.getElementById('risikoKandidatMirip');
+    const miripFilter = document.getElementById('filterKandidatMirip')?.value || 'prioritas';
     if (!list) return;
     if (count) count.textContent = `${duplikatMasterGroups.length.toLocaleString('id-ID')} kelompok identik`;
-    if (miripCount) miripCount.textContent = `${duplikatMasterMirip.length.toLocaleString('id-ID')} kandidat beda 1 huruf`;
+    const ringkasanMirip = ringkasJaringanKandidatNamaMirip();
+    const kandidatDenganMeta = duplikatMasterMirip.map((group, index) => {
+        const organisasiSama = normalisasiKunciMaster(group.rows[0].asal_organisasi) === normalisasiKunciMaster(group.rows[1].asal_organisasi);
+        const namaCukupPanjang = Math.min(...group.rows.map(row => normalisasiNamaMaster(row.nama).length)) >= 5;
+        const ukuranJaringan = ringkasanMirip.ukuranJaringanPerNip.get(group.rows[0].nip) || 2;
+        return { group, index, organisasiSama, ukuranJaringan, prioritas: organisasiSama && namaCukupPanjang && ukuranJaringan === 2 };
+    });
+    const jumlahPrioritas = kandidatDenganMeta.filter(item => item.prioritas).length;
+    if (miripCount) miripCount.textContent = `${jumlahPrioritas.toLocaleString('id-ID')} prioritas / ${ringkasanMirip.pasangan.toLocaleString('id-ID')} pasangan`;
+    if (miripRisk) {
+        if (!ringkasanMirip.profil) {
+            miripRisk.classList.add('hidden');
+            miripRisk.innerHTML = '';
+        } else {
+            const contoh = ringkasanMirip.contohTerbesar.map(escapeHTML).join(', ');
+            miripRisk.classList.remove('hidden');
+            miripRisk.innerHTML = `<p class="font-black"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Kandidat bukan otomatis orang yang sama.</p><p class="mt-1">${ringkasanMirip.pasangan.toLocaleString('id-ID')} pasangan melibatkan ${ringkasanMirip.profil.toLocaleString('id-ID')} profil dalam ${ringkasanMirip.jaringan.toLocaleString('id-ID')} jaringan. Jika digabung berantai, jaringan terbesar dapat melebur ${ringkasanMirip.terbesar.toLocaleString('id-ID')} profil${contoh ? ` seperti ${contoh}${ringkasanMirip.terbesar > ringkasanMirip.contohTerbesar.length ? ', dan lainnya' : ''}` : ''}.</p><p class="mt-1">${jumlahPrioritas.toLocaleString('id-ID')} pasangan ditempatkan sebagai prioritas review karena organisasi sama, nama cukup panjang, dan tidak terhubung ke kandidat ketiga.</p><p class="mt-1 font-bold">Periksa identitas dan riwayat hadir. Jangan melakukan merge massal pada bagian ini.</p>`;
+        }
+    }
     if (bulkButton) bulkButton.disabled = duplikatMasterGroups.length === 0;
     if (!duplikatMasterGroups.length) {
         list.innerHTML = '<div class="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-500/30 p-5 text-sm text-emerald-700 dark:text-emerald-300"><i class="fa-solid fa-circle-check mr-2"></i>Tidak ada nama identik dalam kabupaten yang sama.</div>';
@@ -408,9 +500,23 @@ function renderDuplikatMaster() {
     }
 
     if (miripList) {
-        miripList.innerHTML = duplikatMasterMirip.length
-            ? duplikatMasterMirip.map((group, index) => `<article class="rounded-xl border border-violet-200 dark:border-violet-500/30 p-4 bg-violet-50/60 dark:bg-violet-500/5"><div class="flex flex-wrap items-center justify-between gap-3"><div><p class="font-black">${escapeHTML(group.rows[0].nama)} <span class="text-slate-400">↔</span> ${escapeHTML(group.rows[1].nama)}</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Kabupaten ${escapeHTML(group.kabupaten)} • ${escapeHTML(group.rows[0].asal_organisasi || '-')} / ${escapeHTML(group.rows[1].asal_organisasi || '-')}</p></div><button onclick="tinjauKandidatNamaMirip(${index})" class="px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-black"><i class="fa-solid fa-magnifying-glass mr-1"></i>Tinjau & Atur Merge</button></div></article>`).join('')
-            : '<p class="text-sm text-slate-400">Tidak ada kandidat nama berbeda satu huruf dalam kabupaten yang sama.</p>';
+        const kandidatTampil = kandidatDenganMeta
+            .filter(item => miripFilter === 'semua'
+                || (miripFilter === 'prioritas' && item.prioritas)
+                || (miripFilter === 'organisasi_berbeda' && !item.organisasiSama))
+            .sort((a, b) => Number(b.prioritas) - Number(a.prioritas)
+                || String(a.group.rows[0]?.nama || '').localeCompare(String(b.group.rows[0]?.nama || ''), 'id'));
+        miripList.innerHTML = kandidatTampil.length
+            ? kandidatTampil.map(item => {
+                const { group, index, organisasiSama, ukuranJaringan, prioritas } = item;
+                const badge = prioritas
+                    ? '<span class="text-[10px] font-black px-2 py-1 rounded-full bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">Prioritas review, bukan auto-merge</span>'
+                    : organisasiSama
+                        ? `<span class="text-[10px] font-black px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300">Jaringan ${ukuranJaringan} profil</span>`
+                        : '<span class="text-[10px] font-black px-2 py-1 rounded-full bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300">Organisasi berbeda</span>';
+                return `<article class="rounded-xl border border-violet-200 dark:border-violet-500/30 p-4 bg-violet-50/60 dark:bg-violet-500/5"><div class="flex flex-wrap items-center justify-between gap-3"><div><div class="flex flex-wrap items-center gap-2"><p class="font-black">${escapeHTML(group.rows[0].nama)} <span class="text-slate-400">↔</span> ${escapeHTML(group.rows[1].nama)}</p>${badge}</div><p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Kabupaten ${escapeHTML(group.kabupaten)} • ${escapeHTML(group.rows[0].asal_organisasi || '-')} / ${escapeHTML(group.rows[1].asal_organisasi || '-')}</p><p class="text-[10px] text-violet-600 dark:text-violet-300 mt-1">Kemiripan satu karakter hanya petunjuk, bukan bukti bahwa keduanya satu orang.</p></div><button onclick="tinjauKandidatNamaMirip(${index})" class="px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-black"><i class="fa-solid fa-magnifying-glass mr-1"></i>Periksa 2 Profil</button></div></article>`;
+            }).join('')
+            : `<p class="text-sm text-slate-400">Tidak ada kandidat pada filter ${miripFilter === 'prioritas' ? 'prioritas review' : 'yang dipilih'}.</p>`;
     }
 }
 
@@ -425,8 +531,8 @@ async function gabungkanKelompokAman(index, tampilkanKonfirmasi = true) {
             p_nips: group.rows.map(row => row.nip),
             p_target_nip: target.nip,
             p_profile: {
-                nama: target.nama,
-                asal_organisasi: target.asal_organisasi,
+                nama: rapikanNamaMaster(target.nama),
+                asal_organisasi: rapikanOrganisasiMaster(target.asal_organisasi),
                 jabatan: normalisasiJabatanMaster(target.jabatan),
                 asal_daerah: target.asal_daerah || null,
                 kabupaten_normalisasi: kabupatenMaster(target) || null,
@@ -759,9 +865,9 @@ function tutupModalEdit() {
 }
 
 async function simpanEditMaster() {
-    const namaBaru = document.getElementById('editNama').value.trim().toUpperCase();
+    const namaBaru = rapikanNamaMaster(document.getElementById('editNama').value);
     const bidangBaru = normalisasiJabatanMaster(document.getElementById('editBidang').value);
-    const orgBaru = document.getElementById('editOrg').value.trim();
+    const orgBaru = rapikanOrganisasiMaster(document.getElementById('editOrg').value);
     const daerahBaru = document.getElementById('editDaerah').value.trim();
     const kategoriWilayahBaru = normalisasiKunciMaster(orgBaru) === 'PUSAT'
         ? 'jombang'
@@ -891,8 +997,8 @@ async function eksekusiMergeManual() {
         return;
     }
 
-    const nama = document.getElementById('mergeNama').value.trim().toUpperCase();
-    const asalOrganisasi = document.getElementById('mergeOrg').value.trim();
+    const nama = rapikanNamaMaster(document.getElementById('mergeNama').value);
+    const asalOrganisasi = rapikanOrganisasiMaster(document.getElementById('mergeOrg').value);
     const jabatan = normalisasiJabatanMaster(document.getElementById('mergeBidang').value);
     const asalDaerah = document.getElementById('mergeDaerah').value.trim();
     const kategoriWilayah = normalisasiKunciMaster(asalOrganisasi) === 'PUSAT'
@@ -1253,7 +1359,8 @@ function parseCSV(content) {
         
         if (!nama || nama === '') continue;
         
-        nama = nama.toUpperCase();
+        nama = rapikanNamaMaster(nama);
+        organisasi = rapikanOrganisasiMaster(organisasi);
         
         const existing = masterData.find(r => r.nama === nama);
         const nipFinal = nip || (existing ? existing.nip : `REL-${nama.replace(/\s+/g, '').substring(0,10)}${Math.floor(1000 + Math.random() * 9000)}`);

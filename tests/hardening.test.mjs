@@ -204,7 +204,10 @@ test('fase 8 tetap aman dan UI terbaru mengelompokkan nama identik per kabupaten
     assert.match(masterHtml, /Gabungkan Semua Aman/);
     assert.match(masterHtml, /modalRapikanMaster/);
     assert.match(masterHtml, /Nama identik setelah normalisasi tanda baca dan kapitalisasi/i);
-    assert.match(masterHtml, /Perlu diperiksa manual/);
+    assert.match(masterHtml, /perlu diperiksa manual/i);
+    assert.match(masterHtml, /Kemiripan nama bukan bukti/i);
+    assert.match(masterHtml, /risikoKandidatMirip/);
+    assert.match(masterHtml, /filterKandidatMirip/);
     assert.match(masterHtml, /editDaerah/);
     assert.match(source, /= 'PUSAT'/);
     assert.match(source, /PJ \/ Admin/);
@@ -244,9 +247,20 @@ test('normalisasi Master hanya memetakan PUSAT dan menyatukan PJ dengan Admin', 
     assert.equal(context.normalisasiJabatanMaster('admin'), 'PJ / Admin');
     assert.equal(context.normalisasiJabatanMaster('Koordinator'), 'Koordinator');
     assert.equal(context.normalisasiNamaMaster('  A. Gunawan '), 'AGUNAWAN');
+    assert.equal(context.rapikanNamaMaster('  a. gunawan  '), 'A. GUNAWAN');
+    assert.equal(context.rapikanOrganisasiMaster(' dcp   ploso '), 'DPC PLOSO');
+    assert.equal(context.rapikanOrganisasiMaster('mq13'), 'MQ 13');
     assert.equal(context.kabupatenMaster({ asal_organisasi: 'DPC PLOSO' }), 'JOMBANG');
     assert.equal(context.jarakNamaMaksimalSatu('TEGUH', 'TEGU'), true);
     assert.equal(context.jarakNamaMaksimalSatu('TEGUH', 'GUNAWAN'), false);
+    const ringkasan = context.ringkasJaringanKandidatNamaMirip([
+        { rows: [{ nip: '1', nama: 'ADI' }, { nip: '2', nama: 'ABDI' }] },
+        { rows: [{ nip: '1', nama: 'ADI' }, { nip: '3', nama: 'AJI' }] }
+    ]);
+    assert.equal(ringkasan.pasangan, 2);
+    assert.equal(ringkasan.profil, 3);
+    assert.equal(ringkasan.jaringan, 1);
+    assert.equal(ringkasan.terbesar, 3);
 });
 
 test('fase 10 menyediakan koreksi kehadiran, peringkat umum, dan stok seragam set', () => {
@@ -292,4 +306,25 @@ test('input menggunakan Pagi dan nama baku lima proyek', () => {
     assert.match(html, /Gapura Syukur/);
     assert.match(source, /startsWith\('PAG'\)/);
     assert.match(source, /startsWith\('SIA'\).*'Pagi'/);
+});
+
+test('fase 11 merapikan teks dan memulihkan log yatim tanpa menghapus data', () => {
+    const source = read('db/fase11_perapian_aman_master.sql');
+    const riwayat = read('js/riwayat.js');
+    const riwayatHtml = read('riwayat.html');
+    assert.match(source, /BEGIN;/);
+    assert.match(source, /COMMIT;/);
+    assert.match(source, /backup_fase11_master_relawan_20261002/);
+    assert.match(source, /backup_fase11_log_absensi_20261002/);
+    assert.match(source, /WITH master_norm AS/);
+    assert.match(source, /HAVING count\(\*\) = 1/);
+    assert.match(source, /existing\.tanggal = l\.tanggal/);
+    assert.doesNotMatch(source, /DELETE\s+FROM\s+public\.log_absensi/i);
+    assert.doesNotMatch(source, /DELETE\s+FROM\s+public\.master_relawan/i);
+    assert.match(riwayat, /riwayatMasterNips/);
+    assert.match(riwayat, /sinkronkanPersonelEditLog/);
+    assert.match(riwayat, /payload\.nip = personel\.nip/);
+    assert.match(riwayatHtml, /filterYatim/);
+    assert.match(riwayatHtml, /summaryYatim/);
+    assert.match(riwayatHtml, /editLogPersonel/);
 });

@@ -212,7 +212,7 @@
                     <div>
                         <h3 class="font-black text-xl text-amber-700 dark:text-amber-300"><i class="fa-solid fa-code-merge mr-2"></i>Rapikan Master Data</h3>
                         <p class="text-xs text-amber-700/80 dark:text-amber-300/80 font-medium mt-2">Nama identik setelah normalisasi tanda baca dan kapitalisasi dapat digabung bila berada dalam kabupaten yang sama. Bidang boleh berbeda.</p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Nama yang berbeda satu huruf hanya ditandai sebagai kandidat dan wajib diperiksa manual.</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Nama yang berbeda satu huruf hanya ditandai sebagai kandidat. Kemiripan nama bukan bukti bahwa profil tersebut orang yang sama.</p>
                     </div>
                     <button onclick="tutupModalRapikanMaster()" class="w-9 h-9 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-500/20 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
                 </div>
@@ -226,7 +226,18 @@
                         <div id="duplikatMasterList" class="space-y-3"></div>
                     </section>
                     <section class="p-5 border-t border-slate-200 dark:border-slate-700 bg-violet-50/40 dark:bg-violet-500/5">
-                        <div class="flex items-center justify-between gap-3 mb-3"><h4 class="font-black text-sm text-violet-700 dark:text-violet-300">Perlu diperiksa manual</h4><span id="jumlahKandidatMirip" class="text-[10px] font-black px-2 py-1 rounded-full bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300">0 kandidat</span></div>
+                        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                            <h4 class="font-black text-sm text-violet-700 dark:text-violet-300">Nama mirip — perlu diperiksa manual</h4>
+                            <div class="flex items-center gap-2">
+                                <select id="filterKandidatMirip" onchange="renderDuplikatMaster()" class="px-3 py-1.5 rounded-lg border border-violet-200 dark:border-violet-500/30 bg-white dark:bg-slate-800 text-[11px] font-bold">
+                                    <option value="prioritas">Prioritas review</option>
+                                    <option value="semua">Semua kandidat</option>
+                                    <option value="organisasi_berbeda">Organisasi berbeda</option>
+                                </select>
+                                <span id="jumlahKandidatMirip" class="text-[10px] font-black px-2 py-1 rounded-full bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-300">0 prioritas / 0 pasangan</span>
+                            </div>
+                        </div>
+                        <div id="risikoKandidatMirip" class="hidden mb-4 rounded-xl border border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10 p-4 text-xs text-rose-700 dark:text-rose-300"></div>
                         <div id="duplikatMasterMiripList" class="space-y-3"></div>
                     </section>
                 </div>
