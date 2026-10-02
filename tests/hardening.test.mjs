@@ -253,6 +253,14 @@ test('normalisasi Master hanya memetakan PUSAT dan menyatukan PJ dengan Admin', 
     assert.equal(context.kabupatenMaster({ asal_organisasi: 'DPC PLOSO' }), 'JOMBANG');
     assert.equal(context.jarakNamaMaksimalSatu('TEGUH', 'TEGU'), true);
     assert.equal(context.jarakNamaMaksimalSatu('TEGUH', 'GUNAWAN'), false);
+    assert.ok(context.bandingkanProfilMaster(
+        { nip: 'TINGGI', persentase_hari: 80, total_hari: 8, total_sesi: 8 },
+        { nip: 'RENDAH', persentase_hari: 70, total_hari: 40, total_sesi: 40 }
+    ) < 0, 'persentase lebih tinggi harus dipertahankan walau total harinya lebih kecil');
+    assert.ok(context.bandingkanProfilMaster(
+        { nip: 'BANYAK', persentase_hari: 50, total_hari: 20, total_sesi: 21 },
+        { nip: 'SEDIKIT', persentase_hari: 50, total_hari: 10, total_sesi: 30 }
+    ) < 0, 'jika persentase sama, total hari menjadi pengikat pertama');
     const ringkasan = context.ringkasJaringanKandidatNamaMirip([
         { rows: [{ nip: '1', nama: 'ADI' }, { nip: '2', nama: 'ABDI' }] },
         { rows: [{ nip: '1', nama: 'ADI' }, { nip: '3', nama: 'AJI' }] }
@@ -327,4 +335,25 @@ test('fase 11 merapikan teks dan memulihkan log yatim tanpa menghapus data', () 
     assert.match(riwayatHtml, /filterYatim/);
     assert.match(riwayatHtml, /summaryYatim/);
     assert.match(riwayatHtml, /editLogPersonel/);
+});
+
+test('fase 12 memilih lebih dari setengah kandidat tanpa merge berantai', () => {
+    const source = read('db/fase12_merge_lebih_50_persen.sql');
+    const master = read('js/master.js');
+
+    assert.match(source, /BEGIN;/);
+    assert.match(source, /COMMIT;/);
+    assert.match(source, /backup_fase12_master_relawan_20261003/);
+    assert.match(source, /audit_merge_fase12_20261003/);
+    assert.match(source, /ALTER TABLE public\.backup_fase12_master_relawan_20261003 ENABLE ROW LEVEL SECURITY/);
+    assert.match(source, /ALTER TABLE public\.audit_merge_fase12_20261003 ENABLE ROW LEVEL SECURITY/);
+    assert.match(source, /CREATE TEMP TABLE fase12_nip_terpakai/);
+    assert.match(source, /EXIT WHEN v_jumlah >= 250/);
+    assert.match(source, /IF v_jumlah < 242/);
+    assert.match(source, /kandidat\.pct_a > kandidat\.pct_b/);
+    assert.match(source, /source_nip text NOT NULL UNIQUE/);
+    assert.match(source, /target_nip text NOT NULL UNIQUE/);
+    assert.match(source, /v_sumber_tersisa <> 0/);
+    assert.match(master, /Number\(row\?\.persentase_hari \|\| 0\)/);
+    assert.match(master, /persentase tertinggi dipertahankan/i);
 });

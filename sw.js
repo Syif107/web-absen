@@ -1,4 +1,4 @@
-const CACHE_NAME = "relawansync-v24-master-linking-cache";
+const CACHE_NAME = "relawansync-v25-merge-percentage-cache";
 const PRECACHE_URLS = [
     "manifest.json",
     "assets/icon.png",

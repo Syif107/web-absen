@@ -318,7 +318,13 @@ function formatTanggalMaster(value) {
 function skorProfilMaster(row) {
     const kolomTerisi = ['nama', 'asal_organisasi', 'jabatan', 'asal_daerah', 'kategori_wilayah', 'ukuran_seragam', 'catatan_seragam']
         .filter(key => String(row?.[key] || '').trim() && row[key] !== 'belum_dilengkapi').length;
-    return [Number(row?.total_hari || 0), Number(row?.total_sesi || 0), kolomTerisi, String(row?.nip || '')];
+    return [
+        Number(row?.persentase_hari || 0),
+        Number(row?.total_hari || 0),
+        Number(row?.total_sesi || 0),
+        kolomTerisi,
+        String(row?.nip || '')
+    ];
 }
 
 function bandingkanProfilMaster(a, b) {
@@ -327,7 +333,8 @@ function bandingkanProfilMaster(a, b) {
     return skorB[0] - skorA[0]
         || skorB[1] - skorA[1]
         || skorB[2] - skorA[2]
-        || skorA[3].localeCompare(skorB[3], 'id');
+        || skorB[3] - skorA[3]
+        || skorA[4].localeCompare(skorB[4], 'id');
 }
 
 function pasanganDuplikatAman(row) {
@@ -495,7 +502,7 @@ function renderDuplikatMaster() {
                 const isTarget = row.nip === target?.nip;
                 return `<li class="py-2 border-b border-slate-100 dark:border-slate-700 last:border-0"><div class="flex items-center justify-between gap-3"><span><strong>${escapeHTML(row.nip)}</strong><span class="text-slate-500 dark:text-slate-400 ml-2">${Number(row.total_hari || 0)} hari</span></span><span class="text-[10px] font-black ${isTarget ? 'text-emerald-600' : 'text-amber-600'}">${isTarget ? 'DIPERTAHANKAN' : 'DIGABUNG'}</span></div><p class="text-[10px] text-slate-400 mt-1">${escapeHTML(row.asal_organisasi || '-')} • ${escapeHTML(row.jabatan || '-')}</p></li>`;
             }).join('');
-            return `<article class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800"><div class="flex flex-wrap items-start justify-between gap-3"><div><p class="font-black">${nama}</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Kabupaten: ${kabupaten}</p><p class="text-[10px] text-slate-400 mt-1">Bidang boleh berbeda; profil dengan riwayat terbanyak dipertahankan.</p></div><button onclick="gabungkanKelompokAman(${index})" class="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-black"><i class="fa-solid fa-code-merge mr-1"></i>Gabungkan kelompok</button></div><ul class="mt-3 text-xs">${anggota}</ul></article>`;
+            return `<article class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 bg-white dark:bg-slate-800"><div class="flex flex-wrap items-start justify-between gap-3"><div><p class="font-black">${nama}</p><p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Kabupaten: ${kabupaten}</p><p class="text-[10px] text-slate-400 mt-1">Bidang boleh berbeda; persentase tertinggi dipertahankan. Jika sama, dipilih hari lalu sesi terbanyak.</p></div><button onclick="gabungkanKelompokAman(${index})" class="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-black"><i class="fa-solid fa-code-merge mr-1"></i>Gabungkan kelompok</button></div><ul class="mt-3 text-xs">${anggota}</ul></article>`;
         }).join('');
     }
 
@@ -958,10 +965,10 @@ function renderPengaturanMergeManual() {
     if (!select || !list || !count) return;
 
     count.textContent = `${rows.length} profil akan menjadi 1`;
-    select.innerHTML = rows.map(row => `<option value="${escapeAttribute(row.nip)}" ${row.nip === manualMergeTargetNip ? 'selected' : ''}>${escapeHTML(row.nama)} — ${escapeHTML(row.nip)} (${Number(row.total_hari || 0)} hari)</option>`).join('');
+    select.innerHTML = rows.map(row => `<option value="${escapeAttribute(row.nip)}" ${row.nip === manualMergeTargetNip ? 'selected' : ''}>${escapeHTML(row.nama)} — ${escapeHTML(row.nip)} (${Number(row.persentase_hari || 0).toFixed(1)}% • ${Number(row.total_hari || 0)} hari)</option>`).join('');
     list.innerHTML = rows.map(row => `<div class="rounded-xl border ${row.nip === manualMergeTargetNip ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'} p-3">
         <div class="flex items-start justify-between gap-3"><div><p class="font-black text-sm text-slate-800 dark:text-slate-100">${escapeHTML(row.nama)}</p><p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">${escapeHTML(row.nip)} • ${escapeHTML(row.asal_organisasi || 'Asal belum diisi')}</p></div><span class="text-[10px] font-black ${row.nip === manualMergeTargetNip ? 'text-emerald-600' : 'text-amber-600'}">${row.nip === manualMergeTargetNip ? 'ID UTAMA' : 'AKAN DIGABUNG'}</span></div>
-        <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-2">${Number(row.total_hari || 0)} hari • ${Number(row.total_sesi || 0)} sesi • ${escapeHTML(normalisasiJabatanMaster(row.jabatan) || 'Jabatan belum diisi')}</p>
+        <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-2"><strong>${Number(row.persentase_hari || 0).toFixed(1)}%</strong> • ${Number(row.total_hari || 0)} hari • ${Number(row.total_sesi || 0)} sesi • ${escapeHTML(normalisasiJabatanMaster(row.jabatan) || 'Jabatan belum diisi')}</p>
     </div>`).join('');
 }
 
