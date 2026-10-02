@@ -10,7 +10,6 @@ let isNewestFilter = false;
 let masterSortMode = 'nama';
 let duplikatMasterGroups = [];
 let manualMergeSelectedNips = new Set();
-let manualMergeKey = '';
 let manualMergeTargetNip = '';
 
 function normalisasiKunciMaster(value) {
@@ -44,8 +43,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 document.addEventListener('keydown', event => {
     const modalEdit = document.getElementById('modalEdit');
+    const modalMergeManual = document.getElementById('modalMergeManual');
     if (event.key === 'Escape' && modalEdit && !modalEdit.classList.contains('hidden')) {
         tutupModalEdit();
+    }
+    if (event.key === 'Escape' && modalMergeManual && !modalMergeManual.classList.contains('hidden')) {
+        tutupModalMergeManual();
     }
     if (event.ctrlKey && event.key === 'Enter' && modalEdit && !modalEdit.classList.contains('hidden')) {
         event.preventDefault();
@@ -509,11 +512,14 @@ function toggleAllMaster(source) {
 function toggleMasterBulkAction() {
     const count = document.querySelectorAll('.master-checkbox:checked').length; 
     const banner = document.getElementById('bulkMasterBanner');
+    const mergeButton = document.getElementById('btnMergeMasterTerpilih');
     if (count > 0) { 
         banner.classList.remove('hidden'); 
         document.getElementById('selectedMasterCount').innerText = count; 
+        if (mergeButton) mergeButton.classList.toggle('hidden', count < 2);
     } else { 
         banner.classList.add('hidden'); 
+        if (mergeButton) mergeButton.classList.add('hidden');
         document.getElementById('checkAllMaster').checked = false; 
     }
 }
@@ -707,145 +713,136 @@ async function simpanEditMaster() {
 // ZONA MERGE ENGINE (PENGGABUNGAN DATA)
 // ------------------------------------------
 
-function kandidatMergeManual() {
-    const counts = new Map();
-    masterData.forEach(row => {
-        const key = kunciIdentitasMaster(row);
-        if (key) counts.set(key, (counts.get(key) || 0) + 1);
-    });
-    return masterData
-        .filter(row => (counts.get(kunciIdentitasMaster(row)) || 0) > 1)
-        .sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || ''), 'id') || bandingkanProfilMaster(a, b));
+function masterTerpilih() {
+    const nips = [...document.querySelectorAll('.master-checkbox:checked')].map(checkbox => checkbox.value);
+    return nips.map(nip => masterData.find(row => row.nip === nip)).filter(Boolean);
 }
 
-function bukaModalMergeManual() {
-    manualMergeSelectedNips = new Set();
-    manualMergeKey = '';
-    manualMergeTargetNip = '';
-    const search = document.getElementById('searchManualMerge');
-    if (search) search.value = '';
-    renderManualMergeCandidates();
-    renderTargetMergeManual();
+function bukaModalMergeTerpilih() {
+    const rows = masterTerpilih();
+    if (rows.length < 2) {
+        showToast('Pilih sedikitnya 2 profil untuk digabung.', 'error');
+        return;
+    }
+
+    manualMergeSelectedNips = new Set(rows.map(row => row.nip));
+    const target = [...rows].sort(bandingkanProfilMaster)[0];
+    manualMergeTargetNip = target.nip;
+    renderPengaturanMergeManual();
+    isiFormMergeManual(target);
     document.getElementById('modalMergeManual')?.classList.remove('hidden');
 }
 
 function tutupModalMergeManual() {
     document.getElementById('modalMergeManual')?.classList.add('hidden');
     manualMergeSelectedNips = new Set();
-    manualMergeKey = '';
     manualMergeTargetNip = '';
 }
 
-function renderManualMergeCandidates() {
-    const container = document.getElementById('manualMergeCandidates');
-    if (!container) return;
-    const keyword = String(document.getElementById('searchManualMerge')?.value || '').trim().toLowerCase();
-    const candidates = kandidatMergeManual().filter(row => {
-        const haystack = `${row.nama || ''} ${row.asal_organisasi || ''} ${row.nip || ''}`.toLowerCase();
-        return !keyword || haystack.includes(keyword);
-    });
-
-    if (!candidates.length) {
-        container.innerHTML = '<div class="p-5 text-sm text-slate-500 dark:text-slate-400 text-center">Tidak ada kandidat duplikat yang cocok.</div>';
-        return;
-    }
-
-    container.innerHTML = candidates.map(row => {
-        const key = kunciIdentitasMaster(row);
-        const checked = manualMergeSelectedNips.has(row.nip);
-        const disabled = Boolean(manualMergeKey && key !== manualMergeKey);
-        return `<label class="flex items-center gap-3 p-3 border-b border-slate-100 dark:border-slate-700 last:border-0 ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/10'}">
-            <input type="checkbox" class="w-4 h-4 accent-amber-500" data-nip="${escapeAttribute(row.nip)}" onchange="ubahPilihanMergeManual(this)" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
-            <span class="min-w-0 flex-1"><strong class="block text-sm text-slate-800 dark:text-slate-100">${escapeHTML(row.nama)}</strong><span class="block text-[10px] text-slate-500 dark:text-slate-400 truncate">${escapeHTML(row.asal_organisasi)} • ${escapeHTML(row.nip)}</span></span>
-            <span class="text-[10px] font-black text-slate-500 dark:text-slate-400">${Number(row.total_hari || 0)} hari</span>
-        </label>`;
-    }).join('');
-}
-
-function ubahPilihanMergeManual(checkbox) {
-    const nip = checkbox.dataset.nip || '';
-    const row = masterData.find(item => item.nip === nip);
-    const key = kunciIdentitasMaster(row);
-    if (!row || !key) {
-        checkbox.checked = false;
-        showToast('Profil harus memiliki nama dan asal organisasi.', 'error');
-        return;
-    }
-
-    if (checkbox.checked) {
-        if (manualMergeKey && key !== manualMergeKey) {
-            checkbox.checked = false;
-            showToast('Pilih hanya profil dengan nama dan asal organisasi yang sama.', 'error');
-            return;
-        }
-        manualMergeSelectedNips.add(nip);
-    } else {
-        manualMergeSelectedNips.delete(nip);
-    }
-
-    const firstSelected = masterData.find(item => manualMergeSelectedNips.has(item.nip));
-    manualMergeKey = firstSelected ? kunciIdentitasMaster(firstSelected) : '';
-    if (!manualMergeSelectedNips.has(manualMergeTargetNip)) manualMergeTargetNip = '';
-    renderManualMergeCandidates();
-    renderTargetMergeManual();
-}
-
-function renderTargetMergeManual() {
-    const select = document.getElementById('targetMergeManual');
-    const count = document.getElementById('manualMergeSelectedCount');
-    const button = document.getElementById('btnEksekusiMergeManual');
-    if (!select || !count || !button) return;
+function renderPengaturanMergeManual() {
     const rows = masterData
         .filter(row => manualMergeSelectedNips.has(row.nip))
         .sort(bandingkanProfilMaster);
-    count.textContent = `${rows.length} profil dipilih`;
-    if (!rows.length) {
-        select.innerHTML = '<option value="">Pilih sedikitnya 2 profil</option>';
-        manualMergeTargetNip = '';
-    } else {
-        if (!manualMergeTargetNip || !manualMergeSelectedNips.has(manualMergeTargetNip)) manualMergeTargetNip = rows[0].nip;
-        select.innerHTML = rows.map(row => `<option value="${escapeAttribute(row.nip)}" ${row.nip === manualMergeTargetNip ? 'selected' : ''}>${escapeHTML(row.nama)} — ${escapeHTML(row.nip)} (${Number(row.total_hari || 0)} hari)</option>`).join('');
-    }
-    button.disabled = rows.length < 2 || !manualMergeTargetNip;
+    const select = document.getElementById('targetMergeManual');
+    const list = document.getElementById('manualMergeSelectedList');
+    const count = document.getElementById('manualMergeSelectedCount');
+    if (!select || !list || !count) return;
+
+    count.textContent = `${rows.length} profil akan menjadi 1`;
+    select.innerHTML = rows.map(row => `<option value="${escapeAttribute(row.nip)}" ${row.nip === manualMergeTargetNip ? 'selected' : ''}>${escapeHTML(row.nama)} — ${escapeHTML(row.nip)} (${Number(row.total_hari || 0)} hari)</option>`).join('');
+    list.innerHTML = rows.map(row => `<div class="rounded-xl border ${row.nip === manualMergeTargetNip ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'} p-3">
+        <div class="flex items-start justify-between gap-3"><div><p class="font-black text-sm text-slate-800 dark:text-slate-100">${escapeHTML(row.nama)}</p><p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">${escapeHTML(row.nip)} • ${escapeHTML(row.asal_organisasi || 'Asal belum diisi')}</p></div><span class="text-[10px] font-black ${row.nip === manualMergeTargetNip ? 'text-emerald-600' : 'text-amber-600'}">${row.nip === manualMergeTargetNip ? 'ID UTAMA' : 'AKAN DIGABUNG'}</span></div>
+        <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-2">${Number(row.total_hari || 0)} hari • ${Number(row.total_sesi || 0)} sesi • ${escapeHTML(normalisasiJabatanMaster(row.jabatan) || 'Jabatan belum diisi')}</p>
+    </div>`).join('');
+}
+
+function isiFormMergeManual(row) {
+    if (!row) return;
+    document.getElementById('mergeNama').value = row.nama || '';
+    document.getElementById('mergeOrg').value = row.asal_organisasi || '';
+    document.getElementById('mergeBidang').value = normalisasiJabatanMaster(row.jabatan);
+    document.getElementById('mergeDaerah').value = row.asal_daerah || '';
+    document.getElementById('mergeKategoriWilayah').value = kategoriWilayahEfektif(row);
+    document.getElementById('mergeUkuranSeragam').value = row.ukuran_seragam || '';
+    document.getElementById('mergeCatatanSeragam').value = row.catatan_seragam || '';
 }
 
 function pilihTargetMergeManual() {
     manualMergeTargetNip = document.getElementById('targetMergeManual')?.value || '';
-    renderTargetMergeManual();
+    const target = masterData.find(row => row.nip === manualMergeTargetNip);
+    renderPengaturanMergeManual();
+    isiFormMergeManual(target);
+}
+
+function sarankanKategoriMergePusat() {
+    const org = document.getElementById('mergeOrg')?.value;
+    const kategori = document.getElementById('mergeKategoriWilayah');
+    if (kategori && normalisasiKunciMaster(org) === 'PUSAT') kategori.value = 'jombang';
 }
 
 async function eksekusiMergeManual() {
     const rows = masterData.filter(row => manualMergeSelectedNips.has(row.nip));
     const target = rows.find(row => row.nip === manualMergeTargetNip);
-    const sources = rows.filter(row => row.nip !== manualMergeTargetNip);
-    const keys = new Set(rows.map(kunciIdentitasMaster));
-    if (!target || !sources.length || keys.size !== 1 || ![...keys][0]) {
-        showToast('Pilih minimal 2 profil dengan nama dan asal organisasi yang sama.', 'error');
+    if (!target || rows.length < 2) {
+        showToast('Pilihan merge tidak lengkap. Pilih ulang dari tabel.', 'error');
         return;
     }
 
-    if (!confirm(`Gabungkan ${sources.length} profil ke ${target.nama} (${target.nip})?\n\nRiwayat absensi dipindahkan ke profil tujuan. Profil sumber lalu dihapus permanen.`)) return;
+    const nama = document.getElementById('mergeNama').value.trim().toUpperCase();
+    const asalOrganisasi = document.getElementById('mergeOrg').value.trim();
+    const jabatan = normalisasiJabatanMaster(document.getElementById('mergeBidang').value);
+    const asalDaerah = document.getElementById('mergeDaerah').value.trim();
+    const kategoriWilayah = normalisasiKunciMaster(asalOrganisasi) === 'PUSAT'
+        ? 'jombang'
+        : document.getElementById('mergeKategoriWilayah').value;
+    const ukuranSeragam = document.getElementById('mergeUkuranSeragam').value;
+    const catatanSeragam = document.getElementById('mergeCatatanSeragam').value.trim();
+
+    if (!nama || !asalOrganisasi) {
+        showToast('Nama akhir dan asal organisasi wajib diisi.', 'error');
+        return;
+    }
+
+    const sumber = rows.filter(row => row.nip !== target.nip);
+    const daftar = rows.map(row => `• ${row.nama} — ${row.asal_organisasi || 'asal belum diisi'}`).join('\n');
+    if (!confirm(`MERGE MANUAL ${rows.length} PROFIL\n\n${daftar}\n\nHasil akhir:\n${nama} — ${asalOrganisasi}\nID utama: ${target.nip}\n\nRiwayat duplikat pada tanggal, sesi, dan proyek yang sama akan dihitung satu kali. ${sumber.length} profil sumber akan dihapus permanen.`)) return;
 
     const button = document.getElementById('btnEksekusiMergeManual');
     button.disabled = true;
-    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
-    let berhasil = 0;
-    let gagal = 0;
-    for (const source of sources) {
-        try {
-            const res = await callSupabaseRpc('merge_relawan', { p_sumber_nip: source.nip, p_target_nip: target.nip });
-            if (res.status !== 'success') throw new Error(res.message || 'Merge ditolak server');
-            berhasil += 1;
-        } catch (error) {
-            gagal += 1;
-            console.error('Merge manual gagal:', source.nip, error);
-        }
-    }
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menggabungkan...';
 
-    button.innerHTML = '<i class="fa-solid fa-code-merge"></i> Gabungkan Pilihan';
-    showToast(`Merge manual selesai: ${berhasil} profil digabung${gagal ? `, ${gagal} gagal` : ''}.`, gagal ? 'error' : 'success');
-    tutupModalMergeManual();
-    await loadMasterData();
+    try {
+        const res = await callSupabaseRpc('merge_relawan_manual', {
+            p_nips: rows.map(row => row.nip),
+            p_target_nip: target.nip,
+            p_profile: {
+                nama,
+                asal_organisasi: asalOrganisasi,
+                jabatan,
+                asal_daerah: asalDaerah || null,
+                kategori_wilayah: kategoriWilayah,
+                ukuran_seragam: ukuranSeragam || null,
+                catatan_seragam: catatanSeragam || null
+            }
+        });
+        if (res.status !== 'success') {
+            const pesanServer = (res.result && res.result.message) || res.message || 'Merge ditolak server.';
+            throw new Error(pesanServer);
+        }
+
+        showToast(`${rows.length} profil berhasil digabung menjadi ${nama}.`, 'success');
+        tutupModalMergeManual();
+        document.querySelectorAll('.master-checkbox').forEach(checkbox => { checkbox.checked = false; });
+        document.getElementById('checkAllMaster').checked = false;
+        toggleMasterBulkAction();
+        await loadMasterData();
+    } catch (error) {
+        showToast(error.message || 'Gagal menggabungkan profil.', 'error');
+        console.error('Merge manual gagal:', error);
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fa-solid fa-code-merge"></i> Gabungkan & Simpan';
+    }
 }
 
 let currentSourceNip = "";

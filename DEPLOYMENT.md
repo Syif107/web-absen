@@ -47,15 +47,24 @@ Sistem hanya menawarkan merge untuk pasangan dengan nama dan asal organisasi
 yang sama setelah normalisasi huruf besar dan spasi. Nama sama dengan asal
 berbeda, nama berbeda, atau asal kosong tetap dipisahkan.
 
-Fase ini juga menambahkan Merge Manual multi-pilihan, mengklasifikasikan hanya
-organisasi yang persis `PUSAT` sebagai Jombang, serta menyatukan istilah jabatan
-`PJ` dan `Admin` menjadi `PJ / Admin`. `DPD JOMBANG` atau `Jombang` tidak
-otomatis diperlakukan sebagai Pusat.
+Fase ini juga mengklasifikasikan hanya organisasi yang persis `PUSAT` sebagai
+Jombang, serta menyatukan istilah jabatan `PJ` dan `Admin` menjadi
+`PJ / Admin`. `DPD JOMBANG` atau `Jombang` tidak otomatis diperlakukan sebagai
+Pusat.
 
-RPC `merge_relawan` juga memeriksa aturan tersebut di server sehingga merge
-lintas asal tidak dapat dilakukan lewat antarmuka lain. Penggabungan tetap
-memerlukan tindakan admin dan konfirmasi; tidak ada merge otomatis saat
-halaman dibuka.
+## Fase 9: Merge Manual dari Checkbox
+
+Fase 9 menambahkan `db/fase9_merge_manual_terpilih.sql`. Admin dapat memilih
+minimal dua profil dari tabel Master Data, menentukan ID yang dipertahankan,
+dan mengatur seluruh data akhir sebelum merge. Operasi berjalan dalam satu
+transaksi; riwayat hadir yang sama pada tanggal, sesi, dan proyek yang sama
+disatukan agar tidak menggandakan jumlah kehadiran.
+
+RPC `merge_relawan` tetap menjadi jalur aman untuk Rapikan otomatis dan hanya
+menerima nama + organisasi yang sama. Pengecualian lintas nama/organisasi hanya
+tersedia lewat `merge_relawan_manual`, memerlukan akun admin, pilihan checkbox,
+pengaturan data akhir, dan konfirmasi. Tidak ada merge otomatis saat halaman
+dibuka.
 
 ## Mode frontend saja (Supabase dilewati)
 
@@ -77,8 +86,8 @@ migrasi SQL yang sesuai.
 4. Jalankan `db/audit_duplikat.sql` (read-only).
 5. Bila hasil audit mempunyai baris, tinjau dan gabungkan data secara manual.
 6. Jalankan `db/fase5_integritas_transaksi.sql`.
-7. Jalankan `db/fase6_ranking_seragam.sql`, `db/fase7_operasional_optimasi.sql`, lalu `db/fase8_master_data_rapi.sql`.
-8. Uji input relawan lama, relawan baru, filter proyek, direktori, perapian duplikat, edit wilayah, dan batch duplikat menggunakan akun admin.
+7. Jalankan `db/fase6_ranking_seragam.sql`, `db/fase7_operasional_optimasi.sql`, `db/fase8_master_data_rapi.sql`, lalu `db/fase9_merge_manual_terpilih.sql`.
+8. Uji input relawan lama, relawan baru, filter proyek, direktori, perapian duplikat, merge dari checkbox, edit wilayah, dan batch duplikat menggunakan akun admin.
 9. Jika multi-user akan digunakan:
    - ganti `GANTI_EMAIL_ADMIN` di `db/fase4_multi_user.sql`;
    - jalankan migrasi tersebut;

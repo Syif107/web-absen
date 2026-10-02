@@ -197,17 +197,36 @@ test('fase 8 membatasi merge pada nama dan asal organisasi yang identik', () => 
     assert.match(source, /hanya nama dan asal organisasi yang sama yang boleh digabung/);
     assert.match(master, /normalisasiKunciMaster/);
     assert.match(master, /buatGrupDuplikatAman/);
-    assert.match(master, /bukaModalMergeManual/);
+    assert.match(master, /bukaModalMergeTerpilih/);
     assert.match(master, /manualMergeSelectedNips/);
     assert.match(master, /kategoriWilayahEfektif/);
     assert.match(master, /normalisasiJabatanMaster/);
     assert.match(masterHtml, /Gabungkan Semua Aman/);
-    assert.match(masterHtml, /Merge Manual Multi-Pilihan/);
     assert.match(masterHtml, /modalRapikanMaster/);
     assert.match(masterHtml, /Nama sama dengan asal berbeda/);
     assert.match(masterHtml, /editDaerah/);
     assert.match(source, /= 'PUSAT'/);
     assert.match(source, /PJ \/ Admin/);
+});
+
+test('fase 9 menyediakan merge checkbox dengan editor profil dan transaksi server', () => {
+    const source = read('db/fase9_merge_manual_terpilih.sql');
+    const master = read('js/master.js');
+    const masterHtml = read('master.html');
+
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.merge_relawan_manual/);
+    assert.match(source, /Hanya admin yang boleh melakukan merge manual/);
+    assert.match(source, /row_number\(\) OVER/);
+    assert.match(source, /log_duplikat_dihapus/);
+    assert.match(source, /COMMIT;/);
+    assert.match(master, /callSupabaseRpc\('merge_relawan_manual'/);
+    assert.match(master, /p_profile:/);
+    assert.match(masterHtml, /btnMergeMasterTerpilih/);
+    assert.match(masterHtml, /Gabungkan Terpilih/);
+    assert.match(masterHtml, /Pengaturan Hasil Merge/);
+    assert.match(masterHtml, /mergeNama/);
+    assert.match(masterHtml, /mergeOrg/);
+    assert.match(masterHtml, /mergeDaerah/);
 });
 
 test('normalisasi Master hanya memetakan PUSAT dan menyatukan PJ dengan Admin', () => {
