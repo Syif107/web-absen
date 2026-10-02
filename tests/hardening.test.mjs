@@ -197,10 +197,32 @@ test('fase 8 membatasi merge pada nama dan asal organisasi yang identik', () => 
     assert.match(source, /hanya nama dan asal organisasi yang sama yang boleh digabung/);
     assert.match(master, /normalisasiKunciMaster/);
     assert.match(master, /buatGrupDuplikatAman/);
+    assert.match(master, /bukaModalMergeManual/);
+    assert.match(master, /manualMergeSelectedNips/);
+    assert.match(master, /kategoriWilayahEfektif/);
+    assert.match(master, /normalisasiJabatanMaster/);
     assert.match(masterHtml, /Gabungkan Semua Aman/);
+    assert.match(masterHtml, /Merge Manual Multi-Pilihan/);
     assert.match(masterHtml, /modalRapikanMaster/);
     assert.match(masterHtml, /Nama sama dengan asal berbeda/);
     assert.match(masterHtml, /editDaerah/);
+    assert.match(source, /= 'PUSAT'/);
+    assert.match(source, /PJ \/ Admin/);
+});
+
+test('normalisasi Master hanya memetakan PUSAT dan menyatukan PJ dengan Admin', () => {
+    const context = {
+        console,
+        document: { addEventListener() {} }
+    };
+    vm.createContext(context);
+    vm.runInContext(read('js/master.js'), context);
+
+    assert.equal(context.kategoriWilayahEfektif({ asal_organisasi: ' pusat ', kategori_wilayah: 'zona_4' }), 'jombang');
+    assert.equal(context.kategoriWilayahEfektif({ asal_organisasi: 'DPD JOMBANG', kategori_wilayah: 'luar_jombang' }), 'luar_jombang');
+    assert.equal(context.normalisasiJabatanMaster('PJ'), 'PJ / Admin');
+    assert.equal(context.normalisasiJabatanMaster('admin'), 'PJ / Admin');
+    assert.equal(context.normalisasiJabatanMaster('Koordinator'), 'Koordinator');
 });
 
 test('input menggunakan Pagi dan nama baku lima proyek', () => {

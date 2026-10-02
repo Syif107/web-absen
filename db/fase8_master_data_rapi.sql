@@ -1,10 +1,23 @@
 -- FASE 8: perapian Master Data dengan aturan gabung yang aman
 -- Jalankan setelah fondasi Fase 0/Fase 4 bila digunakan.
--- Migrasi ini tidak menggabungkan data secara otomatis. Ia hanya memperketat
--- RPC merge_relawan agar penggabungan harus memakai nama + asal organisasi
--- yang sama setelah normalisasi huruf besar dan spasi.
+-- Migrasi ini tidak menggabungkan profil secara otomatis. Ia menormalkan
+-- klasifikasi PUSAT dan istilah PJ/Admin, lalu memperketat RPC merge_relawan
+-- agar penggabungan harus memakai nama + asal organisasi yang sama.
 
 BEGIN;
+
+-- Hanya organisasi yang persis PUSAT dianggap Jombang. DPD JOMBANG atau
+-- tulisan Jombang tidak diubah karena belum tentu berarti Pusat.
+UPDATE public.master_relawan
+   SET kategori_wilayah = 'jombang'
+ WHERE regexp_replace(upper(trim(coalesce(asal_organisasi, ''))), '\s+', ' ', 'g') = 'PUSAT'
+   AND coalesce(kategori_wilayah, '') <> 'jombang';
+
+-- PJ dan Admin adalah satu istilah operasional.
+UPDATE public.master_relawan
+   SET jabatan = 'PJ / Admin'
+ WHERE regexp_replace(upper(trim(coalesce(jabatan, ''))), '\s*/\s*', '/', 'g')
+       IN ('PJ', 'ADMIN', 'PJ/ADMIN', 'ADMIN/PJ');
 
 CREATE OR REPLACE FUNCTION public.merge_relawan(
     p_sumber_nip text,
@@ -64,6 +77,20 @@ BEGIN
            organisasi = v_target.asal_organisasi
      WHERE nip = p_sumber_nip;
     GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+    -- Isi profil tujuan yang masih kosong memakai data sumber agar merge tidak
+    -- membuang detail daerah, kategori, ukuran, atau catatan yang sudah ada.
+    UPDATE public.master_relawan
+       SET asal_daerah = coalesce(nullif(trim(v_target.asal_daerah), ''), nullif(trim(v_source.asal_daerah), '')),
+           kategori_wilayah = CASE
+               WHEN regexp_replace(upper(trim(v_target.asal_organisasi)), '\s+', ' ', 'g') = 'PUSAT' THEN 'jombang'
+               WHEN coalesce(v_target.kategori_wilayah, 'belum_dilengkapi') = 'belum_dilengkapi'
+                   THEN coalesce(v_source.kategori_wilayah, 'belum_dilengkapi')
+               ELSE v_target.kategori_wilayah
+           END,
+           ukuran_seragam = coalesce(nullif(trim(v_target.ukuran_seragam), ''), nullif(trim(v_source.ukuran_seragam), '')),
+           catatan_seragam = coalesce(nullif(trim(v_target.catatan_seragam), ''), nullif(trim(v_source.catatan_seragam), ''))
+     WHERE nip = p_target_nip;
 
     DELETE FROM public.master_relawan WHERE nip = p_sumber_nip;
 

@@ -9,6 +9,9 @@ let rowsPerPage = 50;
 let isNewestFilter = false;
 let masterSortMode = 'nama';
 let duplikatMasterGroups = [];
+let manualMergeSelectedNips = new Set();
+let manualMergeKey = '';
+let manualMergeTargetNip = '';
 
 function normalisasiKunciMaster(value) {
     return String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
@@ -19,6 +22,18 @@ function kunciIdentitasMaster(row) {
     const asal = normalisasiKunciMaster(row?.asal_organisasi);
     if (!nama || !asal) return '';
     return `${nama}\u241F${asal}`;
+}
+
+function kategoriWilayahEfektif(row) {
+    if (normalisasiKunciMaster(row?.asal_organisasi) === 'PUSAT') return 'jombang';
+    return row?.kategori_wilayah || 'belum_dilengkapi';
+}
+
+function normalisasiJabatanMaster(value) {
+    const trimmed = String(value || '').trim();
+    const key = normalisasiKunciMaster(trimmed).replace(/\s*\/\s*/g, '/');
+    if (['PJ', 'ADMIN', 'PJ/ADMIN', 'ADMIN/PJ'].includes(key)) return 'PJ / Admin';
+    return trimmed;
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -93,7 +108,7 @@ function terapkanFilterDanPaginasi() {
         (r.nama && r.nama.toLowerCase().includes(keyword)) || 
         (r.asal_organisasi && r.asal_organisasi.toLowerCase().includes(keyword)) ||
         (r.asal_daerah && r.asal_daerah.toLowerCase().includes(keyword)) ||
-        (r.kategori_wilayah && r.kategori_wilayah.toLowerCase().includes(keyword)) ||
+        (kategoriWilayahEfektif(r) && kategoriWilayahEfektif(r).toLowerCase().includes(keyword)) ||
         (r.nip && r.nip.toLowerCase().includes(keyword))
     );
 
@@ -102,7 +117,8 @@ function terapkanFilterDanPaginasi() {
         const allowedVals = activeExcelFilters[col];
         if (allowedVals && allowedVals.length > 0) {
             filteredData = filteredData.filter(item => {
-                const val = (item[col] !== null && item[col] !== undefined && item[col] !== "") ? String(item[col]) : '-';
+                const itemValue = col === 'kategori_wilayah' ? kategoriWilayahEfektif(item) : item[col];
+                const val = (itemValue !== null && itemValue !== undefined && itemValue !== "") ? String(itemValue) : '-';
                 return allowedVals.includes(val);
             });
         }
@@ -168,16 +184,17 @@ function renderTabelMaster(data) {
         const noUrut = startIndex + idx + 1;
         const nipAttr = escapeAttribute(r.nip);
         const namaAttr = escapeAttribute(r.nama);
-        const bidangAttr = escapeAttribute(r.jabatan);
+        const bidangAttr = escapeAttribute(normalisasiJabatanMaster(r.jabatan));
         const orgAttr = escapeAttribute(r.asal_organisasi);
         const daerahAttr = escapeAttribute(r.asal_daerah);
-        const kategoriAttr = escapeAttribute(r.kategori_wilayah || 'belum_dilengkapi');
+        const kategoriEfektif = kategoriWilayahEfektif(r);
+        const kategoriAttr = escapeAttribute(kategoriEfektif);
         const ukuranAttr = escapeAttribute(r.ukuran_seragam);
         const catatanSeragamAttr = escapeAttribute(r.catatan_seragam);
         const nipTampil = escapeHTML(r.nip);
         const namaTampil = escapeHTML(r.nama);
         const orgTampil = escapeHTML(r.asal_organisasi);
-        const bidangTampil = escapeHTML(r.jabatan);
+        const bidangTampil = escapeHTML(normalisasiJabatanMaster(r.jabatan));
         const daerahTampil = escapeHTML(r.asal_daerah || 'Belum diisi');
         const ukuranTampil = escapeHTML(r.ukuran_seragam || '-');
         const labelWilayah = {
@@ -185,10 +202,10 @@ function renderTabelMaster(data) {
             luar_jombang: 'Luar Jombang',
             zona_4: 'Zona 4',
             belum_dilengkapi: 'Belum dilengkapi'
-        }[r.kategori_wilayah] || 'Belum dilengkapi';
-        const warnaWilayah = r.kategori_wilayah === 'zona_4'
+        }[kategoriEfektif] || 'Belum dilengkapi';
+        const warnaWilayah = kategoriEfektif === 'zona_4'
             ? 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300'
-            : r.kategori_wilayah === 'belum_dilengkapi' || !r.kategori_wilayah
+            : kategoriEfektif === 'belum_dilengkapi'
                 ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'
                 : 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300';
         const mergeAction = pasanganDuplikatAman(r).length
@@ -533,7 +550,7 @@ async function deleteBulkMaster() {
 }
 
 function renderRingkasanMaster() {
-    const countWilayah = key => masterData.filter(row => (row.kategori_wilayah || 'belum_dilengkapi') === key).length;
+    const countWilayah = key => masterData.filter(row => kategoriWilayahEfektif(row) === key).length;
     const values = {
         ringkasanMasterGlobal: masterData.length,
         ringkasanMasterJombang: countWilayah('jombang'),
@@ -616,14 +633,22 @@ function bukaModalEdit(nip, nama, bidang, org, daerah = '', kategoriWilayah = 'b
     
     document.getElementById('editNip').value = nip;
     document.getElementById('editNama').value = nama;
-    document.getElementById('editBidang').value = bidang;
+    document.getElementById('editBidang').value = normalisasiJabatanMaster(bidang);
     document.getElementById('editOrg').value = org;
     document.getElementById('editDaerah').value = daerah;
-    document.getElementById('editKategoriWilayah').value = kategoriWilayah || 'belum_dilengkapi';
+    document.getElementById('editKategoriWilayah').value = normalisasiKunciMaster(org) === 'PUSAT'
+        ? 'jombang'
+        : (kategoriWilayah || 'belum_dilengkapi');
     document.getElementById('editUkuranSeragam').value = ukuran;
     document.getElementById('editCatatanSeragam').value = catatanSeragam;
     
     document.getElementById('modalEdit').classList.remove('hidden');
+}
+
+function sarankanKategoriWilayahPusat() {
+    const org = document.getElementById('editOrg')?.value;
+    const kategori = document.getElementById('editKategoriWilayah');
+    if (kategori && normalisasiKunciMaster(org) === 'PUSAT') kategori.value = 'jombang';
 }
 
 function tutupModalEdit() {
@@ -632,10 +657,12 @@ function tutupModalEdit() {
 
 async function simpanEditMaster() {
     const namaBaru = document.getElementById('editNama').value.trim().toUpperCase();
-    const bidangBaru = document.getElementById('editBidang').value.trim();
+    const bidangBaru = normalisasiJabatanMaster(document.getElementById('editBidang').value);
     const orgBaru = document.getElementById('editOrg').value.trim();
     const daerahBaru = document.getElementById('editDaerah').value.trim();
-    const kategoriWilayahBaru = document.getElementById('editKategoriWilayah').value;
+    const kategoriWilayahBaru = normalisasiKunciMaster(orgBaru) === 'PUSAT'
+        ? 'jombang'
+        : document.getElementById('editKategoriWilayah').value;
     const ukuranSeragamBaru = document.getElementById('editUkuranSeragam').value;
     const catatanSeragamBaru = document.getElementById('editCatatanSeragam').value.trim();
     
@@ -679,6 +706,147 @@ async function simpanEditMaster() {
 // ------------------------------------------
 // ZONA MERGE ENGINE (PENGGABUNGAN DATA)
 // ------------------------------------------
+
+function kandidatMergeManual() {
+    const counts = new Map();
+    masterData.forEach(row => {
+        const key = kunciIdentitasMaster(row);
+        if (key) counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return masterData
+        .filter(row => (counts.get(kunciIdentitasMaster(row)) || 0) > 1)
+        .sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || ''), 'id') || bandingkanProfilMaster(a, b));
+}
+
+function bukaModalMergeManual() {
+    manualMergeSelectedNips = new Set();
+    manualMergeKey = '';
+    manualMergeTargetNip = '';
+    const search = document.getElementById('searchManualMerge');
+    if (search) search.value = '';
+    renderManualMergeCandidates();
+    renderTargetMergeManual();
+    document.getElementById('modalMergeManual')?.classList.remove('hidden');
+}
+
+function tutupModalMergeManual() {
+    document.getElementById('modalMergeManual')?.classList.add('hidden');
+    manualMergeSelectedNips = new Set();
+    manualMergeKey = '';
+    manualMergeTargetNip = '';
+}
+
+function renderManualMergeCandidates() {
+    const container = document.getElementById('manualMergeCandidates');
+    if (!container) return;
+    const keyword = String(document.getElementById('searchManualMerge')?.value || '').trim().toLowerCase();
+    const candidates = kandidatMergeManual().filter(row => {
+        const haystack = `${row.nama || ''} ${row.asal_organisasi || ''} ${row.nip || ''}`.toLowerCase();
+        return !keyword || haystack.includes(keyword);
+    });
+
+    if (!candidates.length) {
+        container.innerHTML = '<div class="p-5 text-sm text-slate-500 dark:text-slate-400 text-center">Tidak ada kandidat duplikat yang cocok.</div>';
+        return;
+    }
+
+    container.innerHTML = candidates.map(row => {
+        const key = kunciIdentitasMaster(row);
+        const checked = manualMergeSelectedNips.has(row.nip);
+        const disabled = Boolean(manualMergeKey && key !== manualMergeKey);
+        return `<label class="flex items-center gap-3 p-3 border-b border-slate-100 dark:border-slate-700 last:border-0 ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-500/10'}">
+            <input type="checkbox" class="w-4 h-4 accent-amber-500" data-nip="${escapeAttribute(row.nip)}" onchange="ubahPilihanMergeManual(this)" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''}>
+            <span class="min-w-0 flex-1"><strong class="block text-sm text-slate-800 dark:text-slate-100">${escapeHTML(row.nama)}</strong><span class="block text-[10px] text-slate-500 dark:text-slate-400 truncate">${escapeHTML(row.asal_organisasi)} • ${escapeHTML(row.nip)}</span></span>
+            <span class="text-[10px] font-black text-slate-500 dark:text-slate-400">${Number(row.total_hari || 0)} hari</span>
+        </label>`;
+    }).join('');
+}
+
+function ubahPilihanMergeManual(checkbox) {
+    const nip = checkbox.dataset.nip || '';
+    const row = masterData.find(item => item.nip === nip);
+    const key = kunciIdentitasMaster(row);
+    if (!row || !key) {
+        checkbox.checked = false;
+        showToast('Profil harus memiliki nama dan asal organisasi.', 'error');
+        return;
+    }
+
+    if (checkbox.checked) {
+        if (manualMergeKey && key !== manualMergeKey) {
+            checkbox.checked = false;
+            showToast('Pilih hanya profil dengan nama dan asal organisasi yang sama.', 'error');
+            return;
+        }
+        manualMergeSelectedNips.add(nip);
+    } else {
+        manualMergeSelectedNips.delete(nip);
+    }
+
+    const firstSelected = masterData.find(item => manualMergeSelectedNips.has(item.nip));
+    manualMergeKey = firstSelected ? kunciIdentitasMaster(firstSelected) : '';
+    if (!manualMergeSelectedNips.has(manualMergeTargetNip)) manualMergeTargetNip = '';
+    renderManualMergeCandidates();
+    renderTargetMergeManual();
+}
+
+function renderTargetMergeManual() {
+    const select = document.getElementById('targetMergeManual');
+    const count = document.getElementById('manualMergeSelectedCount');
+    const button = document.getElementById('btnEksekusiMergeManual');
+    if (!select || !count || !button) return;
+    const rows = masterData
+        .filter(row => manualMergeSelectedNips.has(row.nip))
+        .sort(bandingkanProfilMaster);
+    count.textContent = `${rows.length} profil dipilih`;
+    if (!rows.length) {
+        select.innerHTML = '<option value="">Pilih sedikitnya 2 profil</option>';
+        manualMergeTargetNip = '';
+    } else {
+        if (!manualMergeTargetNip || !manualMergeSelectedNips.has(manualMergeTargetNip)) manualMergeTargetNip = rows[0].nip;
+        select.innerHTML = rows.map(row => `<option value="${escapeAttribute(row.nip)}" ${row.nip === manualMergeTargetNip ? 'selected' : ''}>${escapeHTML(row.nama)} — ${escapeHTML(row.nip)} (${Number(row.total_hari || 0)} hari)</option>`).join('');
+    }
+    button.disabled = rows.length < 2 || !manualMergeTargetNip;
+}
+
+function pilihTargetMergeManual() {
+    manualMergeTargetNip = document.getElementById('targetMergeManual')?.value || '';
+    renderTargetMergeManual();
+}
+
+async function eksekusiMergeManual() {
+    const rows = masterData.filter(row => manualMergeSelectedNips.has(row.nip));
+    const target = rows.find(row => row.nip === manualMergeTargetNip);
+    const sources = rows.filter(row => row.nip !== manualMergeTargetNip);
+    const keys = new Set(rows.map(kunciIdentitasMaster));
+    if (!target || !sources.length || keys.size !== 1 || ![...keys][0]) {
+        showToast('Pilih minimal 2 profil dengan nama dan asal organisasi yang sama.', 'error');
+        return;
+    }
+
+    if (!confirm(`Gabungkan ${sources.length} profil ke ${target.nama} (${target.nip})?\n\nRiwayat absensi dipindahkan ke profil tujuan. Profil sumber lalu dihapus permanen.`)) return;
+
+    const button = document.getElementById('btnEksekusiMergeManual');
+    button.disabled = true;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+    let berhasil = 0;
+    let gagal = 0;
+    for (const source of sources) {
+        try {
+            const res = await callSupabaseRpc('merge_relawan', { p_sumber_nip: source.nip, p_target_nip: target.nip });
+            if (res.status !== 'success') throw new Error(res.message || 'Merge ditolak server');
+            berhasil += 1;
+        } catch (error) {
+            gagal += 1;
+            console.error('Merge manual gagal:', source.nip, error);
+        }
+    }
+
+    button.innerHTML = '<i class="fa-solid fa-code-merge"></i> Gabungkan Pilihan';
+    showToast(`Merge manual selesai: ${berhasil} profil digabung${gagal ? `, ${gagal} gagal` : ''}.`, gagal ? 'error' : 'success');
+    tutupModalMergeManual();
+    await loadMasterData();
+}
 
 let currentSourceNip = "";
 let currentSourceName = "";
@@ -992,7 +1160,7 @@ function parseCSV(content) {
         importCSVData.push({
             nip: nipFinal,
             nama: nama,
-            jabatan: jabatan || (existing ? existing.jabatan : 'Helper'),
+            jabatan: normalisasiJabatanMaster(jabatan || (existing ? existing.jabatan : 'Helper')),
             asal_organisasi: organisasi || (existing ? existing.asal_organisasi : 'Umum'),
             isDuplicate: !!existing
         });

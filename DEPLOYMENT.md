@@ -47,6 +47,11 @@ Sistem hanya menawarkan merge untuk pasangan dengan nama dan asal organisasi
 yang sama setelah normalisasi huruf besar dan spasi. Nama sama dengan asal
 berbeda, nama berbeda, atau asal kosong tetap dipisahkan.
 
+Fase ini juga menambahkan Merge Manual multi-pilihan, mengklasifikasikan hanya
+organisasi yang persis `PUSAT` sebagai Jombang, serta menyatukan istilah jabatan
+`PJ` dan `Admin` menjadi `PJ / Admin`. `DPD JOMBANG` atau `Jombang` tidak
+otomatis diperlakukan sebagai Pusat.
+
 RPC `merge_relawan` juga memeriksa aturan tersebut di server sehingga merge
 lintas asal tidak dapat dilakukan lewat antarmuka lain. Penggabungan tetap
 memerlukan tindakan admin dan konfirmasi; tidak ada merge otomatis saat
