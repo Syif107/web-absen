@@ -12,6 +12,9 @@ let duplikatMasterGroups = [];
 let duplikatMasterMirip = [];
 let manualMergeSelectedNips = new Set();
 let manualMergeTargetNip = '';
+let organisasiData = [];
+let organisasiTerpilih = new Set();
+let riwayatMergeData = [];
 
 function normalisasiKunciMaster(value) {
     return String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
@@ -86,6 +89,27 @@ function kategoriWilayahEfektif(row) {
     return row?.kategori_wilayah || 'belum_dilengkapi';
 }
 
+const LABEL_ZONA_MASTER = {
+    zona_1: 'Zona 1',
+    zona_2: 'Zona 2',
+    zona_3: 'Zona 3',
+    zona_4: 'Zona 4'
+};
+
+function zonaAsalEfektif(row) {
+    const zona = String(row?.zona_asal || '').trim().toLowerCase();
+    return Object.prototype.hasOwnProperty.call(LABEL_ZONA_MASTER, zona) ? zona : '';
+}
+
+function zonaDariProvinsiMaster(value) {
+    const provinsi = normalisasiKunciMaster(value);
+    if (['JAWA TIMUR', 'BALI'].includes(provinsi)) return 'zona_1';
+    if (['JAWA TENGAH', 'DI YOGYAKARTA', 'DAERAH ISTIMEWA YOGYAKARTA', 'DIY', 'YOGYAKARTA'].includes(provinsi)) return 'zona_2';
+    if (['JAWA BARAT', 'DKI JAKARTA', 'JAKARTA', 'BANTEN'].includes(provinsi)) return 'zona_3';
+    if (['ACEH', 'SUMATERA UTARA', 'SUMATERA BARAT', 'RIAU', 'KEPULAUAN RIAU', 'JAMBI', 'SUMATERA SELATAN', 'KEPULAUAN BANGKA BELITUNG', 'BENGKULU', 'LAMPUNG', 'KALIMANTAN BARAT', 'KALIMANTAN TENGAH', 'KALIMANTAN SELATAN', 'KALIMANTAN TIMUR', 'KALIMANTAN UTARA'].includes(provinsi)) return 'zona_4';
+    return '';
+}
+
 function normalisasiJabatanMaster(value) {
     const trimmed = String(value || '').trim();
     const key = normalisasiKunciMaster(trimmed).replace(/\s*\/\s*/g, '/');
@@ -102,12 +126,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 document.addEventListener('keydown', event => {
     const modalEdit = document.getElementById('modalEdit');
     const modalMergeManual = document.getElementById('modalMergeManual');
+    const modalOrganisasi = document.getElementById('modalOrganisasi');
+    const modalRiwayatMerge = document.getElementById('modalRiwayatMerge');
     if (event.key === 'Escape' && modalEdit && !modalEdit.classList.contains('hidden')) {
         tutupModalEdit();
     }
     if (event.key === 'Escape' && modalMergeManual && !modalMergeManual.classList.contains('hidden')) {
         tutupModalMergeManual();
     }
+    if (event.key === 'Escape' && modalOrganisasi && !modalOrganisasi.classList.contains('hidden')) tutupModalOrganisasi();
+    if (event.key === 'Escape' && modalRiwayatMerge && !modalRiwayatMerge.classList.contains('hidden')) tutupRiwayatMerge();
     if (event.ctrlKey && event.key === 'Enter' && modalEdit && !modalEdit.classList.contains('hidden')) {
         event.preventDefault();
         simpanEditMaster();
@@ -170,6 +198,7 @@ function terapkanFilterDanPaginasi() {
         (r.asal_organisasi && r.asal_organisasi.toLowerCase().includes(keyword)) ||
         (r.asal_daerah && r.asal_daerah.toLowerCase().includes(keyword)) ||
         (kategoriWilayahEfektif(r) && kategoriWilayahEfektif(r).toLowerCase().includes(keyword)) ||
+        (zonaAsalEfektif(r) && zonaAsalEfektif(r).includes(keyword)) ||
         (r.nip && r.nip.toLowerCase().includes(keyword))
     );
 
@@ -250,6 +279,8 @@ function renderTabelMaster(data) {
         const daerahAttr = escapeAttribute(r.asal_daerah);
         const kategoriEfektif = kategoriWilayahEfektif(r);
         const kategoriAttr = escapeAttribute(kategoriEfektif);
+        const zonaEfektif = zonaAsalEfektif(r);
+        const zonaAttr = escapeAttribute(zonaEfektif);
         const ukuranAttr = escapeAttribute(r.ukuran_seragam);
         const catatanSeragamAttr = escapeAttribute(r.catatan_seragam);
         const nipTampil = escapeHTML(r.nip);
@@ -264,6 +295,7 @@ function renderTabelMaster(data) {
             zona_4: 'Zona 4',
             belum_dilengkapi: 'Belum dilengkapi'
         }[kategoriEfektif] || 'Belum dilengkapi';
+        const labelZona = LABEL_ZONA_MASTER[zonaEfektif] || 'Zona belum diisi';
         const warnaWilayah = kategoriEfektif === 'zona_4'
             ? 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300'
             : kategoriEfektif === 'belum_dilengkapi'
@@ -283,14 +315,14 @@ function renderTabelMaster(data) {
                 <td class="px-5 py-3 font-bold text-slate-800">${namaTampil}</td>
                 <td class="px-5 py-3 text-slate-600 font-medium">${orgTampil}</td>
                 <td class="px-5 py-3 text-slate-600"><span class="bg-slate-100 px-2 py-1 rounded-md text-xs font-bold border border-slate-200">${bidangTampil}</span></td>
-                <td class="px-5 py-3"><span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black ${warnaWilayah}">${escapeHTML(labelWilayah)}</span><p class="text-[10px] text-slate-400 mt-1">${daerahTampil}</p></td>
+                <td class="px-5 py-3"><div class="flex flex-wrap gap-1"><span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black ${zonaEfektif ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'}">${escapeHTML(labelZona)}</span><span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black ${warnaWilayah}" title="Aturan operasional">${escapeHTML(labelWilayah)}</span></div><p class="text-[10px] text-slate-400 mt-1">${daerahTampil}</p></td>
                 <td class="px-5 py-3 text-center"><p class="font-black text-slate-700">${Number(r.total_hari || 0).toLocaleString('id-ID')} hari</p><p class="text-[10px] text-slate-400">${Number(r.total_sesi || 0).toLocaleString('id-ID')} sesi • ${Number(r.jumlah_proyek || 0)} proyek</p></td>
                 <td class="px-5 py-3 text-center"><p class="font-black text-indigo-600">${Number(r.persentase_hari || 0).toFixed(1)}%</p><p class="text-[10px] text-slate-400">${Number(r.persentase_sesi || 0).toFixed(1)}% sesi</p></td>
                 <td class="px-5 py-3 text-xs text-slate-500">${r.hadir_pertama ? formatTanggalMaster(r.hadir_pertama) : '-'}<p class="text-[10px] text-slate-400 mt-1">Terakhir: ${r.hadir_terakhir ? formatTanggalMaster(r.hadir_terakhir) : '-'}</p></td>
                 <td class="px-5 py-3 font-black text-center">${ukuranTampil}</td>
                 <td class="px-5 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
-                        <button onclick="bukaModalEditDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" data-bidang="${bidangAttr}" data-org="${orgAttr}" data-daerah="${daerahAttr}" data-kategori-wilayah="${kategoriAttr}" data-ukuran="${ukuranAttr}" data-catatan-seragam="${catatanSeragamAttr}" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
+                        <button onclick="bukaModalEditDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" data-bidang="${bidangAttr}" data-org="${orgAttr}" data-daerah="${daerahAttr}" data-kategori-wilayah="${kategoriAttr}" data-zona-asal="${zonaAttr}" data-ukuran="${ukuranAttr}" data-catatan-seragam="${catatanSeragamAttr}" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
                             <i class="fa-solid fa-pen-to-square"></i> Edit
                         </button>
                         ${mergeAction}
@@ -468,6 +500,7 @@ function renderDuplikatMaster() {
     const miripList = document.getElementById('duplikatMasterMiripList');
     const miripCount = document.getElementById('jumlahKandidatMirip');
     const miripRisk = document.getElementById('risikoKandidatMirip');
+    const mergeAllSimilarButton = document.getElementById('btnGabungSemuaMirip');
     const miripFilter = document.getElementById('filterKandidatMirip')?.value || 'prioritas';
     if (!list) return;
     if (count) count.textContent = `${duplikatMasterGroups.length.toLocaleString('id-ID')} kelompok identik`;
@@ -487,10 +520,11 @@ function renderDuplikatMaster() {
         } else {
             const contoh = ringkasanMirip.contohTerbesar.map(escapeHTML).join(', ');
             miripRisk.classList.remove('hidden');
-            miripRisk.innerHTML = `<p class="font-black"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Kandidat bukan otomatis orang yang sama.</p><p class="mt-1">${ringkasanMirip.pasangan.toLocaleString('id-ID')} pasangan melibatkan ${ringkasanMirip.profil.toLocaleString('id-ID')} profil dalam ${ringkasanMirip.jaringan.toLocaleString('id-ID')} jaringan. Jika digabung berantai, jaringan terbesar dapat melebur ${ringkasanMirip.terbesar.toLocaleString('id-ID')} profil${contoh ? ` seperti ${contoh}${ringkasanMirip.terbesar > ringkasanMirip.contohTerbesar.length ? ', dan lainnya' : ''}` : ''}.</p><p class="mt-1">${jumlahPrioritas.toLocaleString('id-ID')} pasangan ditempatkan sebagai prioritas review karena organisasi sama, nama cukup panjang, dan tidak terhubung ke kandidat ketiga.</p><p class="mt-1 font-bold">Periksa identitas dan riwayat hadir. Jangan melakukan merge massal pada bagian ini.</p>`;
+            miripRisk.innerHTML = `<p class="font-black"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Merge massal akan menggabungkan setiap jaringan kandidat menjadi satu profil.</p><p class="mt-1">${ringkasanMirip.pasangan.toLocaleString('id-ID')} pasangan melibatkan ${ringkasanMirip.profil.toLocaleString('id-ID')} profil dalam ${ringkasanMirip.jaringan.toLocaleString('id-ID')} jaringan. Jaringan terbesar berisi ${ringkasanMirip.terbesar.toLocaleString('id-ID')} profil${contoh ? ` seperti ${contoh}${ringkasanMirip.terbesar > ringkasanMirip.contohTerbesar.length ? ', dan lainnya' : ''}` : ''}.</p><p class="mt-1">Profil berpersentase tertinggi dipertahankan; jika sama, sistem memilih hari lalu sesi terbanyak. Setiap batch disimpan agar dapat dipisahkan kembali.</p>`;
         }
     }
     if (bulkButton) bulkButton.disabled = duplikatMasterGroups.length === 0;
+    if (mergeAllSimilarButton) mergeAllSimilarButton.disabled = duplikatMasterMirip.length === 0;
     if (!duplikatMasterGroups.length) {
         list.innerHTML = '<div class="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-500/10 dark:border-emerald-500/30 p-5 text-sm text-emerald-700 dark:text-emerald-300"><i class="fa-solid fa-circle-check mr-2"></i>Tidak ada nama identik dalam kabupaten yang sama.</div>';
     } else {
@@ -532,9 +566,9 @@ async function gabungkanKelompokAman(index, tampilkanKonfirmasi = true) {
     const target = profilUtamaDuplikat(group);
     const sources = (group?.rows || []).filter(row => row.nip !== target?.nip);
     if (!target || !sources.length) return { berhasil: 0, gagal: 0 };
-    if (tampilkanKonfirmasi && !confirm(`Gabungkan ${sources.length} profil duplikat untuk ${target.nama} dari ${target.asal_organisasi}?\n\nNIP ${target.nip} dipertahankan. Riwayat absensi sumber dipindahkan lalu profil sumber dihapus.`)) return { dibatalkan: true };
+    if (tampilkanKonfirmasi && !confirm(`Gabungkan ${sources.length} profil duplikat untuk ${target.nama} dari ${target.asal_organisasi}?\n\nNIP ${target.nip} dipertahankan. Data sumber dipindahkan ke profil utama dan salinan sebelum merge disimpan agar dapat dipisahkan kembali.`)) return { dibatalkan: true };
     try {
-        const res = await callSupabaseRpc('merge_relawan_manual', {
+        const res = await callSupabaseRpc('merge_relawan_tercatat', {
             p_nips: group.rows.map(row => row.nip),
             p_target_nip: target.nip,
             p_profile: {
@@ -544,9 +578,11 @@ async function gabungkanKelompokAman(index, tampilkanKonfirmasi = true) {
                 asal_daerah: target.asal_daerah || null,
                 kabupaten_normalisasi: kabupatenMaster(target) || null,
                 kategori_wilayah: kategoriWilayahEfektif(target),
+                zona_asal: zonaAsalEfektif(target) || null,
                 ukuran_seragam: target.ukuran_seragam || null,
                 catatan_seragam: target.catatan_seragam || null
-            }
+            },
+            p_alasan: 'Nama identik dan kabupaten sama'
         });
         if (res.status !== 'success') throw new Error(res.message || 'Merge ditolak server');
         return { berhasil: sources.length, gagal: 0 };
@@ -584,6 +620,30 @@ async function gabungkanSemuaDuplikat() {
     showToast(`Perapian selesai: ${berhasil} profil digabung${gagal ? `, ${gagal} gagal` : ''}.`, gagal ? 'error' : 'success');
     tutupModalRapikanMaster();
     await loadMasterData();
+}
+
+async function gabungkanSemuaKandidatMirip() {
+    const ringkasan = ringkasJaringanKandidatNamaMirip();
+    if (!ringkasan.pasangan) return;
+    const konfirmasi = confirm(`GABUNGKAN SELURUH KANDIDAT NAMA MIRIP\n\n${ringkasan.pasangan} pasangan akan dilebur menjadi ${ringkasan.jaringan} jaringan. Setiap jaringan menjadi satu profil dan profil dengan persentase kehadiran tertinggi dipertahankan.\n\nSistem akan menyimpan jurnal lengkap agar setiap batch dapat dipisahkan kembali. Lanjutkan?`);
+    if (!konfirmasi) return;
+
+    const button = document.getElementById('btnGabungSemuaMirip');
+    button.disabled = true;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Menggabungkan...';
+    try {
+        const res = await callSupabaseRpc('gabungkan_semua_kandidat_mirip', {});
+        if (res.status !== 'success') throw new Error((res.result && res.result.message) || res.message || 'Merge massal ditolak server');
+        showToast(`Selesai: ${Number(res.profil_sumber_digabung || 0)} profil digabung dalam ${Number(res.jaringan_digabung || 0)} batch.`, 'success');
+        tutupModalRapikanMaster();
+        await loadMasterData();
+    } catch (error) {
+        showToast(error.message || 'Merge seluruh kandidat gagal.', 'error');
+        console.error('Merge seluruh kandidat gagal:', error);
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fa-solid fa-network-wired mr-1"></i>Gabungkan Semua Kandidat';
+    }
 }
 
 // ==========================================
@@ -766,13 +826,14 @@ async function deleteBulkMaster() {
 }
 
 function renderRingkasanMaster() {
-    const countWilayah = key => masterData.filter(row => kategoriWilayahEfektif(row) === key).length;
+    const countZona = key => masterData.filter(row => zonaAsalEfektif(row) === key).length;
     const values = {
         ringkasanMasterGlobal: masterData.length,
-        ringkasanMasterJombang: countWilayah('jombang'),
-        ringkasanMasterLuarJombang: countWilayah('luar_jombang'),
-        ringkasanMasterZona4: countWilayah('zona_4'),
-        ringkasanMasterBelum: countWilayah('belum_dilengkapi')
+        ringkasanMasterZona1: countZona('zona_1'),
+        ringkasanMasterZona2: countZona('zona_2'),
+        ringkasanMasterZona3: countZona('zona_3'),
+        ringkasanMasterZona4: countZona('zona_4'),
+        ringkasanMasterBelum: masterData.filter(row => !zonaAsalEfektif(row)).length
     };
     Object.entries(values).forEach(([id, value]) => {
         const element = document.getElementById(id);
@@ -794,10 +855,10 @@ function filterMasterWilayahKosong() {
     const limit = document.getElementById('limitData');
     if (limit) limit.value = '50';
     rowsPerPage = 50;
-    activeExcelFilters.kategori_wilayah = ['belum_dilengkapi'];
+    activeExcelFilters.zona_asal = ['-'];
     currentPage = 1;
     terapkanFilterDanPaginasi();
-    showToast('Menampilkan personel yang wilayahnya belum dilengkapi.', 'info');
+    showToast('Menampilkan personel yang zona asalnya belum dilengkapi.', 'info');
 }
 
 function deleteSingleMasterDariTombol(button) {
@@ -839,12 +900,13 @@ function bukaModalEditDariTombol(button) {
         button.dataset.org || '',
         button.dataset.daerah || '',
         button.dataset.kategoriWilayah || 'belum_dilengkapi',
+        button.dataset.zonaAsal || '',
         button.dataset.ukuran || '',
         button.dataset.catatanSeragam || ''
     );
 }
 
-function bukaModalEdit(nip, nama, bidang, org, daerah = '', kategoriWilayah = 'belum_dilengkapi', ukuran = '', catatanSeragam = '') {
+function bukaModalEdit(nip, nama, bidang, org, daerah = '', kategoriWilayah = 'belum_dilengkapi', zonaAsal = '', ukuran = '', catatanSeragam = '') {
     currentEditNip = nip;
     
     document.getElementById('editNip').value = nip;
@@ -855,6 +917,7 @@ function bukaModalEdit(nip, nama, bidang, org, daerah = '', kategoriWilayah = 'b
     document.getElementById('editKategoriWilayah').value = normalisasiKunciMaster(org) === 'PUSAT'
         ? 'jombang'
         : (kategoriWilayah || 'belum_dilengkapi');
+    document.getElementById('editZonaAsal').value = zonaAsal || '';
     document.getElementById('editUkuranSeragam').value = ukuran;
     document.getElementById('editCatatanSeragam').value = catatanSeragam;
     
@@ -876,9 +939,12 @@ async function simpanEditMaster() {
     const bidangBaru = normalisasiJabatanMaster(document.getElementById('editBidang').value);
     const orgBaru = rapikanOrganisasiMaster(document.getElementById('editOrg').value);
     const daerahBaru = document.getElementById('editDaerah').value.trim();
-    const kategoriWilayahBaru = normalisasiKunciMaster(orgBaru) === 'PUSAT'
-        ? 'jombang'
-        : document.getElementById('editKategoriWilayah').value;
+    const zonaAsalBaru = document.getElementById('editZonaAsal').value;
+    const kategoriWilayahBaru = zonaAsalBaru === 'zona_4'
+        ? 'zona_4'
+        : normalisasiKunciMaster(orgBaru) === 'PUSAT'
+            ? 'jombang'
+            : document.getElementById('editKategoriWilayah').value;
     const ukuranSeragamBaru = document.getElementById('editUkuranSeragam').value;
     const catatanSeragamBaru = document.getElementById('editCatatanSeragam').value.trim();
     
@@ -898,6 +964,7 @@ async function simpanEditMaster() {
         asal_daerah: daerahBaru || null,
         kabupaten_normalisasi: normalisasiKunciMaster(daerahBaru) || kabupatenMaster({ asal_organisasi: orgBaru }) || null,
         kategori_wilayah: kategoriWilayahBaru,
+        zona_asal: zonaAsalBaru || null,
         ukuran_seragam: ukuranSeragamBaru || null,
         catatan_seragam: catatanSeragamBaru || null
     };
@@ -979,6 +1046,7 @@ function isiFormMergeManual(row) {
     document.getElementById('mergeBidang').value = normalisasiJabatanMaster(row.jabatan);
     document.getElementById('mergeDaerah').value = row.asal_daerah || '';
     document.getElementById('mergeKategoriWilayah').value = kategoriWilayahEfektif(row);
+    document.getElementById('mergeZonaAsal').value = zonaAsalEfektif(row);
     document.getElementById('mergeUkuranSeragam').value = row.ukuran_seragam || '';
     document.getElementById('mergeCatatanSeragam').value = row.catatan_seragam || '';
 }
@@ -1008,9 +1076,12 @@ async function eksekusiMergeManual() {
     const asalOrganisasi = rapikanOrganisasiMaster(document.getElementById('mergeOrg').value);
     const jabatan = normalisasiJabatanMaster(document.getElementById('mergeBidang').value);
     const asalDaerah = document.getElementById('mergeDaerah').value.trim();
-    const kategoriWilayah = normalisasiKunciMaster(asalOrganisasi) === 'PUSAT'
-        ? 'jombang'
-        : document.getElementById('mergeKategoriWilayah').value;
+    const zonaAsal = document.getElementById('mergeZonaAsal').value;
+    const kategoriWilayah = zonaAsal === 'zona_4'
+        ? 'zona_4'
+        : normalisasiKunciMaster(asalOrganisasi) === 'PUSAT'
+            ? 'jombang'
+            : document.getElementById('mergeKategoriWilayah').value;
     const ukuranSeragam = document.getElementById('mergeUkuranSeragam').value;
     const catatanSeragam = document.getElementById('mergeCatatanSeragam').value.trim();
 
@@ -1021,14 +1092,14 @@ async function eksekusiMergeManual() {
 
     const sumber = rows.filter(row => row.nip !== target.nip);
     const daftar = rows.map(row => `• ${row.nama} — ${row.asal_organisasi || 'asal belum diisi'}`).join('\n');
-    if (!confirm(`MERGE MANUAL ${rows.length} PROFIL\n\n${daftar}\n\nHasil akhir:\n${nama} — ${asalOrganisasi}\nID utama: ${target.nip}\n\nRiwayat duplikat pada tanggal, sesi, dan proyek yang sama akan dihitung satu kali. ${sumber.length} profil sumber akan dihapus permanen.`)) return;
+    if (!confirm(`MERGE MANUAL ${rows.length} PROFIL\n\n${daftar}\n\nHasil akhir:\n${nama} — ${asalOrganisasi}\nID utama: ${target.nip}\n\nRiwayat duplikat pada tanggal, sesi, dan proyek yang sama akan dihitung satu kali. ${sumber.length} profil sumber dinonaktifkan dari Master dan dapat dipulihkan lewat Riwayat Merge.`)) return;
 
     const button = document.getElementById('btnEksekusiMergeManual');
     button.disabled = true;
     button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menggabungkan...';
 
     try {
-        const res = await callSupabaseRpc('merge_relawan_manual', {
+        const res = await callSupabaseRpc('merge_relawan_tercatat', {
             p_nips: rows.map(row => row.nip),
             p_target_nip: target.nip,
             p_profile: {
@@ -1038,9 +1109,11 @@ async function eksekusiMergeManual() {
                 asal_daerah: asalDaerah || null,
                 kabupaten_normalisasi: normalisasiKunciMaster(asalDaerah) || kabupatenMaster({ asal_organisasi: asalOrganisasi }) || null,
                 kategori_wilayah: kategoriWilayah,
+                zona_asal: zonaAsal || null,
                 ukuran_seragam: ukuranSeragam || null,
                 catatan_seragam: catatanSeragam || null
-            }
+            },
+            p_alasan: 'Merge manual dari pilihan Master Data'
         });
         if (res.status !== 'success') {
             const pesanServer = (res.result && res.result.message) || res.message || 'Merge ditolak server.';
@@ -1201,17 +1274,34 @@ async function eksekusiMerge() {
         resetInputMerge();
         return;
     }
+    if (!sourceProfile || !kunciIdentitasMaster(sourceProfile) || kunciIdentitasMaster(sourceProfile) !== kunciIdentitasMaster(targetProfile)) {
+        showToast('Merge cepat hanya untuk nama identik dalam kabupaten yang sama. Gunakan pilihan checkbox untuk kasus lain.', 'error');
+        resetInputMerge();
+        return;
+    }
     
-    const konfirmasi = confirm(`🚨 PERINGATAN BENTURAN DATA 🚨\n\nApakah Anda yakin ingin memindahkan seluruh absen:\n[X] ${currentSourceName}\n\nKe profil yang benar:\n[✓] ${targetProfile.nama}\n\nProfil lama akan dihapus permanen!`);
+    const konfirmasi = confirm(`MERGE PROFIL\n\nPindahkan seluruh absen:\n[X] ${currentSourceName}\n\nKe profil utama:\n[✓] ${targetProfile.nama}\n\nSalinan data sebelum merge disimpan dan dapat dipulihkan lewat Riwayat Merge.`);
     if (!konfirmasi) return;
 
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
     btn.disabled = true;
 
     try {
-        const res = await callSupabaseRpc('merge_relawan', {
-            p_sumber_nip: currentSourceNip,
-            p_target_nip: targetNip
+        const res = await callSupabaseRpc('merge_relawan_tercatat', {
+            p_nips: [currentSourceNip, targetNip],
+            p_target_nip: targetNip,
+            p_profile: {
+                nama: rapikanNamaMaster(targetProfile.nama),
+                asal_organisasi: rapikanOrganisasiMaster(targetProfile.asal_organisasi),
+                jabatan: normalisasiJabatanMaster(targetProfile.jabatan),
+                asal_daerah: targetProfile.asal_daerah || null,
+                kabupaten_normalisasi: kabupatenMaster(targetProfile) || null,
+                kategori_wilayah: kategoriWilayahEfektif(targetProfile),
+                zona_asal: zonaAsalEfektif(targetProfile) || null,
+                ukuran_seragam: targetProfile.ukuran_seragam || null,
+                catatan_seragam: targetProfile.catatan_seragam || null
+            },
+            p_alasan: 'Merge cepat nama identik dan kabupaten sama'
         });
 
         if (res.status !== "success") {
@@ -1236,6 +1326,198 @@ async function eksekusiMerge() {
         btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Eksekusi Gabung';
         btn.disabled = false;
     }
+}
+
+// ==========================================
+// ORGANISASI, ZONA, DAN RIWAYAT MERGE
+// ==========================================
+
+async function bukaModalOrganisasi() {
+    document.getElementById('modalOrganisasi')?.classList.remove('hidden');
+    resetFormOrganisasi();
+    await muatOrganisasi();
+}
+
+function tutupModalOrganisasi() {
+    document.getElementById('modalOrganisasi')?.classList.add('hidden');
+    organisasiTerpilih.clear();
+}
+
+async function muatOrganisasi() {
+    const list = document.getElementById('organisasiList');
+    if (list) list.innerHTML = '<div class="p-6 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Memuat...</div>';
+    const res = await supabaseFetchAll('v_organisasi_admin?select=*&order=organisasi_asli.asc');
+    if (res.status !== 'success') {
+        if (list) list.innerHTML = `<div class="p-6 text-center text-rose-500">${escapeHTML(res.message || 'Gagal memuat organisasi')}</div>`;
+        return;
+    }
+    organisasiData = res.data || [];
+    organisasiTerpilih.clear();
+    renderOrganisasi();
+}
+
+function renderOrganisasi() {
+    const list = document.getElementById('organisasiList');
+    if (!list) return;
+    const keyword = String(document.getElementById('cariOrganisasi')?.value || '').trim().toLowerCase();
+    const rows = organisasiData.filter(row => [row.organisasi_asli, row.kabupaten, row.provinsi, row.zona_asal]
+        .some(value => String(value || '').toLowerCase().includes(keyword)));
+    list.innerHTML = rows.length ? rows.map(row => {
+        const key = escapeAttribute(row.organisasi_key);
+        const selected = organisasiTerpilih.has(row.organisasi_key) ? 'checked' : '';
+        const zona = LABEL_ZONA_MASTER[row.zona_asal] || 'Zona belum diisi';
+        return `<div class="grid grid-cols-[36px_minmax(180px,1.4fr)_minmax(120px,1fr)_100px_90px] gap-2 items-center px-3 py-3 text-xs hover:bg-slate-50 dark:hover:bg-slate-700/40">
+            <input type="checkbox" class="w-4 h-4 accent-cyan-600" value="${key}" ${selected} onchange="toggleOrganisasiTerpilih(this)">
+            <div><p class="font-black text-slate-800 dark:text-slate-100">${escapeHTML(row.organisasi_asli)}</p><p class="text-[10px] text-slate-400 mt-1">${escapeHTML(zona)}${row.provinsi ? ` • ${escapeHTML(row.provinsi)}` : ''}</p></div>
+            <div><p class="font-bold">${escapeHTML(row.kabupaten || 'Belum diisi')}</p><p class="text-[10px] text-slate-400">${escapeHTML(row.catatan || '')}</p></div>
+            <span class="font-black text-center">${Number(row.jumlah_personel || 0).toLocaleString('id-ID')}</span>
+            <div class="flex justify-end gap-1"><button data-key="${key}" onclick="editOrganisasi(this.dataset.key)" class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700" title="Edit"><i class="fa-solid fa-pen"></i></button><button data-key="${key}" onclick="hapusOrganisasi(this.dataset.key)" class="w-8 h-8 rounded-lg bg-rose-100 text-rose-700" title="Hapus"><i class="fa-solid fa-trash"></i></button></div>
+        </div>`;
+    }).join('') : '<div class="p-6 text-center text-slate-400">Organisasi tidak ditemukan.</div>';
+    perbaruiTargetMergeOrganisasi();
+}
+
+function toggleOrganisasiTerpilih(checkbox) {
+    if (checkbox.checked) organisasiTerpilih.add(checkbox.value);
+    else organisasiTerpilih.delete(checkbox.value);
+    perbaruiTargetMergeOrganisasi();
+}
+
+function perbaruiTargetMergeOrganisasi() {
+    const select = document.getElementById('targetMergeOrganisasi');
+    const button = document.getElementById('btnMergeOrganisasi');
+    if (!select || !button) return;
+    const previous = select.value;
+    const selectedRows = organisasiData.filter(row => organisasiTerpilih.has(row.organisasi_key));
+    select.innerHTML = '<option value="">Pilih organisasi utama</option>' + selectedRows.map(row => `<option value="${escapeAttribute(row.organisasi_key)}">${escapeHTML(row.organisasi_asli)} (${Number(row.jumlah_personel || 0)})</option>`).join('');
+    if (selectedRows.some(row => row.organisasi_key === previous)) select.value = previous;
+    button.disabled = selectedRows.length < 2;
+}
+
+function resetFormOrganisasi() {
+    ['organisasiKeyLama', 'organisasiNama', 'organisasiKabupaten', 'organisasiProvinsi', 'organisasiCatatan'].forEach(id => {
+        const input = document.getElementById(id); if (input) input.value = '';
+    });
+    const zona = document.getElementById('organisasiZona'); if (zona) zona.value = '';
+    const title = document.getElementById('judulFormOrganisasi'); if (title) title.textContent = 'Tambah Organisasi';
+}
+
+function editOrganisasi(key) {
+    const row = organisasiData.find(item => item.organisasi_key === key);
+    if (!row) return;
+    document.getElementById('organisasiKeyLama').value = row.organisasi_key;
+    document.getElementById('organisasiNama').value = row.organisasi_asli || '';
+    document.getElementById('organisasiKabupaten').value = row.kabupaten || '';
+    document.getElementById('organisasiProvinsi').value = row.provinsi || '';
+    document.getElementById('organisasiZona').value = row.zona_asal || '';
+    document.getElementById('organisasiCatatan').value = row.catatan || '';
+    document.getElementById('judulFormOrganisasi').textContent = `Edit ${row.organisasi_asli}`;
+}
+
+function sarankanZonaOrganisasi() {
+    const zona = zonaDariProvinsiMaster(document.getElementById('organisasiProvinsi')?.value);
+    if (zona) document.getElementById('organisasiZona').value = zona;
+}
+
+async function simpanOrganisasi() {
+    const nama = normalisasiKunciMaster(document.getElementById('organisasiNama')?.value);
+    const kabupaten = normalisasiKunciMaster(document.getElementById('organisasiKabupaten')?.value);
+    if (!nama || !kabupaten) {
+        showToast('Nama organisasi dan kabupaten/kota wajib diisi.', 'error');
+        return;
+    }
+    const button = document.getElementById('btnSimpanOrganisasi');
+    button.disabled = true;
+    try {
+        const res = await callSupabaseRpc('simpan_organisasi', {
+            p_key_lama: document.getElementById('organisasiKeyLama').value || null,
+            p_nama: nama,
+            p_kabupaten: kabupaten,
+            p_provinsi: normalisasiKunciMaster(document.getElementById('organisasiProvinsi').value) || null,
+            p_zona_asal: document.getElementById('organisasiZona').value || null,
+            p_catatan: document.getElementById('organisasiCatatan').value.trim() || null
+        });
+        if (res.status !== 'success') throw new Error(res.message || 'Organisasi gagal disimpan');
+        showToast('Organisasi dan zona berhasil disimpan.', 'success');
+        resetFormOrganisasi();
+        await Promise.all([muatOrganisasi(), loadMasterData()]);
+    } catch (error) {
+        showToast(error.message || 'Gagal menyimpan organisasi.', 'error');
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function hapusOrganisasi(key) {
+    const row = organisasiData.find(item => item.organisasi_key === key);
+    if (!row || !confirm(`Hapus organisasi ${row.organisasi_asli}?\n\nPenghapusan hanya diizinkan jika tidak ada personel yang masih memakai organisasi ini.`)) return;
+    const res = await callSupabaseRpc('hapus_organisasi', { p_organisasi_key: key });
+    if (res.status !== 'success') {
+        showToast(res.message || 'Organisasi tidak dapat dihapus.', 'error');
+        return;
+    }
+    showToast('Organisasi berhasil dihapus.', 'success');
+    await muatOrganisasi();
+}
+
+async function mergeOrganisasiTerpilih() {
+    const target = document.getElementById('targetMergeOrganisasi')?.value;
+    const keys = [...organisasiTerpilih];
+    const targetRow = organisasiData.find(row => row.organisasi_key === target);
+    if (!target || keys.length < 2 || !targetRow) {
+        showToast('Pilih minimal dua organisasi dan organisasi utama.', 'error');
+        return;
+    }
+    if (!confirm(`Gabungkan ${keys.length} organisasi menjadi ${targetRow.organisasi_asli}?\n\nSeluruh personel dan riwayat absensi akan memakai nama organisasi utama.`)) return;
+    const res = await callSupabaseRpc('merge_organisasi', { p_source_keys: keys, p_target_key: target });
+    if (res.status !== 'success') {
+        showToast(res.message || 'Merge organisasi gagal.', 'error');
+        return;
+    }
+    showToast(`${Number(res.personel_diperbarui || 0)} personel diperbarui ke ${targetRow.organisasi_asli}.`, 'success');
+    organisasiTerpilih.clear();
+    await Promise.all([muatOrganisasi(), loadMasterData()]);
+}
+
+async function bukaRiwayatMerge() {
+    document.getElementById('modalRiwayatMerge')?.classList.remove('hidden');
+    const list = document.getElementById('riwayatMergeList');
+    list.innerHTML = '<div class="p-8 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Memuat...</div>';
+    const res = await supabaseFetchAll('v_riwayat_merge_personel?select=*&order=id.desc');
+    if (res.status !== 'success') {
+        list.innerHTML = `<div class="p-8 text-center text-rose-500">${escapeHTML(res.message || 'Gagal memuat riwayat merge')}</div>`;
+        return;
+    }
+    riwayatMergeData = res.data || [];
+    renderRiwayatMerge();
+}
+
+function tutupRiwayatMerge() {
+    document.getElementById('modalRiwayatMerge')?.classList.add('hidden');
+}
+
+function renderRiwayatMerge() {
+    const list = document.getElementById('riwayatMergeList');
+    if (!list) return;
+    list.innerHTML = riwayatMergeData.length ? riwayatMergeData.map(row => {
+        const aktif = row.status === 'aktif';
+        const bisa = aktif && row.dapat_dipisahkan;
+        return `<article class="rounded-xl border ${aktif ? 'border-violet-200 dark:border-violet-500/30' : 'border-slate-200 dark:border-slate-700'} p-4 bg-white dark:bg-slate-800">
+            <div class="flex flex-wrap items-start justify-between gap-3"><div><div class="flex flex-wrap items-center gap-2"><p class="font-black text-slate-800 dark:text-slate-100">#${Number(row.id)} · ${escapeHTML(row.target_nama)}</p><span class="text-[10px] font-black px-2 py-1 rounded-full ${aktif ? 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700'}">${aktif ? 'TERGABUNG' : 'SUDAH DIPISAHKAN'}</span></div><p class="text-xs text-slate-500 mt-1">${Number(row.jumlah_profil)} profil · ${escapeHTML(row.profil_digabung || '-')} → ${escapeHTML(row.target_nip)}</p><p class="text-[10px] text-slate-400 mt-1">${escapeHTML(row.alasan || 'Merge Master Data')} · ${new Date(row.dibuat_pada).toLocaleString('id-ID')}</p></div>${aktif ? `<button onclick="pisahkanMerge(${Number(row.id)})" ${bisa ? '' : 'disabled'} class="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-xs font-black disabled:opacity-40" title="${bisa ? 'Pulihkan data sebelum merge' : 'Pisahkan merge yang lebih baru terlebih dahulu'}"><i class="fa-solid fa-object-ungroup mr-1"></i>Pisahkan</button>` : ''}</div>
+        </article>`;
+    }).join('') : '<div class="p-8 text-center text-slate-400">Belum ada merge tercatat setelah Fase 13.</div>';
+}
+
+async function pisahkanMerge(batchId) {
+    const row = riwayatMergeData.find(item => Number(item.id) === Number(batchId));
+    if (!row || !confirm(`Pisahkan batch #${batchId}?\n\n${row.profil_digabung || 'Profil sumber'} akan dipulihkan bersama data sebelum merge. Kehadiran baru setelah merge tetap berada pada profil utama.`)) return;
+    const res = await callSupabaseRpc('pisahkan_merge_personel', { p_batch_id: Number(batchId) });
+    if (res.status !== 'success') {
+        showToast(res.message || 'Hasil merge tidak dapat dipisahkan.', 'error');
+        return;
+    }
+    showToast(`${Number(res.profil_dipulihkan || 0)} profil berhasil dipulihkan.`, 'success');
+    await Promise.all([bukaRiwayatMerge(), loadMasterData()]);
 }
 
 // ==========================================
@@ -1326,12 +1608,6 @@ function parseCSV(content) {
         return;
     }
 
-    if (!sourceProfile || !kunciIdentitasMaster(sourceProfile) || kunciIdentitasMaster(sourceProfile) !== kunciIdentitasMaster(targetProfile)) {
-        showToast("Merge hanya diizinkan untuk nama dan asal organisasi yang sama.", "error");
-        resetInputMerge();
-        return;
-    }
-    
     importCSVData = [];
     let startIndex = 0;
     

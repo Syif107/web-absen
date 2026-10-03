@@ -223,7 +223,7 @@ test('fase 9 menyediakan merge checkbox dengan editor profil dan transaksi serve
     assert.match(source, /row_number\(\) OVER/);
     assert.match(source, /log_duplikat_dihapus/);
     assert.match(source, /COMMIT;/);
-    assert.match(master, /callSupabaseRpc\('merge_relawan_manual'/);
+    assert.match(master, /callSupabaseRpc\('merge_relawan_tercatat'/);
     assert.match(master, /p_profile:/);
     assert.match(masterHtml, /btnMergeMasterTerpilih/);
     assert.match(masterHtml, /Gabungkan Terpilih/);
@@ -231,6 +231,35 @@ test('fase 9 menyediakan merge checkbox dengan editor profil dan transaksi serve
     assert.match(masterHtml, /mergeNama/);
     assert.match(masterHtml, /mergeOrg/);
     assert.match(masterHtml, /mergeDaerah/);
+});
+
+test('fase 13 menyediakan merge reversibel, CRUD organisasi, dan empat zona asal', () => {
+    const source = read('db/fase13_merge_reversibel_organisasi_zona.sql');
+    const master = read('js/master.js');
+    const masterHtml = read('master.html');
+
+    assert.match(source, /CREATE TABLE IF NOT EXISTS public\.riwayat_merge_personel/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.merge_relawan_tercatat/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.pisahkan_merge_personel/);
+    assert.match(source, /snapshot_log/);
+    assert.match(source, /snapshot_historis/);
+    assert.match(source, /snapshot_seragam/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.simpan_organisasi/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.merge_organisasi/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.hapus_organisasi/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.gabungkan_semua_kandidat_mirip/);
+    assert.match(source, /WHEN 'JAWA TIMUR' THEN 'zona_1'/);
+    assert.match(source, /WHEN 'JAWA TENGAH' THEN 'zona_2'/);
+    assert.match(source, /WHEN 'JAWA BARAT' THEN 'zona_3'/);
+    assert.match(source, /WHEN 'KALIMANTAN TIMUR' THEN 'zona_4'/);
+    assert.match(master, /callSupabaseRpc\('pisahkan_merge_personel'/);
+    assert.match(master, /callSupabaseRpc\('merge_organisasi'/);
+    assert.match(master, /zonaDariProvinsiMaster/);
+    assert.match(masterHtml, /Organisasi & Zona/);
+    assert.match(masterHtml, /Riwayat Merge/);
+    assert.match(masterHtml, /Gabungkan Semua Kandidat/);
+    assert.match(masterHtml, /Zona 1 — Jawa Timur, Bali/);
+    assert.match(masterHtml, /Zona 4 — Sumatera, Kalimantan/);
 });
 
 test('normalisasi Master hanya memetakan PUSAT dan menyatukan PJ dengan Admin', () => {
