@@ -49,6 +49,66 @@ test('service worker hanya mencache GET dari origin aplikasi', () => {
     assert.doesNotMatch(source, /cache\.put\(event\.request/);
 });
 
+test('frontend memakai CSS produksi lokal dan cache versi 27', () => {
+    const htmlFiles = readdirSync(root).filter(name => name.endsWith('.html'));
+    for (const file of htmlFiles) {
+        const html = read(file);
+        assert.match(html, /css\/tailwind\.min\.css/, `${file} belum memakai Tailwind lokal`);
+        assert.doesNotMatch(html, /cdn\.tailwindcss\.com/, `${file} masih memakai Tailwind CDN`);
+        assert.doesNotMatch(html, /tailwind\.config/, `${file} masih membawa konfigurasi runtime`);
+    }
+    assert.match(read('sw.js'), /relawansync-v27-integritas-operasional-cache/);
+    assert.match(read('package.json'), /build:css/);
+});
+
+test('token sesi tidak disimpan permanen dan laporan memakai log kanonis', () => {
+    const config = read('js/supabase-config.js');
+    assert.match(config, /sessionStorage\.setItem\(RELAWAN_TOKEN_KEY/);
+    assert.match(config, /localStorage\.removeItem\(RELAWAN_TOKEN_KEY/);
+    for (const file of ['js/dashboard.js', 'js/riwayat.js', 'js/kalender.js', 'js/statistik.js', 'js/export-rekap.js']) {
+        assert.match(read(file), /v_log_absensi_operasional/, `${file} belum memakai log kanonis`);
+    }
+});
+
+test('fase 14 menyediakan kanonisasi, audit kualitas, pagination, dan zona tunggal', () => {
+    const source = read('db/fase14_integritas_operasional.sql');
+    assert.match(source, /CREATE OR REPLACE VIEW public\.v_log_absensi_operasional/);
+    assert.match(source, /CREATE OR REPLACE VIEW public\.v_audit_kualitas_absensi/);
+    assert.match(source, /CREATE TRIGGER trg_cegah_absensi_ganda_baru/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.daftar_peringkat_v2/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.daftar_seragam_v2/);
+    assert.match(source, /m\.zona_asal = 'zona_4'/);
+    assert.doesNotMatch(source, /DELETE\s+FROM\s+public\.log_absensi/i);
+});
+
+test('fase 15 bootstrap aman dan tidak menimpa fungsi bisnis Fase 14', () => {
+    const source = read('db/fase15_multi_user_aman.sql');
+    const config = read('js/supabase-config.js');
+    assert.match(source, /v_jumlah <> 1/);
+    assert.match(source, /'blocked'/);
+    assert.match(source, /log_koordinator_insert/);
+    assert.match(source, /lokasi = \(SELECT public\.akun_lokasi\(\)\)/);
+    assert.match(source, /riwayat_merge_admin_read/);
+    assert.match(config, /const FASE4_ENABLED = true/);
+    assert.doesNotMatch(source, /CREATE OR REPLACE FUNCTION public\.insert_absensi_batch/);
+    assert.doesNotMatch(source, /GANTI_EMAIL_ADMIN/);
+});
+
+test('fase 16 mempercepat RPC admin tanpa melewati pembatasan koordinator', () => {
+    const source = read('db/fase16_performa_rpc_aman.sql');
+    assert.match(source, /daftar_peringkat_operator_v2/);
+    assert.match(source, /daftar_seragam_operator_v2/);
+    assert.match(source, /daftar_peringkat_admin_v2/);
+    assert.match(source, /daftar_seragam_admin_v2/);
+    assert.match(source, /SECURITY DEFINER/);
+    assert.match(source, /public\.akun_role\(\) <> 'admin'/);
+    assert.match(source, /ELSIF v_role = 'koordinator'/);
+    assert.match(source, /SECURITY INVOKER/);
+    assert.match(source, /REVOKE ALL ON FUNCTION public\.daftar_peringkat_admin_v2/);
+    assert.match(source, /REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon/);
+    assert.match(source, /ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public/);
+});
+
 test('tema light dan dark tersimpan serta light mode memakai off-white', () => {
     const theme = read('js/theme.js');
     const style = read('css/style.css');
@@ -66,15 +126,19 @@ test('tema light dan dark tersimpan serta light mode memakai off-white', () => {
     }
 });
 
-test('input mendukung transaksi atomik dan mode kompatibilitas database lama', () => {
+test('input memakai transaksi atomik Fase 14 dengan jembatan kompatibilitas', () => {
     const config = read('js/supabase-config.js');
     const source = read('js/input.js');
-    assert.match(config, /const FASE5_ENABLED = false/);
+    const fase14 = read('db/fase14_integritas_operasional.sql');
+    assert.match(config, /const FASE5_ENABLED = true/);
+    assert.match(config, /const FASE14_ENABLED = true/);
     assert.match(source, /if \(FASE5_ENABLED\)/);
     assert.match(source, /callSupabaseRpc\(['"]insert_absensi_batch['"]/);
     assert.match(source, /p_master_baru:\s*arrayDataMasterBaru/);
     assert.match(source, /supabaseFetch\(['"]master_relawan['"],\s*['"]POST['"]/);
     assert.match(read('js/master.js'), /if \(FASE5_ENABLED\)/);
+    assert.match(fase14, /insert_absensi_batch\(jsonb, boolean\)/);
+    assert.match(fase14, /insert_absensi_batch\(jsonb, boolean, jsonb\)/);
 });
 
 test('query daftar lengkap menggunakan pagination PostgREST', () => {
@@ -141,9 +205,9 @@ test('fitur peringkat dan seragam mempunyai halaman, navigasi, dan kontrak datab
     assert.match(app, /seragam\.html/);
     assert.match(peringkatHtml, /Peringkat & Reward/);
     assert.match(seragamHtml, /Kontrol Seragam/);
-    assert.match(peringkatJs, /v_peringkat_personel/);
+    assert.match(peringkatJs, /daftar_peringkat_v2/);
     assert.match(peringkatJs, /indeks_keaktifan/);
-    assert.match(seragamJs, /v_status_seragam/);
+    assert.match(seragamJs, /daftar_seragam_v2/);
     assert.match(seragamJs, /simpan_status_seragam/);
     assert.match(seragamJs, /notifikasi_pengembalian/);
 });
@@ -176,8 +240,8 @@ test('fase 7 menyediakan rincian proyek, ringkasan direktori, dan peringatan abs
     assert.match(source, /CREATE OR REPLACE VIEW public\.v_status_seragam_operasional/);
     assert.match(source, /tidak_hadir_30_hari/);
     assert.match(peringkat, /filterProyekPeringkat/);
-    assert.match(peringkat, /v_kehadiran_proyek_personel/);
-    assert.match(seragam, /v_status_seragam_operasional/);
+    assert.match(peringkat, /v_daftar_proyek_absensi/);
+    assert.match(seragam, /daftar_seragam_v2/);
     assert.match(seragam, /kpiSeragamAbsenLama/);
     assert.match(seragam, /filterProyekSeragam/);
     assert.match(master, /v_ringkasan_personel/);
@@ -326,7 +390,7 @@ test('fase 10 menyediakan koreksi kehadiran, peringkat umum, dan stok seragam se
     assert.match(riwayat, /simpan_kehadiran_historis/);
     assert.match(riwayatHtml, /Kelola Kehadiran/);
     assert.match(riwayatHtml, /Kehadiran historis tanpa tanggal pasti/);
-    assert.match(peringkat, /v_peringkat_personel_umum/);
+    assert.match(peringkat, /daftar_peringkat_v2/);
     assert.match(seragam, /catat_mutasi_stok_seragam/);
     assert.match(seragam, /simpan_status_seragam_set/);
     assert.match(seragamHtml, /Ukuran Atasan/);

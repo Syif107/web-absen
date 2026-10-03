@@ -139,7 +139,7 @@ function perbaruiInfoExportRekap() {
         chip('Periode', `${labelBulanRekap(dari)} – ${labelBulanRekap(sampai)}`, 'text-primary') +
         chip('Lokasi', lokasi === 'Semua' ? 'Semua' : escapeHTML(lokasi), 'text-primary') +
         chip('Hari Operasional', hasil.hariOperasional, 'text-emerald-600 dark:text-emerald-400') +
-        chip('Total Kehadiran', hasil.totalKehadiran, 'text-slate-800 dark:text-slate-100') +
+        chip('Total Sesi', hasil.totalKehadiran, 'text-slate-800 dark:text-slate-100') +
         chip('Total Relawan', hasil.rows.length, 'text-indigo-600 dark:text-indigo-400') +
         chip('Kandidat Duplikat', hasil.dups.length, hasil.dups.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400');
 }
@@ -308,7 +308,7 @@ async function exportRekapExcel() {
     btn.disabled = true;
 
     try {
-        let urlLog = `log_absensi?select=*&order=nama.asc,id.asc&tanggal=gte.${tglAwal}&tanggal=lte.${tglAkhir}${queryLokasi}`;
+        let urlLog = `v_log_absensi_operasional?select=*&terhubung=eq.true&order=nama.asc,id.asc&tanggal=gte.${tglAwal}&tanggal=lte.${tglAkhir}${queryLokasi}`;
         urlLog = await terapkanFilterLokasi(urlLog);
 
         const [logRes, masterRes] = await Promise.all([
@@ -329,7 +329,7 @@ async function exportRekapExcel() {
 
         const wb = susunWorkbookRekap(hasil, {
             dari: dari, sampai: sampai, lokasi: lokasi,
-            sortBasisLabel: sortBasis === 'persen' ? '% Hadir' : 'Total Kehadiran'
+            sortBasisLabel: sortBasis === 'persen' ? '% Hari Hadir' : 'Total Sesi'
         });
 
         const labelLokasi = lokasi === 'Semua' ? 'SemuaLokasi' : lokasi.replace(/[^A-Za-z0-9_\-]+/g, '_');
@@ -363,11 +363,11 @@ function susunWorkbookRekap(hasil, meta) {
         ['Lokasi Proyek', meta.lokasi],
         ['Dasar Peringkat', meta.sortBasisLabel],
         ['Hari Operasional', hasil.hariOperasional],
-        ['Total Kehadiran', hasil.totalKehadiran],
+        ['Total Sesi Kehadiran', hasil.totalKehadiran],
         ['Total Relawan', hasil.rows.length],
         ['Tanggal Cetak', new Date().toLocaleString('id-ID')],
         [],
-        ['No', 'Nama Relawan', 'Asal Organisasi', 'Bidang Utama', 'Total Kehadiran', 'Hari Hadir', '% Hadir']
+        ['No', 'Nama Relawan', 'Asal Organisasi', 'Bidang Utama', 'Total Sesi', 'Hari Hadir', '% Hari Hadir']
     ];
 
     const aoaData = hasil.rows.map((r, i) => [

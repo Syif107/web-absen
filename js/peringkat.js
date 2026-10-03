@@ -1,10 +1,13 @@
 // ================================================================
-// PERINGKAT & REWARD PERSONEL
+// PERINGKAT & REWARD PERSONEL — sumber server-side Fase 14
 // ================================================================
 
-let semuaPeringkat = [];
-let semuaPeringkatUmum = [];
-let kehadiranProyekPeringkat = [];
+let peringkatRows = [];
+let peringkatTotal = 0;
+let peringkatKpi = {};
+let peringkatPage = 1;
+const peringkatPageSize = 50;
+let peringkatTimer = null;
 
 const PROYEK_KHUSUS_PERINGKAT = [
     'Perpustakaan Tashawwuf',
@@ -14,99 +17,70 @@ const PROYEK_KHUSUS_PERINGKAT = [
     'Gapura Syukur'
 ];
 
-document.addEventListener('DOMContentLoaded', loadPeringkat);
+document.addEventListener('DOMContentLoaded', async () => {
+    await siapkanFilterProyekPeringkat();
+    await muatPeringkat(1);
+});
 
-async function loadPeringkat() {
+async function siapkanFilterProyekPeringkat() {
+    const select = document.getElementById('filterProyekPeringkat');
+    const group = document.getElementById('opsiLainnyaPeringkat');
+    if (!select || !group) return;
+    const res = await supabaseFetchAll('v_daftar_proyek_absensi?select=kategori,nama_proyek&order=nama_proyek.asc');
+    if (res.status !== 'success') return;
+    const names = [...new Set((res.data || [])
+        .filter(row => row.kategori === 'lainnya' && row.nama_proyek)
+        .map(row => row.nama_proyek))]
+        .filter(name => !PROYEK_KHUSUS_PERINGKAT.includes(name));
+    group.innerHTML = names.map(name => `<option value="${escapeAttribute(`proyek:${name}`)}">${escapeHTML(name)}</option>`).join('');
+}
+
+function jadwalkanPeringkat() {
+    clearTimeout(peringkatTimer);
+    peringkatTimer = setTimeout(() => muatPeringkat(1), 300);
+}
+
+function renderPeringkat() {
+    return muatPeringkat(1);
+}
+
+function loadPeringkat() {
+    return muatPeringkat(peringkatPage);
+}
+
+async function muatPeringkat(page = peringkatPage) {
     const tbody = document.getElementById('tabelPeringkat');
     const errorBox = document.getElementById('peringkatError');
+    peringkatPage = Math.max(1, Number(page) || 1);
     if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Memuat peringkat...</td></tr>';
     if (errorBox) errorBox.classList.add('hidden');
 
-    try {
-        const [operasionalRes, legacyRes, umumRes, proyekRes] = await Promise.all([
-            supabaseFetchAll('v_peringkat_personel_operasional?select=*&order=kategori.asc,memenuhi_syarat.desc,peringkat.asc.nullslast,indeks_keaktifan.desc'),
-            supabaseFetchAll('v_peringkat_personel?select=*&order=kategori.asc,memenuhi_syarat.desc,peringkat.asc.nullslast,indeks_keaktifan.desc'),
-            supabaseFetchAll('v_peringkat_personel_umum?select=*&order=memenuhi_syarat.desc,peringkat.asc.nullslast,indeks_keaktifan.desc'),
-            supabaseFetchAll('v_kehadiran_proyek_personel?select=*&order=kategori.asc,nama_proyek.asc')
-        ]);
-        const res = operasionalRes.status === 'success' ? operasionalRes : legacyRes;
-        if (res.status !== 'success' || proyekRes.status !== 'success') throw new Error(res.message || proyekRes.message || 'Gagal membaca rincian peringkat');
-        semuaPeringkat = Array.isArray(res.data) ? res.data : [];
-        semuaPeringkatUmum = umumRes.status === 'success' && Array.isArray(umumRes.data)
-            ? umumRes.data
-            : buatPeringkatUmumKompatibel(semuaPeringkat);
-        kehadiranProyekPeringkat = Array.isArray(proyekRes.data) ? proyekRes.data : [];
-        siapkanFilterProyekPeringkat();
-        renderKpiPeringkat();
-        renderPeringkat();
-    } catch (error) {
-        console.error('Peringkat:', error);
+    const proyek = document.getElementById('filterProyekPeringkat')?.value || 'semua';
+    const status = document.getElementById('filterStatusPeringkat')?.value || 'semua';
+    const cari = (document.getElementById('cariPeringkat')?.value || '').trim();
+    const res = await callSupabaseRpc('daftar_peringkat_v2', {
+        p_proyek: proyek,
+        p_status: status,
+        p_cari: cari,
+        p_limit: peringkatPageSize,
+        p_offset: (peringkatPage - 1) * peringkatPageSize
+    });
+
+    if (res.status !== 'success') {
         if (errorBox) {
-            errorBox.textContent = 'Fitur peringkat belum dapat dibaca. Pastikan migrasi Fase 6 dan Fase 7 sudah diterapkan di database, lalu muat ulang halaman.';
+            errorBox.textContent = 'Peringkat belum dapat dibaca. Terapkan migrasi Fase 14 lalu muat ulang halaman.';
             errorBox.classList.remove('hidden');
         }
         if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center text-red-500 font-bold">Data peringkat belum tersedia.</td></tr>';
+        return;
     }
-}
 
-// Fallback sebelum migrasi Fase 10 diterapkan. Tetap memastikan filter
-// "Semua Proyek" hanya menampilkan satu baris per NIP.
-function buatPeringkatUmumKompatibel(rows) {
-    const groups = new Map();
-    rows.forEach(row => {
-        if (!row?.nip) return;
-        if (!groups.has(row.nip)) groups.set(row.nip, []);
-        groups.get(row.nip).push(row);
-    });
-    const hasil = [...groups.values()].map(group => {
-        const utama = [...group].sort((a, b) =>
-            Number(Boolean(b.memenuhi_syarat)) - Number(Boolean(a.memenuhi_syarat))
-            || Number(b.indeks_keaktifan || 0) - Number(a.indeks_keaktifan || 0)
-            || Number(b.total_hari || 0) - Number(a.total_hari || 0)
-        )[0];
-        const memenuhi = group.some(item => item.memenuhi_syarat);
-        const tanggalMemenuhi = group.map(item => item.tanggal_memenuhi).filter(Boolean).sort()[0] || null;
-        return {
-            ...utama,
-            kategori: 'semua',
-            total_hari: group.reduce((total, item) => total + Number(item.total_hari || 0), 0),
-            total_sesi: group.reduce((total, item) => total + Number(item.total_sesi || 0), 0),
-            hari_historis: group.reduce((total, item) => total + Number(item.hari_historis || 0), 0),
-            hari_menuju_syarat: Math.max(...group.map(item => Number(item.total_hari || 0))),
-            memenuhi_syarat: memenuhi,
-            tanggal_memenuhi: tanggalMemenuhi,
-            peringkat: null
-        };
-    });
-    const memenuhi = hasil.filter(row => row.memenuhi_syarat).sort((a, b) =>
-        Number(b.indeks_keaktifan || 0) - Number(a.indeks_keaktifan || 0)
-        || String(a.tanggal_memenuhi || '9999-12-31').localeCompare(String(b.tanggal_memenuhi || '9999-12-31'))
-        || Number(b.total_hari || 0) - Number(a.total_hari || 0)
-        || String(a.nip).localeCompare(String(b.nip), 'id')
-    );
-    memenuhi.forEach((row, index) => { row.peringkat = index + 1; });
-    return hasil;
-}
-
-function uniquePersonCount(rows) {
-    return new Set(rows.map(r => r.nip).filter(Boolean)).size;
-}
-
-function renderKpiPeringkat() {
-    const sumber = semuaPeringkatUmum.length ? semuaPeringkatUmum : semuaPeringkat;
-    const eligible = sumber.filter(r => r.memenuhi_syarat);
-    const zona4 = sumber.filter(r => r.kategori_wilayah === 'zona_4');
-    const mendekati = sumber.filter(r => {
-        const hari = Number(r.hari_menuju_syarat ?? r.total_hari ?? 0);
-        return !r.memenuhi_syarat && hari >= 30 && hari < 40;
-    });
-    const wilayahKosong = sumber.filter(r => !r.kategori_wilayah || r.kategori_wilayah === 'belum_dilengkapi');
-
-    setText('kpiPersonel', uniquePersonCount(sumber));
-    setText('kpiMemenuhi', uniquePersonCount(eligible));
-    setText('kpiZona4', uniquePersonCount(zona4));
-    setText('kpiMendekati', uniquePersonCount(mendekati));
-    setText('kpiWilayahKosong', uniquePersonCount(wilayahKosong));
+    peringkatRows = Array.isArray(res.rows) ? res.rows : [];
+    peringkatTotal = Number(res.total || 0);
+    peringkatKpi = res.kpi || {};
+    renderKpiPeringkat();
+    gambarTabelPeringkat(proyek);
+    gambarPaginationPeringkat(proyek);
 }
 
 function setText(id, value) {
@@ -114,38 +88,27 @@ function setText(id, value) {
     if (el) el.textContent = Number(value || 0).toLocaleString('id-ID');
 }
 
+function renderKpiPeringkat() {
+    setText('kpiPersonel', peringkatKpi.personel);
+    setText('kpiMemenuhi', peringkatKpi.memenuhi);
+    setText('kpiZona4', peringkatKpi.zona4);
+    setText('kpiMendekati', peringkatKpi.mendekati);
+    setText('kpiWilayahKosong', peringkatKpi.zona_kosong);
+}
+
 function labelKategori(kategori) {
-    return kategori === 'khususul_khusus' ? '5 Proyek Khususul Khusus' : 'Proyek Lainnya';
+    if (kategori === 'khususul_khusus') return '5 Proyek Khususul Khusus';
+    if (kategori === 'lainnya') return 'Proyek Lainnya';
+    return 'Semua Proyek';
 }
 
-function labelWilayah(kategori) {
+function labelZona(zona) {
     return {
-        jombang: 'Jombang',
-        luar_jombang: 'Luar Jombang',
-        zona_4: 'Zona 4',
-        belum_dilengkapi: 'Belum dilengkapi'
-    }[kategori] || 'Belum dilengkapi';
-}
-
-function warnaAktif(tingkat) {
-    if (tingkat === 'Sangat Aktif') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300';
-    if (tingkat === 'Aktif') return 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300';
-    if (tingkat === 'Cukup Aktif') return 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300';
-    return 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
-}
-
-function siapkanFilterProyekPeringkat() {
-    const select = document.getElementById('filterProyekPeringkat');
-    const group = document.getElementById('opsiLainnyaPeringkat');
-    if (!select || !group) return;
-    const selected = select.value || 'semua';
-    const names = [...new Set(kehadiranProyekPeringkat
-        .filter(row => row.kategori === 'lainnya' && row.nama_proyek)
-        .map(row => row.nama_proyek))]
-        .filter(name => !PROYEK_KHUSUS_PERINGKAT.includes(name))
-        .sort((a, b) => a.localeCompare(b, 'id'));
-    group.innerHTML = names.map(name => `<option value="${escapeAttribute(`proyek:${name}`)}">${escapeHTML(name)}</option>`).join('');
-    if ([...select.options].some(option => option.value === selected)) select.value = selected;
+        zona_1: 'Zona 1 — Jawa Timur & Bali',
+        zona_2: 'Zona 2 — Jawa Tengah & DIY',
+        zona_3: 'Zona 3 — Jawa Barat, Jakarta & Banten',
+        zona_4: 'Zona 4 — Sumatera & Kalimantan'
+    }[zona] || 'Zona belum diisi';
 }
 
 function labelFilterProyekPeringkat(value) {
@@ -155,81 +118,61 @@ function labelFilterProyekPeringkat(value) {
     return String(value || '').replace(/^proyek:/, '');
 }
 
-function cocokFilterProyekPeringkat(row, value) {
-    if (!value || value === 'semua') return true;
-    if (value === 'khususul_khusus' || value === 'lainnya') return row.kategori === value;
-    if (!value.startsWith('proyek:')) return true;
-    const namaProyek = value.slice('proyek:'.length);
-    return kehadiranProyekPeringkat.some(proyek =>
-        proyek.nip === row.nip && proyek.kategori === row.kategori && proyek.nama_proyek === namaProyek
-    );
+function warnaAktif(tingkat) {
+    if (tingkat === 'Sangat Aktif') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300';
+    if (tingkat === 'Aktif') return 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300';
+    if (tingkat === 'Cukup Aktif') return 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300';
+    return 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300';
 }
 
-function statistikProyekPeringkat(row, value) {
-    if (!value || !value.startsWith('proyek:')) return null;
-    const namaProyek = value.slice('proyek:'.length);
-    return kehadiranProyekPeringkat.find(proyek =>
-        proyek.nip === row.nip && proyek.kategori === row.kategori && proyek.nama_proyek === namaProyek
-    ) || null;
-}
-
-function renderPeringkat() {
+function gambarTabelPeringkat(proyekFilter) {
     const tbody = document.getElementById('tabelPeringkat');
     if (!tbody) return;
-    const proyekFilter = document.getElementById('filterProyekPeringkat')?.value || 'semua';
-    const status = document.getElementById('filterStatusPeringkat')?.value || 'semua';
-    const keyword = (document.getElementById('cariPeringkat')?.value || '').trim().toLowerCase();
-
-    let rows = proyekFilter === 'semua'
-        ? [...semuaPeringkatUmum]
-        : semuaPeringkat.filter(r => cocokFilterProyekPeringkat(r, proyekFilter));
-    if (status === 'memenuhi') rows = rows.filter(r => r.memenuhi_syarat);
-    if (status === 'belum') rows = rows.filter(r => !r.memenuhi_syarat);
-    if (status === 'mendekati') rows = rows.filter(r => {
-        const hari = Number(r.hari_menuju_syarat ?? r.total_hari ?? 0);
-        return !r.memenuhi_syarat && hari >= 30 && hari < 40;
-    });
-    if (keyword) {
-        rows = rows.filter(r => [r.nama, r.nip, r.asal_organisasi, r.asal_daerah].some(v => String(v || '').toLowerCase().includes(keyword)));
-    }
-
-    rows.sort((a, b) => {
-        if (Boolean(a.memenuhi_syarat) !== Boolean(b.memenuhi_syarat)) return a.memenuhi_syarat ? -1 : 1;
-        if (a.memenuhi_syarat && b.memenuhi_syarat) return Number(a.peringkat || 999999) - Number(b.peringkat || 999999);
-        return Number(b.hari_menuju_syarat ?? b.total_hari ?? 0) - Number(a.hari_menuju_syarat ?? a.total_hari ?? 0)
-            || Number(b.indeks_keaktifan || 0) - Number(a.indeks_keaktifan || 0);
-    });
-
-    if (!rows.length) {
+    if (!peringkatRows.length) {
         tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center text-slate-400 font-bold">Tidak ada data sesuai filter.</td></tr>';
-        document.getElementById('infoPeringkat').textContent = '0 personel';
         return;
     }
 
-    tbody.innerHTML = rows.map(r => {
-        const statistikProyek = statistikProyekPeringkat(r, proyekFilter);
-        const target = r.kategori_wilayah === 'zona_4' ? 1 : 40;
-        const hariKelayakan = proyekFilter === 'semua' ? Number(r.hari_menuju_syarat ?? r.total_hari ?? 0) : Number(r.total_hari || 0);
-        const progress = Math.min(100, Math.round(100 * hariKelayakan / target));
+    tbody.innerHTML = peringkatRows.map(r => {
+        const target = Number(r.target_hari || 40);
+        const hariKelayakan = proyekFilter === 'semua' ? Number(r.hari_menuju_syarat || 0) : Number(r.total_hari || 0);
+        const progress = Math.min(100, Math.round(100 * hariKelayakan / Math.max(1, target)));
         const rank = r.memenuhi_syarat ? `#${Number(r.peringkat || 0)}` : '—';
         const statusHtml = r.memenuhi_syarat
-            ? `<span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">MEMENUHI</span>`
-            : `<span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">BELUM</span>`;
-        const wilayahClass = r.kategori_wilayah === 'zona_4' ? 'text-violet-600 dark:text-violet-300' : (r.kategori_wilayah === 'belum_dilengkapi' ? 'text-rose-600 dark:text-rose-300' : 'text-slate-600 dark:text-slate-300');
+            ? '<span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">MEMENUHI</span>'
+            : '<span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">BELUM</span>';
+        const zonaClass = r.zona_asal === 'zona_4' ? 'text-violet-600 dark:text-violet-300' : (!r.zona_asal ? 'text-rose-600 dark:text-rose-300' : 'text-slate-600 dark:text-slate-300');
         return `<tr class="hover:bg-indigo-50/40 dark:hover:bg-indigo-500/5">
             <td class="px-4 py-3 text-center font-black text-lg ${r.memenuhi_syarat ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-300 dark:text-slate-600'}">${rank}</td>
-            <td class="px-4 py-3"><p class="font-extrabold text-slate-800 dark:text-slate-100">${escapeHTML(r.nama)}</p><p class="text-[10px] text-slate-400 font-mono mt-0.5">${escapeHTML(r.nip)} • ${escapeHTML(r.asal_organisasi)}</p></td>
-            <td class="px-4 py-3"><p class="font-bold text-xs ${wilayahClass}">${escapeHTML(labelWilayah(r.kategori_wilayah))}</p><p class="text-[10px] text-slate-400 mt-0.5">${escapeHTML(r.asal_daerah || 'Daerah belum diisi')}</p></td>
-            <td class="px-4 py-3 min-w-[140px]"><div class="flex justify-between text-xs font-bold mb-1"><span>${proyekFilter === 'semua' ? `${Number(r.total_hari || 0)} hari global` : `${Number(r.total_hari || 0)} hari kumulatif`}</span><span>${target} hari</span></div><div class="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden"><div class="h-full ${r.memenuhi_syarat ? 'bg-emerald-500' : 'bg-indigo-500'}" style="width:${progress}%"></div></div>${proyekFilter === 'semua' ? `<p class="text-[10px] text-slate-400 mt-1">${hariKelayakan} hari pada jalur kelayakan terbaik</p>` : ''}${Number(r.hari_historis || 0) > 0 ? `<p class="text-[10px] text-amber-600 dark:text-amber-300 mt-1">Termasuk ${Number(r.hari_historis)} hari historis</p>` : ''}${statistikProyek ? `<p class="text-[10px] text-slate-400 mt-1">${Number(statistikProyek.total_hari_proyek || 0)} hari di proyek terpilih</p>` : ''}</td>
+            <td class="px-4 py-3"><p class="font-extrabold text-slate-800 dark:text-slate-100">${escapeHTML(r.nama)}</p><p class="text-[10px] text-slate-400 font-mono mt-0.5">${escapeHTML(r.nip)} • ${escapeHTML(r.asal_organisasi || '-')}</p></td>
+            <td class="px-4 py-3"><p class="font-bold text-xs ${zonaClass}">${escapeHTML(labelZona(r.zona_asal))}</p><p class="text-[10px] text-slate-400 mt-0.5">${escapeHTML(r.asal_daerah || 'Daerah belum diisi')}</p></td>
+            <td class="px-4 py-3 min-w-[150px]"><div class="flex justify-between text-xs font-bold mb-1"><span>${Number(r.total_hari || 0)} hari tercatat</span><span>${target} hari</span></div><div class="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden"><div class="h-full ${r.memenuhi_syarat ? 'bg-emerald-500' : 'bg-indigo-500'}" style="width:${progress}%"></div></div>${proyekFilter === 'semua' ? `<p class="text-[10px] text-slate-400 mt-1">${hariKelayakan} hari pada jalur kelayakan terbaik</p>` : ''}${Number(r.hari_historis || 0) > 0 ? `<p class="text-[10px] text-amber-600 dark:text-amber-300 mt-1">Termasuk ${Number(r.hari_historis)} hari historis</p>` : ''}</td>
             <td class="px-4 py-3"><p class="font-black">${Number(r.total_sesi || 0)}</p><p class="text-[10px] text-slate-400">${Number(r.persentase_sesi_90 || 0).toFixed(1)}% / 90 hari</p></td>
-            <td class="px-4 py-3"><p class="font-black text-lg">${Number(r.indeks_keaktifan || 0).toFixed(1)}</p><span class="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black ${warnaAktif(r.tingkat_keaktifan)}">${escapeHTML(r.tingkat_keaktifan)}</span></td>
+            <td class="px-4 py-3"><p class="font-black text-lg">${Number(r.indeks_keaktifan || 0).toFixed(1)}</p><span class="inline-flex px-2 py-0.5 rounded-full text-[9px] font-black ${warnaAktif(r.tingkat_keaktifan)}">${escapeHTML(r.tingkat_keaktifan || '-')}</span></td>
             <td class="px-4 py-3 text-xs"><p><strong>${Number(r.streak_terpanjang || 0)}</strong> hari terpanjang</p><p class="text-slate-400 mt-1"><strong>${Number(r.minggu_aktif_12 || 0)}</strong> minggu aktif</p></td>
             <td class="px-4 py-3">${statusHtml}<p class="text-[10px] text-slate-400 mt-1">${r.tanggal_memenuhi ? formatTanggal(r.tanggal_memenuhi) : `${Math.max(0, target - hariKelayakan)} hari lagi`}</p></td>
-            <td class="px-4 py-3 text-center whitespace-nowrap"><button data-nip="${escapeAttribute(r.nip)}" data-kategori="${escapeAttribute(r.kategori)}" onclick="bukaDetailPeringkatDariTombol(this)" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary" title="Lihat rincian"><i class="fa-solid fa-eye"></i></button><a href="seragam.html?nip=${encodeURIComponent(r.nip)}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-200 ml-1" title="Kelola seragam"><i class="fa-solid fa-shirt"></i></a></td>
+            <td class="px-4 py-3 text-center whitespace-nowrap"><button data-nip="${escapeAttribute(r.nip)}" onclick="bukaDetailPeringkatDariTombol(this)" class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-primary" title="Lihat rincian"><i class="fa-solid fa-eye"></i></button><a href="seragam.html?nip=${encodeURIComponent(r.nip)}" class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-200 ml-1" title="Kelola seragam"><i class="fa-solid fa-shirt"></i></a></td>
         </tr>`;
     }).join('');
+}
 
-    document.getElementById('infoPeringkat').textContent = `${rows.length.toLocaleString('id-ID')} personel • ${labelFilterProyekPeringkat(proyekFilter)}`;
+function gambarPaginationPeringkat(proyekFilter) {
+    const pages = Math.max(1, Math.ceil(peringkatTotal / peringkatPageSize));
+    if (peringkatPage > pages) return muatPeringkat(pages);
+    const start = peringkatTotal ? (peringkatPage - 1) * peringkatPageSize + 1 : 0;
+    const end = Math.min(peringkatPage * peringkatPageSize, peringkatTotal);
+    const info = document.getElementById('infoPeringkat');
+    if (info) info.textContent = `${start}-${end} dari ${peringkatTotal.toLocaleString('id-ID')} personel • ${labelFilterProyekPeringkat(proyekFilter)}`;
+    const pageInfo = document.getElementById('peringkatPageInfo');
+    if (pageInfo) pageInfo.textContent = `Halaman ${peringkatPage} / ${pages}`;
+    const prev = document.getElementById('btnPeringkatPrev');
+    const next = document.getElementById('btnPeringkatNext');
+    if (prev) prev.disabled = peringkatPage <= 1;
+    if (next) next.disabled = peringkatPage >= pages;
+}
+
+function gantiHalamanPeringkat(delta) {
+    return muatPeringkat(peringkatPage + Number(delta || 0));
 }
 
 function formatTanggal(value) {
@@ -239,17 +182,13 @@ function formatTanggal(value) {
 }
 
 function bukaDetailPeringkatDariTombol(button) {
-    const nip = button.dataset.nip || '';
-    const kategoriBaris = button.dataset.kategori || '';
-    const proyekFilter = document.getElementById('filterProyekPeringkat')?.value || 'semua';
-    const sumber = proyekFilter === 'semua' ? semuaPeringkatUmum : semuaPeringkat;
-    const r = sumber.find(item => item.nip === nip && (!kategoriBaris || item.kategori === kategoriBaris) && cocokFilterProyekPeringkat(item, proyekFilter));
+    const r = peringkatRows.find(item => String(item.nip) === String(button.dataset.nip || ''));
     if (!r) return;
     document.getElementById('detailNama').textContent = r.nama || '-';
-    document.getElementById('detailSub').textContent = `${r.nip || '-'} • ${r.kategori === 'semua' ? 'Semua Proyek' : labelKategori(r.kategori)} • ${labelFilterProyekPeringkat(proyekFilter)}`;
+    document.getElementById('detailSub').textContent = `${r.nip || '-'} • ${labelKategori(r.kategori)} • ${labelZona(r.zona_asal)}`;
     const items = [
-        [r.kategori === 'semua' ? 'Total hari global' : 'Total hari unik', `${Number(r.total_hari || 0)} hari`],
-        ...(r.kategori === 'semua' ? [['Jalur kelayakan terbaik', `${Number(r.hari_menuju_syarat || 0)} dari ${r.kategori_wilayah === 'zona_4' ? 1 : 40} hari`]] : []),
+        ['Total hari tercatat', `${Number(r.total_hari || 0)} hari`],
+        ['Jalur kelayakan', `${Number(r.hari_menuju_syarat || 0)} dari ${Number(r.target_hari || 40)} hari`],
         ['Kehadiran historis', `${Number(r.hari_historis || 0)} hari tanpa tanggal pasti`],
         ['Total sesi', `${Number(r.total_sesi || 0)} sesi`],
         ['Kehadiran 90 hari', `${Number(r.persentase_hari_90 || 0).toFixed(1)}%`],

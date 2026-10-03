@@ -8,13 +8,10 @@
     <meta name="theme-color" content="#4F46E5">
     <link rel="apple-touch-icon" href="assets/icon.png">
     <link rel="icon" type="image/png" href="assets/favicon.png">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/tailwind.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
-    <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5', secondary: '#818CF8', dark: '#0F172A' } } } }
-    </script>
     <script src="js/theme.js"></script>
     <style>
         .panduan-section { scroll-margin-top: 1.5rem; }
@@ -367,14 +364,14 @@
                                 <tr><th class="px-3 py-2">Halaman</th><th class="px-3 py-2">Fitur Utama</th><th class="px-3 py-2">Output</th></tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Dashboard</td><td class="px-3 py-2">Filter bulan/tahun, KPI, chart drill-down, Rekap WA</td><td class="px-3 py-2">Rincian data & pesan siap kirim WA</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Dashboard</td><td class="px-3 py-2">Periode terbaru otomatis, KPI sesi kanonis, chart drill-down, Rekap WA</td><td class="px-3 py-2">Rincian data & pesan siap kirim WA</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Validasi Absensi</td><td class="px-3 py-2">Paste WA/Excel, status validasi, Perbaiki, template, kirim</td><td class="px-3 py-2">Log absen baru + Master auto-isi</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Riwayat Absen</td><td class="px-3 py-2">Filter/cari, edit, hapus, export, cetak</td><td class="px-3 py-2">CSV, XLSX, PDF/print</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Kalender Absen</td><td class="px-3 py-2">Navigasi bulan, filter lokasi, klik tanggal</td><td class="px-3 py-2">Visualisasi & daftar per hari</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Statistik</td><td class="px-3 py-2">Rekap relawan, chart, Export Rekap</td><td class="px-3 py-2">CSV/XLSX + Excel rekap ber-% dan deteksi duplikat</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Master Data</td><td class="px-3 py-2">Import, edit seluruh profil, isi wilayah, rapikan duplikat aman, filter/sort/paginasi</td><td class="px-3 py-2">Database relawan bersih</td></tr>
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Peringkat & Reward</td><td class="px-3 py-2">Ranking dua kategori proyek, indeks keaktifan, progres 40 hari</td><td class="px-3 py-2">Urutan prioritas penerima</td></tr>
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Kontrol Seragam</td><td class="px-3 py-2">Stok, ukuran, status proses, penitipan, penyerahan kembali</td><td class="px-3 py-2">Riwayat seragam terpantau</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Peringkat & Reward</td><td class="px-3 py-2">Filter proyek umum/spesifik, pagination 50 baris, indeks keaktifan, progres 40 hari</td><td class="px-3 py-2">Urutan prioritas penerima</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Kontrol Seragam</td><td class="px-3 py-2">Pagination, stok set, ukuran, status proses, penitipan, peringatan 30 hari</td><td class="px-3 py-2">Riwayat seragam terpantau</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Panduan</td><td class="px-3 py-2">Dokumen ini, tombol Cetak/Print</td><td class="px-3 py-2">PDF panduan</td></tr>
                             </tbody>
                         </table>
@@ -392,6 +389,9 @@
                         <ul class="mt-1">
                             <li>• Fase multi-user/koordinator <strong>belum aktif</strong> — saat ini semua akun = admin penuh.</li>
                             <li>• Identitas laporan tersimpan lokal pada perangkat; atur kembali bila menggunakan perangkat/browser lain.</li>
+                            <li>• Angka “Total Sesi” menghitung Pagi dan Malam. Hari unik tetap dipakai untuk target 40 hari.</li>
+                            <li>• Ranking dan reward membaca <strong>Zona Asal</strong>; zona yang belum diisi tidak ditebak dari label organisasi.</li>
+                            <li>• Arsip absensi mentah tetap disimpan; laporan memakai satu baris kanonis per NIP, tanggal, sesi, dan lokasi.</li>
                             <li>• Export CSV/XLSX biasa bersifat <em>flat</em>; perhitungan % & deteksi duplikat ada di <strong>Export Rekap</strong>.</li>
                             <li>• Data yang sudah dihapus permanen tidak bisa dikembalikan (backup JSON rutin disarankan).</li>
                         </ul>

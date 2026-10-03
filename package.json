@@ -2,6 +2,12 @@
   "name": "relawansync-v2",
   "private": true,
   "scripts": {
+    "build:css": "tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind.min.css --minify",
+    "build": "npm run build:css",
     "test": "node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "tailwindcss": "4.3.3"
   }
 }

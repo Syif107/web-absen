@@ -10,6 +10,11 @@ let kehadiranProyekSeragam = [];
 let nipSeragamAktif = '';
 let parameterSeragamSudahDibuka = false;
 let stokSeragamFase10Aktif = false;
+let seragamKpi = {};
+let seragamTotal = 0;
+let seragamPage = 1;
+const seragamPageSize = 50;
+let seragamTimer = null;
 
 const PROYEK_KHUSUS_SERAGAM = [
     'Perpustakaan Tashawwuf',
@@ -31,49 +36,58 @@ const LABEL_PENGUASAAN = {
     rusak_hilang: 'Rusak/hilang', menunggu_penggantian: 'Menunggu penggantian'
 };
 
-document.addEventListener('DOMContentLoaded', loadSeragam);
+document.addEventListener('DOMContentLoaded', async () => {
+    await siapkanFilterProyekSeragam();
+    await loadSeragam(1);
+});
 
-async function loadSeragam() {
+async function loadSeragam(page = seragamPage) {
     const tbody = document.getElementById('tabelSeragam');
     const errorBox = document.getElementById('seragamError');
+    seragamPage = Math.max(1, Number(page) || 1);
     if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="p-10 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Memuat kontrol seragam...</td></tr>';
     if (errorBox) errorBox.classList.add('hidden');
 
     try {
-        const [statusRes, stokRes, mutasiRes, penerimaRes, proyekRes] = await Promise.all([
-            muatStatusSeragamKompatibel(),
+        const proyek = document.getElementById('filterProyekSeragam')?.value || 'semua';
+        const proses = document.getElementById('filterProsesSeragam')?.value || 'semua';
+        const penguasaan = document.getElementById('filterPenguasaanSeragam')?.value || 'semua';
+        const cari = (document.getElementById('cariSeragam')?.value || '').trim();
+        const [statusRes, stokRes, mutasiRes] = await Promise.all([
+            callSupabaseRpc('daftar_seragam_v2', {
+                p_proyek: proyek, p_proses: proses, p_penguasaan: penguasaan,
+                p_cari: cari, p_limit: seragamPageSize,
+                p_offset: (seragamPage - 1) * seragamPageSize
+            }),
             muatStokSeragamKompatibel(),
-            supabaseFetch('mutasi_stok_seragam?select=*&order=dibuat_pada.desc&limit=100', 'GET'),
-            supabaseFetchAll('seragam_penerima?select=*&order=updated_at.desc'),
-            supabaseFetchAll('v_kehadiran_proyek_personel?select=*&order=kategori.asc,nama_proyek.asc')
+            supabaseFetch('mutasi_stok_seragam?select=*&order=dibuat_pada.desc&limit=100', 'GET')
         ]);
-        if (statusRes.status !== 'success' || stokRes.status !== 'success' || penerimaRes.status !== 'success' || proyekRes.status !== 'success') {
-            throw new Error(statusRes.message || stokRes.message || penerimaRes.message || proyekRes.message || 'Gagal membaca data seragam');
+        if (statusRes.status !== 'success' || stokRes.status !== 'success') {
+            throw new Error(statusRes.message || stokRes.message || 'Gagal membaca data seragam');
         }
-        dataStatusSeragam = statusRes.data || [];
+        dataStatusSeragam = Array.isArray(statusRes.rows) ? statusRes.rows : [];
+        seragamTotal = Number(statusRes.total || 0);
+        seragamKpi = statusRes.kpi || {};
         dataStokSeragam = stokRes.data || [];
         dataMutasiStokSeragam = mutasiRes.status === 'success' ? (mutasiRes.data || []) : [];
-        dataPenerimaTersimpan = penerimaRes.data || [];
-        kehadiranProyekSeragam = proyekRes.data || [];
-        siapkanFilterProyekSeragam();
+        dataPenerimaTersimpan = dataStatusSeragam.filter(row => row.record_tersimpan);
         renderKpiSeragam();
-        renderSeragam();
+        renderSeragam(true);
         tampilkanNotifikasiSeragam();
         bukaDariParameter();
     } catch (error) {
         console.error('Kontrol Seragam:', error);
         if (errorBox) {
-            errorBox.textContent = 'Fitur seragam belum dapat dibaca. Pastikan migrasi database sampai Fase 10 sudah diterapkan, lalu muat ulang halaman.';
+            errorBox.textContent = 'Fitur seragam belum dapat dibaca. Terapkan migrasi Fase 14 lalu muat ulang halaman.';
             errorBox.classList.remove('hidden');
         }
         if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="p-10 text-center text-red-500 font-bold">Data seragam belum tersedia.</td></tr>';
     }
 }
 
-async function muatStatusSeragamKompatibel() {
-    const fase10 = await supabaseFetchAll('v_status_seragam_set?select=*&order=memenuhi_syarat.desc,peringkat.asc.nullslast,nama.asc');
-    if (fase10.status === 'success') return fase10;
-    return supabaseFetchAll('v_status_seragam_operasional?select=*&order=memenuhi_syarat.desc,peringkat.asc.nullslast,nama.asc');
+function jadwalkanSeragam() {
+    clearTimeout(seragamTimer);
+    seragamTimer = setTimeout(() => loadSeragam(1), 300);
 }
 
 async function muatStokSeragamKompatibel() {
@@ -92,48 +106,49 @@ function uniqueNip(rows) { return new Set(rows.map(r => r.nip).filter(Boolean)).
 function setKpi(id, value) { const el = document.getElementById(id); if (el) el.textContent = Number(value || 0).toLocaleString('id-ID'); }
 
 function renderKpiSeragam() {
-    setKpi('kpiSeragamMemenuhi', uniqueNip(dataStatusSeragam.filter(r => r.memenuhi_syarat)));
-    setKpi('kpiSeragamRencana', uniqueNip(dataStatusSeragam.filter(r => r.status_proses === 'direncanakan')));
-    setKpi('kpiSeragamTunggu', uniqueNip(dataStatusSeragam.filter(r => r.status_proses === 'menunggu_stok')));
-    setKpi('kpiSeragamSelesai', uniqueNip(dataStatusSeragam.filter(r => r.status_proses === 'sudah_diserahkan')));
-    setKpi('kpiSeragamTitip', uniqueNip(dataStatusSeragam.filter(r => r.status_penguasaan === 'dititipkan_kantor')));
-    setKpi('kpiSeragamKembali', uniqueNip(dataStatusSeragam.filter(r => r.status_penguasaan === 'perlu_diserahkan_kembali')));
-    setKpi('kpiSeragamAbsenLama', uniqueNip(dataStatusSeragam.filter(r => r.tidak_hadir_30_hari)));
+    setKpi('kpiSeragamMemenuhi', seragamKpi.memenuhi);
+    setKpi('kpiSeragamRencana', seragamKpi.direncanakan);
+    setKpi('kpiSeragamTunggu', seragamKpi.menunggu);
+    setKpi('kpiSeragamSelesai', seragamKpi.diserahkan);
+    setKpi('kpiSeragamTitip', seragamKpi.dititipkan);
+    setKpi('kpiSeragamKembali', seragamKpi.perlu_kembali);
+    setKpi('kpiSeragamAbsenLama', seragamKpi.absen_lama);
 }
 
 function tampilkanNotifikasiSeragam() {
-    const alerts = dataStatusSeragam.filter(r => r.notifikasi_pengembalian || r.status_penguasaan === 'perlu_diserahkan_kembali');
+    const alerts = Number(seragamKpi.perlu_kembali || 0);
     const box = document.getElementById('notifikasiSeragam');
     if (box) {
-        if (!alerts.length) box.classList.add('hidden');
+        if (!alerts) box.classList.add('hidden');
         else {
-            document.getElementById('notifikasiSeragamText').textContent = `${alerts.length} personel luar Jombang kembali hadir saat seragamnya masih tercatat dititipkan di kantor. Buka data personel tersebut dan ubah menjadi “Dipegang personel” setelah seragam diserahkan kembali.`;
+            document.getElementById('notifikasiSeragamText').textContent = `${alerts} personel luar Jombang kembali hadir saat seragamnya masih tercatat dititipkan di kantor. Buka data personel tersebut dan ubah menjadi “Dipegang personel” setelah seragam diserahkan kembali.`;
             box.classList.remove('hidden');
         }
     }
-    const absenLama = dataStatusSeragam.filter(r => r.tidak_hadir_30_hari);
+    const absenLama = Number(seragamKpi.absen_lama || 0);
     const absenBox = document.getElementById('notifikasiAbsenLama');
     if (absenBox) {
-        if (!absenLama.length) absenBox.classList.add('hidden');
+        if (!absenLama) absenBox.classList.add('hidden');
         else {
-            document.getElementById('notifikasiAbsenLamaText').textContent = `${absenLama.length} penerima tercatat sudah menerima seragam, tetapi tidak memiliki kehadiran selama lebih dari 30 hari. Periksa status keberadaan dan hubungi petugas wilayah bila perlu.`;
+            document.getElementById('notifikasiAbsenLamaText').textContent = `${absenLama} penerima tercatat sudah menerima seragam, tetapi tidak memiliki kehadiran selama lebih dari 30 hari. Periksa status keberadaan dan hubungi petugas wilayah bila perlu.`;
             absenBox.classList.remove('hidden');
         }
     }
 }
 
-function siapkanFilterProyekSeragam() {
+async function siapkanFilterProyekSeragam() {
     const select = document.getElementById('filterProyekSeragam');
     const group = document.getElementById('opsiLainnyaSeragam');
     if (!select || !group) return;
-    const selected = select.value || 'semua';
+    const res = await supabaseFetchAll('v_daftar_proyek_absensi?select=kategori,nama_proyek&order=nama_proyek.asc');
+    if (res.status !== 'success') return;
+    kehadiranProyekSeragam = res.data || [];
     const names = [...new Set(kehadiranProyekSeragam
         .filter(row => row.kategori === 'lainnya' && row.nama_proyek)
         .map(row => row.nama_proyek))]
         .filter(name => !PROYEK_KHUSUS_SERAGAM.includes(name))
         .sort((a, b) => a.localeCompare(b, 'id'));
     group.innerHTML = names.map(name => `<option value="${escapeAttribute(`proyek:${name}`)}">${escapeHTML(name)}</option>`).join('');
-    if ([...select.options].some(option => option.value === selected)) select.value = selected;
 }
 
 function labelFilterProyekSeragam(value) {
@@ -166,33 +181,16 @@ function warnaPenguasaan(status) {
     return 'text-slate-500 dark:text-slate-400';
 }
 
-function renderSeragam() {
+function renderSeragam(hanyaGambar = false) {
+    if (!hanyaGambar) return loadSeragam(1);
     const tbody = document.getElementById('tabelSeragam');
     if (!tbody) return;
-    const proses = document.getElementById('filterProsesSeragam')?.value || 'semua';
-    const penguasaan = document.getElementById('filterPenguasaanSeragam')?.value || 'semua';
     const proyekFilter = document.getElementById('filterProyekSeragam')?.value || 'semua';
-    const keyword = (document.getElementById('cariSeragam')?.value || '').trim().toLowerCase();
     let rows = [...dataStatusSeragam];
-    rows = rows.filter(r => cocokFilterProyekSeragam(r, proyekFilter));
-    if (proses !== 'semua') rows = rows.filter(r => r.status_proses === proses);
-    if (penguasaan !== 'semua') rows = rows.filter(r => r.status_penguasaan === penguasaan);
-    if (keyword) rows = rows.filter(r => [
-        r.nama, r.nip, r.asal_daerah, r.asal_organisasi,
-        r.ukuran_atasan || r.ukuran_dibutuhkan, r.ukuran_bawahan,
-        r.kode_atasan || r.kode_seragam, r.kode_bawahan
-    ].some(v => String(v || '').toLowerCase().includes(keyword)));
-
-    rows.sort((a, b) => {
-        if (Boolean(a.notifikasi_pengembalian) !== Boolean(b.notifikasi_pengembalian)) return a.notifikasi_pengembalian ? -1 : 1;
-        if (Boolean(a.tidak_hadir_30_hari) !== Boolean(b.tidak_hadir_30_hari)) return a.tidak_hadir_30_hari ? -1 : 1;
-        if (Boolean(a.memenuhi_syarat) !== Boolean(b.memenuhi_syarat)) return a.memenuhi_syarat ? -1 : 1;
-        return Number(a.peringkat || 999999) - Number(b.peringkat || 999999) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
-    });
 
     if (!rows.length) {
         tbody.innerHTML = '<tr><td colspan="8" class="p-10 text-center text-slate-400 font-bold">Tidak ada data sesuai filter.</td></tr>';
-        document.getElementById('infoSeragam').textContent = '0 personel';
+        renderPaginationSeragam(proyekFilter);
         return;
     }
 
@@ -207,7 +205,7 @@ function renderSeragam() {
         const ukuranBawahan = r.ukuran_bawahan || '';
         const kodeBawahan = r.kode_bawahan || '';
         return `<tr class="${rowClass}">
-            <td class="px-4 py-3"><p class="font-extrabold">${alertIcon}${escapeHTML(r.nama)}</p><p class="text-[10px] text-slate-400 font-mono">${escapeHTML(r.nip)} • ${escapeHTML(labelWilayahSeragam(r.kategori_wilayah))}</p><p class="text-[10px] text-slate-400">${escapeHTML(r.asal_daerah || 'Daerah belum diisi')}</p></td>
+            <td class="px-4 py-3"><p class="font-extrabold">${alertIcon}${escapeHTML(r.nama)}</p><p class="text-[10px] text-slate-400 font-mono">${escapeHTML(r.nip)} • ${escapeHTML(labelWilayahSeragam(r.zona_asal))}</p><p class="text-[10px] text-slate-400">${escapeHTML(r.asal_daerah || 'Daerah belum diisi')}</p></td>
             <td class="px-4 py-3 text-xs">${kelayakan}</td>
             <td class="px-4 py-3"><p class="font-black">Atasan: ${escapeHTML(ukuranAtasan || 'Belum diisi')}</p><p class="text-[10px] text-slate-400 font-mono">${escapeHTML(kodeAtasan || 'Tanpa kode')}</p><p class="font-black mt-1">Bawahan: ${escapeHTML(ukuranBawahan || 'Belum diisi')}</p><p class="text-[10px] text-slate-400 font-mono">${escapeHTML(kodeBawahan || 'Tanpa kode')}</p></td>
             <td class="px-4 py-3"><span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black ${warnaProses(r.status_proses)}">${escapeHTML(LABEL_PROSES[r.status_proses] || r.status_proses)}</span></td>
@@ -217,14 +215,38 @@ function renderSeragam() {
             <td class="px-4 py-3 text-center"><button data-nip="${escapeAttribute(r.nip)}" onclick="bukaKelolaSeragamDariTombol(this)" class="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold"><i class="fa-solid fa-pen-to-square mr-1"></i> Kelola</button></td>
         </tr>`;
     }).join('');
-    document.getElementById('infoSeragam').textContent = `${rows.length.toLocaleString('id-ID')} personel ditampilkan • ${labelFilterProyekSeragam(proyekFilter)}`;
+    renderPaginationSeragam(proyekFilter);
 }
 
 function labelJalur(value) {
     return { khususul_khusus: '5 Proyek Khususul Khusus', lainnya: 'Proyek Lainnya', zona_4: 'Zona 4' }[value] || '-';
 }
 function labelWilayahSeragam(value) {
-    return { jombang:'Jombang', luar_jombang:'Luar Jombang', zona_4:'Zona 4', belum_dilengkapi:'Wilayah belum diisi' }[value] || 'Wilayah belum diisi';
+    return {
+        zona_1:'Zona 1 — Jawa Timur & Bali',
+        zona_2:'Zona 2 — Jawa Tengah & DIY',
+        zona_3:'Zona 3 — Jawa Barat, Jakarta & Banten',
+        zona_4:'Zona 4 — Sumatera & Kalimantan'
+    }[value] || 'Zona belum diisi';
+}
+
+function renderPaginationSeragam(proyekFilter) {
+    const pages = Math.max(1, Math.ceil(seragamTotal / seragamPageSize));
+    if (seragamPage > pages) return loadSeragam(pages);
+    const start = seragamTotal ? (seragamPage - 1) * seragamPageSize + 1 : 0;
+    const end = Math.min(seragamPage * seragamPageSize, seragamTotal);
+    const info = document.getElementById('infoSeragam');
+    if (info) info.textContent = `${start}-${end} dari ${seragamTotal.toLocaleString('id-ID')} personel • ${labelFilterProyekSeragam(proyekFilter)}`;
+    const pageInfo = document.getElementById('seragamPageInfo');
+    if (pageInfo) pageInfo.textContent = `Halaman ${seragamPage} / ${pages}`;
+    const prev = document.getElementById('btnSeragamPrev');
+    const next = document.getElementById('btnSeragamNext');
+    if (prev) prev.disabled = seragamPage <= 1;
+    if (next) next.disabled = seragamPage >= pages;
+}
+
+function gantiHalamanSeragam(delta) {
+    return loadSeragam(seragamPage + Number(delta || 0));
 }
 function formatTanggalSeragam(value) {
     if (!value) return '-';
@@ -240,7 +262,7 @@ async function bukaKelolaSeragam(nip) {
     nipSeragamAktif = nip;
     const tersimpan = dataPenerimaTersimpan.find(r => r.nip === nip) || {};
     document.getElementById('seragamNip').value = nip;
-    document.getElementById('modalSeragamNama').textContent = `${row.nama || '-'} • ${nip} • ${labelWilayahSeragam(row.kategori_wilayah)}`;
+    document.getElementById('modalSeragamNama').textContent = `${row.nama || '-'} • ${nip} • ${labelWilayahSeragam(row.zona_asal)}`;
     document.getElementById('seragamStatusProses').value = row.status_proses || 'belum_memenuhi';
     document.getElementById('seragamUkuranAtasan').value = row.ukuran_atasan || row.ukuran_dibutuhkan || '';
     document.getElementById('seragamUkuranBawahan').value = row.ukuran_bawahan || '';
@@ -390,11 +412,18 @@ async function simpanStokSeragam(event) {
     finally { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-right-left mr-1"></i> Catat Transaksi'; }
 }
 
-function bukaDariParameter() {
+async function bukaDariParameter() {
     const nip = new URLSearchParams(window.location.search).get('nip');
     if (!nip || nipSeragamAktif || parameterSeragamSudahDibuka) return;
-    if (dataStatusSeragam.some(r => r.nip === nip)) {
+    if (!dataStatusSeragam.some(r => r.nip === nip)) {
+        const res = await supabaseFetch(`v_status_seragam_set_v2?select=*&nip=eq.${encodeURIComponent(nip)}&limit=1`, 'GET');
+        if (res.status === 'success' && Array.isArray(res.data) && res.data[0]) {
+            dataStatusSeragam.push(res.data[0]);
+            if (res.data[0].record_tersimpan) dataPenerimaTersimpan.push(res.data[0]);
+        }
+    }
+    if (dataStatusSeragam.some(row => row.nip === nip)) {
         parameterSeragamSudahDibuka = true;
-        bukaKelolaSeragam(nip);
+        await bukaKelolaSeragam(nip);
     }
 }

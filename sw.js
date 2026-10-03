@@ -1,10 +1,33 @@
-const CACHE_NAME = "relawansync-v26-reversible-merge-zones-cache";
+const CACHE_NAME = "relawansync-v27-integritas-operasional-cache";
 const PRECACHE_URLS = [
+    "./",
+    "index.html",
+    "login.html",
+    "input.html",
+    "riwayat.html",
+    "kalender.html",
+    "statistik.html",
+    "master.html",
+    "peringkat.html",
+    "seragam.html",
+    "panduan.html",
     "manifest.json",
     "assets/icon.png",
     "assets/icon-192.png",
+    "css/tailwind.min.css",
     "css/style.css",
-    "js/theme.js"
+    "js/theme.js",
+    "js/supabase-config.js",
+    "js/app.js",
+    "js/dashboard.js",
+    "js/input.js",
+    "js/riwayat.js",
+    "js/export-rekap.js",
+    "js/kalender.js",
+    "js/statistik.js",
+    "js/master.js",
+    "js/peringkat.js",
+    "js/seragam.js"
 ];
 
 // Install langsung aktifkan worker baru

@@ -8,11 +8,10 @@
     <meta name="theme-color" content="#4F46E5">
     <link rel="apple-touch-icon" href="assets/icon.png">
     <link rel="icon" type="image/png" href="assets/favicon.png">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/tailwind.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
-    <script>tailwind.config={darkMode:'class',theme:{extend:{fontFamily:{sans:['Inter','sans-serif']},colors:{primary:'#4F46E5'}}}}</script>
     <script src="js/theme.js"></script>
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans antialiased flex h-screen overflow-hidden">
@@ -62,7 +61,7 @@
 
             <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
                 <div class="p-4 border-b border-slate-200 dark:border-slate-700 grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div class="relative md:col-span-2"><i class="fa-solid fa-search absolute left-3 top-3 text-slate-400 text-sm"></i><input id="cariPeringkat" oninput="renderPeringkat()" type="text" placeholder="Cari nama, NIP, organisasi, atau daerah..." class="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm outline-none focus:border-primary"></div>
+                    <div class="relative md:col-span-2"><i class="fa-solid fa-search absolute left-3 top-3 text-slate-400 text-sm"></i><input id="cariPeringkat" oninput="jadwalkanPeringkat()" type="text" placeholder="Cari nama, NIP, organisasi, atau daerah..." class="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm outline-none focus:border-primary"></div>
                     <select id="filterProyekPeringkat" onchange="renderPeringkat()" class="px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm font-bold outline-none" aria-label="Filter proyek peringkat">
                         <option value="semua">Semua Proyek</option>
                         <option value="khususul_khusus">5 Proyek Khususul Khusus (gabungan)</option>
@@ -85,7 +84,10 @@
                         <tbody id="tabelPeringkat" class="divide-y divide-slate-100 dark:divide-slate-700"><tr><td colspan="9" class="p-10 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Memuat peringkat...</td></tr></tbody>
                     </table>
                 </div>
-                <div class="p-3 border-t border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500" id="infoPeringkat">0 personel</div>
+                <div class="p-3 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-bold text-slate-500">
+                    <span id="infoPeringkat">0 personel</span>
+                    <div class="flex items-center gap-2"><button id="btnPeringkatPrev" onclick="gantiHalamanPeringkat(-1)" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 disabled:opacity-40" disabled>‹ Sebelumnya</button><span id="peringkatPageInfo">Halaman 1 / 1</span><button id="btnPeringkatNext" onclick="gantiHalamanPeringkat(1)" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 disabled:opacity-40" disabled>Berikutnya ›</button></div>
+                </div>
             </div>
 
             <div class="mt-4 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-2xl p-4 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">

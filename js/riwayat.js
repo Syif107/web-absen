@@ -339,7 +339,7 @@ async function loadRiwayatData() {
     loading.classList.remove('hidden');
 
     try {
-        const logUrl = await terapkanFilterLokasi('log_absensi?select=*&order=id.desc');
+        const logUrl = await terapkanFilterLokasi('v_log_absensi_operasional?select=*&order=id.desc');
         const [res, masterRes] = await Promise.all([
             supabaseFetchAll(logUrl),
             supabaseFetchAll('master_relawan?select=nip,nama,jabatan,asal_organisasi&order=nama.asc')

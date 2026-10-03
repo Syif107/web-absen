@@ -60,12 +60,13 @@ async function loadDashboardData() {
     try {
         const [masterRes, logRes] = await Promise.all([
             supabaseFetchAll('master_relawan?select=*&order=nip.asc'),
-            supabaseFetchAll(await terapkanFilterLokasi('log_absensi?select=*&order=id.desc'))
+            supabaseFetchAll(await terapkanFilterLokasi('v_log_absensi_operasional?select=*&terhubung=eq.true&order=id.desc'))
         ]);
 
         if (masterRes.status === "success" && logRes.status === "success") {
             globalMasterData = masterRes.data;
             globalLogData = logRes.data;
+            pilihPeriodeTerbaruJikaKosong();
             terapkanFilterDashboard();
             cekNotifikasiReminder();
         } else {
@@ -143,7 +144,7 @@ function setupFilterTopLokasi() {
     
     let html = `<option value="Semua">Semua Lokasi Proyek</option>`;
     uniqueLocations.forEach(loc => {
-        html += `<option value="${loc}">${loc}</option>`;
+        html += `<option value="${escapeAttribute(loc)}">${escapeHTML(loc)}</option>`;
     });
     
     filterEl.innerHTML = html;
@@ -172,7 +173,7 @@ function renderTopRelawan() {
 
     const countMap = {};
     filteredLogs.forEach(r => {
-        const key = r.nama;
+        const key = r.nip || r.nama;
         if (!countMap[key]) countMap[key] = { nama: r.nama, org: r.organisasi, total: 0 };
         countMap[key].total += 1;
     });
@@ -198,8 +199,8 @@ function renderTopRelawan() {
                         ${badgeIcon}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="font-bold text-sm text-slate-800 truncate">${item.nama}</p>
-                        <p class="text-[10px] text-slate-500 font-semibold truncate uppercase">${item.org || '-'}</p>
+                        <p class="font-bold text-sm text-slate-800 truncate">${escapeHTML(item.nama)}</p>
+                        <p class="text-[10px] text-slate-500 font-semibold truncate uppercase">${escapeHTML(item.org || '-')}</p>
                     </div>
                 </div>
                 <div class="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-sm font-black text-center shrink-0 border border-primary/20">
@@ -231,8 +232,8 @@ function bukaModalLeaderboardSemua() {
             html += `
                 <tr class="hover:bg-slate-50 transition-colors">
                     <td class="px-4 py-3 text-center">${rankBadge}</td>
-                    <td class="px-4 py-3 font-bold text-slate-800">${item.nama}</td>
-                    <td class="px-4 py-3 text-slate-600 uppercase text-xs font-semibold">${item.org || '-'}</td>
+                    <td class="px-4 py-3 font-bold text-slate-800">${escapeHTML(item.nama)}</td>
+                    <td class="px-4 py-3 text-slate-600 uppercase text-xs font-semibold">${escapeHTML(item.org || '-')}</td>
                     <td class="px-4 py-3 text-center"><span class="bg-indigo-50 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-100">${item.total} Hadir</span></td>
                 </tr>
             `;
@@ -374,11 +375,11 @@ function renderLiveFeed(logsToday) {
             <li class="flex items-start gap-3">
                 <div class="w-10 h-10 shrink-0 rounded-full border ${bgIcon} flex items-center justify-center text-lg">${icon}</div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-slate-800 truncate">${row.nama}</p>
-                    <p class="text-[11px] text-slate-500 font-medium truncate">${row.organisasi} • ${row.lokasi}</p>
+                    <p class="text-sm font-bold text-slate-800 truncate">${escapeHTML(row.nama)}</p>
+                    <p class="text-[11px] text-slate-500 font-medium truncate">${escapeHTML(row.organisasi)} • ${escapeHTML(row.lokasi)}</p>
                 </div>
                 <div class="text-right shrink-0">
-                    <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-semibold border border-slate-200 mt-1 inline-block">${row.bidang}</span>
+                    <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-semibold border border-slate-200 mt-1 inline-block">${escapeHTML(row.bidang)}</span>
                 </div>
             </li>
         `;
@@ -402,7 +403,7 @@ function bukaModalRincian(tipe, judul, sub, parameter = null) {
         dataSumber = globalMasterData;
         htmlHead = `<tr><th class="px-4 py-3 w-12 text-center">No</th><th class="px-4 py-3">NIP / ID</th><th class="px-4 py-3">Nama Relawan</th><th class="px-4 py-3">Organisasi Terdaftar</th><th class="px-4 py-3">Bidang Utama</th></tr>`;
         dataSumber.forEach((r, i) => {
-            htmlBody += `<tr class="hover:bg-slate-50"><td class="px-4 py-2 text-center text-slate-500">${i+1}</td><td class="px-4 py-2 font-mono text-xs text-slate-400">${r.nip}</td><td class="px-4 py-2 font-bold">${r.nama}</td><td class="px-4 py-2 text-slate-600">${r.asal_organisasi}</td><td class="px-4 py-2 text-slate-600">${r.jabatan}</td></tr>`;
+            htmlBody += `<tr class="hover:bg-slate-50"><td class="px-4 py-2 text-center text-slate-500">${i+1}</td><td class="px-4 py-2 font-mono text-xs text-slate-400">${escapeHTML(r.nip)}</td><td class="px-4 py-2 font-bold">${escapeHTML(r.nama)}</td><td class="px-4 py-2 text-slate-600">${escapeHTML(r.asal_organisasi)}</td><td class="px-4 py-2 text-slate-600">${escapeHTML(r.jabatan)}</td></tr>`;
         });
     } else {
         if (tipe === 'hari_ini') {
@@ -421,11 +422,11 @@ function bukaModalRincian(tipe, judul, sub, parameter = null) {
         dataSumber.forEach((r, i) => {
             htmlBody += `<tr class="hover:bg-slate-50">
                 <td class="px-4 py-2 text-center text-slate-500">${i+1}</td>
-                <td class="px-4 py-2 text-sm"><span class="font-bold text-slate-700">${r.tanggal}</span> <span class="text-xs bg-slate-100 border border-slate-200 px-1 rounded ml-1">${r.sesi === 'Siang' ? 'Pagi' : r.sesi}</span></td>
-                <td class="px-4 py-2 font-bold text-primary">${r.nama}</td>
-                <td class="px-4 py-2 text-slate-600">${r.organisasi}</td>
-                <td class="px-4 py-2 text-slate-600">${r.bidang}</td>
-                <td class="px-4 py-2 text-slate-600">${r.lokasi}</td>
+                <td class="px-4 py-2 text-sm"><span class="font-bold text-slate-700">${escapeHTML(r.tanggal)}</span> <span class="text-xs bg-slate-100 border border-slate-200 px-1 rounded ml-1">${escapeHTML(r.sesi === 'Siang' ? 'Pagi' : r.sesi)}</span></td>
+                <td class="px-4 py-2 font-bold text-primary">${escapeHTML(r.nama)}</td>
+                <td class="px-4 py-2 text-slate-600">${escapeHTML(r.organisasi)}</td>
+                <td class="px-4 py-2 text-slate-600">${escapeHTML(r.bidang)}</td>
+                <td class="px-4 py-2 text-slate-600">${escapeHTML(r.lokasi)}</td>
             </tr>`;
         });
     }
@@ -476,7 +477,7 @@ async function generateRekapHarian() {
     preview.value = "Menyusun rekap...";
     try {
         const res = await supabaseFetch(
-            `log_absensi?select=nama,sesi,lokasi,organisasi&tanggal=eq.${tgl}&order=sesi.asc,lokasi.asc`,
+            `v_log_absensi_operasional?select=nama,sesi,lokasi,organisasi&terhubung=eq.true&tanggal=eq.${tgl}&order=sesi.asc,lokasi.asc`,
             'GET'
         );
         if (res.status !== "success") {
@@ -620,4 +621,20 @@ function kirimRekapViaWa() {
     }
     const url = 'https://wa.me/?text=' + encodeURIComponent(teks);
     window.open(url, '_blank');
+}
+
+// Bila bulan berjalan belum memiliki data, buka bulan terakhir yang benar-benar
+// berisi absensi. KPI "hari ini" tetap memakai tanggal hari ini.
+function pilihPeriodeTerbaruJikaKosong() {
+    const bulanAktif = `${document.getElementById('filterTahun').value}-${document.getElementById('filterBulan').value}`;
+    if (globalLogData.some(row => String(row.tanggal || '').startsWith(bulanAktif))) return;
+    const tanggalTerbaru = globalLogData.map(row => String(row.tanggal || '').slice(0, 10)).filter(Boolean).sort().pop();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggalTerbaru || '')) return;
+    const [tahun, bulan] = tanggalTerbaru.split('-');
+    const tahunSelect = document.getElementById('filterTahun');
+    if (![...tahunSelect.options].some(option => option.value === tahun)) {
+        tahunSelect.insertAdjacentHTML('beforeend', `<option value="${escapeAttribute(tahun)}">${escapeHTML(tahun)}</option>`);
+    }
+    tahunSelect.value = tahun;
+    document.getElementById('filterBulan').value = bulan;
 }

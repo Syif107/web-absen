@@ -21,9 +21,10 @@ async function loadKalenderData() {
     loading.classList.remove('hidden');
 
     try {
-        const res = await supabaseFetchAll(await terapkanFilterLokasi('log_absensi?select=*&order=tanggal.asc,id.asc'));
+        const res = await supabaseFetchAll(await terapkanFilterLokasi('v_log_absensi_operasional?select=*&terhubung=eq.true&order=tanggal.asc,id.asc'));
         if (res.status === "success") {
             allLogData = res.data;
+            pilihBulanKalenderTerbaruJikaKosong();
             populateLocationFilter();
             renderKalender();
         } else {
@@ -36,6 +37,15 @@ async function loadKalenderData() {
     }
 }
 
+function pilihBulanKalenderTerbaruJikaKosong() {
+    const prefix = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+    if (allLogData.some(row => String(row.tanggal || '').startsWith(prefix))) return;
+    const latest = allLogData.map(row => String(row.tanggal || '').slice(0, 10)).filter(Boolean).sort().pop();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(latest || '')) return;
+    currentYear = Number(latest.slice(0, 4));
+    currentMonth = Number(latest.slice(5, 7)) - 1;
+}
+
 // ==========================================
 // POPULATE LOCATION FILTER
 // ==========================================
@@ -44,7 +54,7 @@ function populateLocationFilter() {
     const select = document.getElementById('filterLokasi');
     select.innerHTML = '<option value="Semua">Semua Lokasi</option>';
     locations.forEach(loc => {
-        select.innerHTML += `<option value="${escapeHTML(loc)}">${escapeHTML(loc)}</option>`;
+        select.innerHTML += `<option value="${escapeAttribute(loc)}">${escapeHTML(loc)}</option>`;
     });
 }
 

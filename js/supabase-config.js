@@ -10,6 +10,28 @@ const SUPABASE_ANON_KEY = "sb_publishable_jwfUHJyloK5J3pnNKoco2w_xCG6reke";
 // Nama kunci penyimpanan sesi (jangan diubah tanpa menyesuaikan seluruh halaman)
 const RELAWAN_TOKEN_KEY = 'relawan_token';
 
+// Token hanya bertahan selama tab/sesi browser aktif. Token lama yang pernah
+// tersimpan permanen dipindahkan sekali lalu dihapus dari localStorage.
+function bacaTokenRelawan() {
+    let token = sessionStorage.getItem(RELAWAN_TOKEN_KEY);
+    if (!token) {
+        token = localStorage.getItem(RELAWAN_TOKEN_KEY);
+        if (token) sessionStorage.setItem(RELAWAN_TOKEN_KEY, token);
+        localStorage.removeItem(RELAWAN_TOKEN_KEY);
+    }
+    return token || null;
+}
+
+function simpanTokenRelawan(token) {
+    sessionStorage.setItem(RELAWAN_TOKEN_KEY, token);
+    localStorage.removeItem(RELAWAN_TOKEN_KEY);
+}
+
+function hapusTokenRelawan() {
+    sessionStorage.removeItem(RELAWAN_TOKEN_KEY);
+    localStorage.removeItem(RELAWAN_TOKEN_KEY);
+}
+
 // ==========================================
 // AUTH HELPER (Login / Logout / Info User)
 // ==========================================
@@ -31,18 +53,18 @@ async function supabaseLogin(email, password) {
         throw new Error(data.error_description || data.error || "Login Gagal");
     }
 
-    localStorage.setItem(RELAWAN_TOKEN_KEY, data.access_token);
+    simpanTokenRelawan(data.access_token);
     return data;
 }
 
 /** Keluar: hapus token dari penyimpanan lokal. */
 function supabaseLogout() {
-    localStorage.removeItem(RELAWAN_TOKEN_KEY);
+    hapusTokenRelawan();
 }
 
 /** Mengambil info user dari token aktif (payload JWT). Null bila tidak ada/tidak valid. */
 function getCurrentSessionUser() {
-    const token = localStorage.getItem(RELAWAN_TOKEN_KEY);
+    const token = bacaTokenRelawan();
     if (!token) return null;
     try {
         const base64Url = token.split('.')[1];
@@ -66,7 +88,7 @@ function isSessionAlive() {
 
 /** Akses token aktif. Null bila belum login. */
 function getAccessToken() {
-    return localStorage.getItem(RELAWAN_TOKEN_KEY) || null;
+    return bacaTokenRelawan();
 } 
 
 /**
@@ -77,7 +99,7 @@ async function supabaseFetch(endpoint, method = 'GET', data = null) {
     // PENTING: pakai token user yang benar-benar login (hasil Auth), bukan anon key.
     // Kalau tidak ada token (belum login), fallback ke anon key -- tapi karena RLS
     // sudah dibatasi ke role 'authenticated', request tanpa token user akan ditolak/kosong.
-    const userToken = localStorage.getItem(RELAWAN_TOKEN_KEY);
+    const userToken = bacaTokenRelawan();
 
     const headers = {
         "apikey": SUPABASE_ANON_KEY,
@@ -102,7 +124,7 @@ async function supabaseFetch(endpoint, method = 'GET', data = null) {
         // Token sudah expired/invalid -> paksa login ulang, jangan biarkan halaman
         // diam-diam menampilkan data kosong seolah semuanya baik-baik saja.
         if (response.status === 401) {
-            localStorage.removeItem(RELAWAN_TOKEN_KEY);
+            hapusTokenRelawan();
             if (!window.location.pathname.includes('login.html')) {
                 window.location.replace('login.html');
             }
@@ -154,7 +176,11 @@ async function callSupabaseRpc(namaFungsi, params = {}) {
 // tetap dapat dipakai, tetapi simpan relawan baru + absensi dan import CSV
 // belum atomik.
 // ==============================================
-const FASE5_ENABLED = false;
+const FASE5_ENABLED = true;
+
+// Fase 14 menyatukan sumber laporan, kalender, ranking, dan seragam ke data
+// operasional kanonik tanpa menghapus arsip mentah.
+const FASE14_ENABLED = true;
 
 // ==============================================
 // FASE 4: MULTI-USER (ADMIN + KOORDINATOR)
@@ -163,7 +189,7 @@ const FASE5_ENABLED = false;
 // Aktifkan HANYA setelah menjalankan db/fase4_multi_user.sql
 // dan mengubah konstanta di bawah menjadi true.
 // ==============================================
-const FASE4_ENABLED = false;
+const FASE4_ENABLED = true;
 
 let _aksesUserCache = null;
 

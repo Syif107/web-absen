@@ -16,7 +16,7 @@ Pagi/Malam, stok ukuran, dan pengingat penitipan membutuhkan migrasi
 Urutan rilis Fase 6: jalankan migrasi database, pastikan query verifikasi di
 bagian akhir berhasil, kemudian commit dan push frontend. Setelah GitHub Pages
 selesai membangun, buka ulang web dua kali agar service worker
-`relawansync-v24-master-linking-cache` aktif.
+`relawansync-v27-integritas-operasional-cache` aktif.
 
 Script migrasi disimpan di repository untuk audit dan pengulangan. Terapkan dan
 verifikasi database lebih dahulu, kemudian frontend, agar kontrak view/RPC tetap
@@ -38,7 +38,7 @@ Migrasi ini hanya menambah index/view dan hak baca terautentikasi. Tidak ada
 riwayat absensi yang dihapus atau diubah.
 
 Setelah Fase 7, cache frontend menggunakan
-`relawansync-v24-master-linking-cache`.
+`relawansync-v27-integritas-operasional-cache`.
 
 ## Fase 8: Perapian Master Data
 
@@ -90,17 +90,12 @@ Setelah migrasi, jalankan query verifikasi di bagian akhir file. Periksa hasil
 pemetaan organisasi sebelum memakai tombol “Gabungkan Semua Aman”; kandidat
 beda satu huruf harus tetap ditinjau satu per satu.
 
-## Mode frontend saja (Supabase dilewati)
+## Status flag frontend
 
-`FASE5_ENABLED` dan `FASE4_ENABLED` di `js/supabase-config.js` dibiarkan
-`false`. Dengan konfigurasi ini frontend tetap kompatibel dengan fungsi
-database lama. Perbaikan tampilan, escaping data, pagination, parser CSV,
-pelaporan error, dan service worker dapat digunakan.
-
-Batasannya: penyimpanan relawan baru bersama absensi dan import CSV belum
-atomik, unique constraint baru belum aktif, dan pembatasan admin/koordinator
-belum tersedia. Jangan mengubah kedua flag menjadi `true` tanpa menjalankan
-migrasi SQL yang sesuai.
+`FASE5_ENABLED`, `FASE14_ENABLED`, dan `FASE4_ENABLED` aktif. Fase 14 tetap
+menyediakan RPC dua-parameter sebagai jembatan agar frontend lama tidak rusak
+selama jeda publikasi. Fase 15 telah diterapkan pada 4 Oktober 2026 dan satu
+akun Auth yang ada berhasil diverifikasi sebagai admin.
 
 ## Fase 11: Perapian aman Master dan kehadiran yatim
 
@@ -114,6 +109,46 @@ sudah mempunyai tanggal, sesi, dan lokasi yang sama, baris yatim tidak dihapus
 dan tetap menunggu tinjauan manual. Migrasi ini tidak menggabungkan nama yang
 hanya mirip, tidak menghapus profil, dan tidak menghapus riwayat absensi.
 
+## Fase 12–13: Merge terkontrol, riwayat pisah, organisasi, dan zona
+
+Fase 12 menjalankan pilihan merge kandidat yang telah ditinjau. Fase 13
+menyimpan snapshot setiap batch merge agar profil dapat dipisahkan kembali,
+menambahkan pengelolaan organisasi, serta menjadikan `zona_asal` sebagai sumber
+empat zona: Zona 1 Jawa Timur/Bali; Zona 2 Jawa Tengah/DIY; Zona 3 Jawa Barat,
+Jakarta/Banten; dan Zona 4 Sumatera/Kalimantan.
+
+## Fase 14: Integritas operasional dan performa
+
+`db/fase14_integritas_operasional.sql` tidak menghapus arsip mentah. Migrasi
+menambahkan view absensi kanonis (satu NIP/tanggal/sesi/lokasi), audit jumlah
+duplikat dan log yatim, pagar duplikat baru, RPC input atomik yang tetap
+kompatibel dengan frontend lama, zona tunggal untuk ranking/reward, serta
+pagination server-side untuk Peringkat dan Kontrol Seragam.
+
+Dashboard, Kalender, Statistik, Riwayat, dan export memakai view kanonis.
+Peringkat dan seragam menarik maksimal 50 baris per halaman. CSS Tailwind
+dibangun lokal dengan `npm run build:css`, bukan CDN runtime.
+
+## Fase 15: Multi-user aman
+
+`db/fase15_multi_user_aman.sql` telah diterapkan pada produksi. Bootstrap hanya
+berjalan bila Supabase Auth tepat memiliki satu akun, lalu menjadikannya admin.
+Akun tanpa profil menjadi `blocked` dan koordinator hanya dapat
+membaca/mencatat absensi pada lokasi yang ditetapkan. Pemeriksaan pascamigrasi
+menemukan 1 admin, 26 policy RLS aktif, dan 0 policy terbuka tanpa syarat.
+
+## Fase 16: RPC admin cepat dan tetap tertutup
+
+`db/fase16_performa_rpc_aman.sql` telah diterapkan pada produksi. Migrasi ini
+memperbaiki timeout Peringkat dan Kontrol Seragam pada akun admin tanpa
+mengendurkan RLS: jalur cepat hanya aktif setelah `akun_role()` terverifikasi
+sebagai `admin`, koordinator tetap memakai jalur `SECURITY INVOKER`, dan akun
+tanpa profil tetap ditolak. Uji produksi mengembalikan 1.660 data, tepat 50
+baris pada tiap halaman pertama Peringkat dan Seragam, sedangkan akun uji tanpa
+profil menerima penolakan `Akun tidak memiliki akses`. Hak `EXECUTE` anonim
+pada seluruh fungsi schema `public` juga dicabut, termasuk default untuk fungsi
+baru, karena aplikasi ini mewajibkan login.
+
 ## Urutan rilis
 
 1. Pastikan branch dan commit yang akan dirilis sudah ditetapkan.
@@ -122,17 +157,17 @@ hanya mirip, tidak menghapus profil, dan tidak menghapus riwayat absensi.
 4. Jalankan `db/audit_duplikat.sql` (read-only).
 5. Bila hasil audit mempunyai baris, tinjau dan gabungkan data secara manual.
 6. Jalankan `db/fase5_integritas_transaksi.sql`.
-7. Jalankan `db/fase6_ranking_seragam.sql`, `db/fase7_operasional_optimasi.sql`, `db/fase8_master_data_rapi.sql`, `db/fase9_merge_manual_terpilih.sql`, `db/fase10_koreksi_stok_dan_deduplikasi.sql`, lalu `db/fase11_perapian_aman_master.sql`.
+7. Jalankan migrasi berurutan sampai Fase 13, lalu jalankan `db/fase14_integritas_operasional.sql`.
 8. Uji input relawan lama, relawan baru, filter proyek, direktori, perapian duplikat, merge dari checkbox, edit wilayah, koreksi kehadiran, kredit historis, dan mutasi stok atasan–bawahan menggunakan akun admin.
 9. Jika multi-user akan digunakan:
-   - ganti `GANTI_EMAIL_ADMIN` di `db/fase4_multi_user.sql`;
-   - jalankan migrasi tersebut;
+   - jalankan `db/fase15_multi_user_aman.sql` hanya setelah mengonfirmasi perubahan hak akses;
+   - jalankan `db/fase16_performa_rpc_aman.sql` setelah Fase 15;
    - buat profil koordinator dengan lokasi yang benar;
    - verifikasi akun tanpa profil ditolak;
    - ubah `FASE4_ENABLED` di `js/supabase-config.js` menjadi `true`.
-10. Deploy frontend.
+10. Jalankan `npm install`, `npm run build:css`, dan `npm test`, lalu deploy frontend.
 11. Buka ulang aplikasi dua kali agar service worker versi baru mengambil alih,
-    kemudian pastikan cache lama sebelum `relawansync-v24-master-linking-cache` sudah terhapus.
+    kemudian pastikan cache lama sebelum `relawansync-v27-integritas-operasional-cache` sudah terhapus.
 
 ## Smoke test wajib
 
@@ -152,6 +187,7 @@ hanya mirip, tidak menghapus profil, dan tidak menghapus riwayat absensi.
 
 ## Batas verifikasi lokal
 
-`npm test` memeriksa sintaks JavaScript, kontrak frontend/RPC, parser CSV,
-service worker, dan pagar keamanan migrasi. Keberhasilan test lokal bukan bukti
+`npm test` memeriksa sintaks JavaScript, kontrak frontend/RPC, sumber absensi
+kanonis, CSS produksi, service worker, parser CSV, dan pagar keamanan migrasi.
+Keberhasilan test lokal bukan bukti
 migrasi Supabase produksi sudah diterapkan atau alur terautentikasi sudah lulus.

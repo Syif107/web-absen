@@ -8,14 +8,11 @@
     <meta name="theme-color" content="#4F46E5">
     <link rel="apple-touch-icon" href="assets/icon.png">
     <link rel="icon" type="image/png" href="assets/favicon.png">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/tailwind.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
 
-    <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5', secondary: '#818CF8', dark: '#0F172A' } } } }
-    </script>
     <script src="js/theme.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -155,7 +152,7 @@
                     <div onclick="bukaModalRincian('hari_ini', 'Kehadiran Lapangan Hari Ini', 'Relawan yang bertugas pada hari ini.')" class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden group cursor-pointer hover:border-emerald-400 hover:shadow-md transition-all">
                         <div class="absolute right-0 top-0 w-16 h-16 bg-emerald-50 dark:bg-emerald-500/10 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
                         <i class="fa-solid fa-street-view text-emerald-500 absolute right-4 top-4 text-xl z-10"></i>
-                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative group-hover:text-emerald-600 transition-colors">Kehadiran Hari Ini</p>
+                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative group-hover:text-emerald-600 transition-colors">Sesi Hari Ini</p>
                         <h3 class="text-3xl font-black text-emerald-600 tracking-tight z-10 relative" id="kpi-today">-</h3>
                         <p class="text-[10px] text-slate-400 font-semibold mt-1 flex justify-between items-center">
                             Total Pagi & Malam <i class="fa-solid fa-arrow-up-right-from-square text-emerald-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
@@ -165,7 +162,7 @@
                     <div onclick="bukaModalRincian('bulan_ini', 'Akumulasi Bulan Terpilih', 'Seluruh log absen pada bulan ini.')" class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden group cursor-pointer hover:border-indigo-400 hover:shadow-md transition-all">
                         <div class="absolute right-0 top-0 w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
                         <i class="fa-solid fa-calendar-check text-indigo-500 absolute right-4 top-4 text-xl z-10"></i>
-                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative group-hover:text-indigo-600 transition-colors">Akumulasi Sebulan</p>
+                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative group-hover:text-indigo-600 transition-colors">Sesi Bulan Terpilih</p>
                         <h3 class="text-3xl font-black text-primary tracking-tight z-10 relative" id="kpi-month">-</h3>
                         <p class="text-[10px] text-slate-400 font-semibold mt-1 flex justify-between items-center">
                             Sesuai Filter Bulan & Tahun <i class="fa-solid fa-arrow-up-right-from-square text-indigo-300 opacity-0 group-hover:opacity-100 transition-opacity"></i>
@@ -177,7 +174,7 @@
                         <i class="fa-solid fa-chart-line text-orange-500 absolute right-4 top-4 text-xl z-10"></i>
                         <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative">Rata-Rata Harian</p>
                         <h3 class="text-3xl font-black text-orange-500 tracking-tight z-10 relative" id="kpi-avg">-</h3>
-                        <p class="text-[10px] text-slate-400 font-semibold mt-1">Rasio Relawan per Hari</p>
+                        <p class="text-[10px] text-slate-400 font-semibold mt-1">Rata-rata sesi per hari aktif</p>
                     </div>
                 </div>
 

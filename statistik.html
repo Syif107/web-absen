@@ -8,13 +8,10 @@
     <meta name="theme-color" content="#4F46E5">
     <link rel="apple-touch-icon" href="assets/icon.png">
     <link rel="icon" type="image/png" href="assets/favicon.png">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/tailwind.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
-    <script>
-        tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { primary: '#4F46E5', secondary: '#818CF8' } } } }
-    </script>
     <script src="js/theme.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -118,9 +115,9 @@
                     <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden stat-card-gradient-green">
                         <div class="absolute right-0 top-0 w-16 h-16 bg-emerald-50 dark:bg-emerald-500/10 rounded-bl-full -z-0"></div>
                         <i class="fa-solid fa-clipboard-check text-emerald-500 absolute right-4 top-4 text-xl z-10"></i>
-                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative">Total Kehadiran</p>
+                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative">Total Sesi Kehadiran</p>
                         <h3 class="text-3xl font-black text-emerald-600 tracking-tight z-10 relative" id="stat-total-kehadiran">-</h3>
-                        <p class="text-[10px] text-slate-400 font-semibold mt-1">Seluruh Log Absensi</p>
+                        <p class="text-[10px] text-slate-400 font-semibold mt-1">Sesi Pagi + Malam kanonis</p>
                     </div>
 
                     <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden stat-card-gradient-purple">
@@ -259,7 +256,7 @@
                         <div class="flex flex-wrap gap-3">
                             <label class="flex items-center gap-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 cursor-pointer transition-colors">
                                 <input type="radio" name="rekapSortBasis" id="rekapSortTotal" value="total" checked onchange="perbaruiInfoExportRekap()" class="accent-primary w-4 h-4">
-                                <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Total Kehadiran</span>
+                                <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Total Sesi</span>
                             </label>
                             <label class="flex items-center gap-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 cursor-pointer transition-colors">
                                 <input type="radio" name="rekapSortBasis" id="rekapSortPersen" value="persen" onchange="perbaruiInfoExportRekap()" class="accent-primary w-4 h-4">
