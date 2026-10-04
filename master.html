@@ -225,7 +225,7 @@
                         <h3 class="font-black text-xl text-cyan-700 dark:text-cyan-300"><i class="fa-solid fa-sitemap mr-2"></i>Asal Organisasi & Zona</h3>
                         <p class="text-xs text-cyan-700/80 dark:text-cyan-300/80 mt-1">Tambah, edit, hapus aman, atau gabungkan nama organisasi. Perubahan otomatis diterapkan ke seluruh personel terkait.</p>
                     </div>
-                    <button onclick="tutupModalOrganisasi()" class="w-9 h-9 rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-500/20 text-slate-500"><i class="fa-solid fa-xmark"></i></button>
+                    <div class="flex items-center gap-2"><button id="btnSinkronZona" onclick="sinkronkanZonaOtomatis()" class="px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-black"><i class="fa-solid fa-location-dot mr-1"></i>Isi Zona Otomatis</button><button onclick="tutupModalOrganisasi()" class="w-9 h-9 rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-500/20 text-slate-500"><i class="fa-solid fa-xmark"></i></button></div>
                 </div>
                 <div class="flex-1 overflow-y-auto custom-scroll p-5 grid lg:grid-cols-[340px_minmax(0,1fr)] gap-5">
                     <section class="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 bg-slate-50 dark:bg-slate-700/25 h-fit">
@@ -360,7 +360,7 @@
                                     <option value="belum_dilengkapi">Belum dilengkapi</option>
                                     <option value="jombang">Jombang / Pusat</option>
                                     <option value="luar_jombang">Luar Jombang — Jawa/Madura/Bali</option>
-                                    <option value="zona_4">Zona 4 — Luar Jawa/Madura/Bali</option>
+                                    <option value="zona_4">Zona 4 — Sumatera/Kalimantan</option>
                                 </select>
                             </div>
                             <div>
@@ -441,9 +441,9 @@
                             <option value="belum_dilengkapi">Belum dilengkapi</option>
                             <option value="jombang">Jombang / Pusat</option>
                             <option value="luar_jombang">Luar Jombang — Jawa/Madura/Bali</option>
-                            <option value="zona_4">Zona 4 — Luar Jawa/Madura/Bali</option>
+                            <option value="zona_4">Zona 4 — Sumatera/Kalimantan</option>
                         </select>
-                        <p class="text-[10px] text-slate-400 mt-1">Dipakai untuk aturan operasional Jombang/luar Jombang dan reward Zona 4.</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Dipakai untuk aturan operasional Jombang/luar Jombang. Reward hari pertama hanya mengikuti Zona Asal 4.</p>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Zona Asal</label>

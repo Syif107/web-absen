@@ -1446,6 +1446,30 @@ async function muatOrganisasi() {
     renderOrganisasi();
 }
 
+async function sinkronkanZonaOtomatis() {
+    const button = document.getElementById('btnSinkronZona');
+    if (!button) return;
+    const labelAwal = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Menyinkronkan...';
+    try {
+        const res = await callSupabaseRpc('sinkronkan_zona_otomatis', {});
+        if (res.status !== 'success' || res.ok === false) {
+            throw new Error(res.message || 'Sinkronisasi zona ditolak database.');
+        }
+        showToast(
+            `${Number(res.personel_diperbarui || 0).toLocaleString('id-ID')} personel dipetakan; ${Number(res.personel_belum_dipetakan || 0).toLocaleString('id-ID')} masih perlu diisi manual.`,
+            'success'
+        );
+        await Promise.all([muatOrganisasi(), loadMasterData()]);
+    } catch (error) {
+        showToast(error.message || 'Zona otomatis gagal diterapkan.', 'error');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = labelAwal;
+    }
+}
+
 function renderOrganisasi() {
     const list = document.getElementById('organisasiList');
     if (!list) return;

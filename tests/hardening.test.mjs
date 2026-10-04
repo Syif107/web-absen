@@ -49,7 +49,7 @@ test('service worker hanya mencache GET dari origin aplikasi', () => {
     assert.doesNotMatch(source, /cache\.put\(event\.request/);
 });
 
-test('frontend memakai CSS produksi lokal dan cache versi 28', () => {
+test('frontend memakai CSS produksi lokal dan cache versi 29', () => {
     const htmlFiles = readdirSync(root).filter(name => name.endsWith('.html'));
     for (const file of htmlFiles) {
         const html = read(file);
@@ -57,7 +57,7 @@ test('frontend memakai CSS produksi lokal dan cache versi 28', () => {
         assert.doesNotMatch(html, /cdn\.tailwindcss\.com/, `${file} masih memakai Tailwind CDN`);
         assert.doesNotMatch(html, /tailwind\.config/, `${file} masih membawa konfigurasi runtime`);
     }
-    assert.match(read('sw.js'), /relawansync-v28-personel-stok-cache/);
+    assert.match(read('sw.js'), /relawansync-v29-zona-otomatis-cache/);
     assert.match(read('package.json'), /build:css/);
 });
 
@@ -126,6 +126,20 @@ test('fase 17 menyediakan personel khusus, stok massal bertanggal, detail, dan h
     assert.match(seragam, /catat_mutasi_stok_batch_v2/);
     assert.match(seragam, /stokBatchRows/);
     assert.match(seragam, /ubah_tanggal_mutasi_stok/);
+});
+
+test('fase 18 menerapkan empat zona tanpa menimpa zona manual', () => {
+    const sql = read('db/fase18_penerapan_zona_otomatis.sql');
+    const masterHtml = read('master.html');
+    const masterJs = read('js/master.js');
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.provinsi_dari_daerah/);
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.zona_otomatis_dari_daerah/);
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.sinkronkan_zona_otomatis/);
+    assert.match(sql, /WHERE m\.zona_asal IS NULL/);
+    assert.match(sql, /Zona 4: Sumatera dan Kalimantan/);
+    assert.match(masterHtml, /Isi Zona Otomatis/);
+    assert.match(masterHtml, /Zona 4 — Sumatera\/Kalimantan/);
+    assert.match(masterJs, /async function sinkronkanZonaOtomatis/);
 });
 
 test('tema light dan dark tersimpan serta light mode memakai off-white', () => {
