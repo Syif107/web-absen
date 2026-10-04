@@ -49,7 +49,7 @@ test('service worker hanya mencache GET dari origin aplikasi', () => {
     assert.doesNotMatch(source, /cache\.put\(event\.request/);
 });
 
-test('frontend memakai CSS produksi lokal dan cache versi 27', () => {
+test('frontend memakai CSS produksi lokal dan cache versi 28', () => {
     const htmlFiles = readdirSync(root).filter(name => name.endsWith('.html'));
     for (const file of htmlFiles) {
         const html = read(file);
@@ -57,7 +57,7 @@ test('frontend memakai CSS produksi lokal dan cache versi 27', () => {
         assert.doesNotMatch(html, /cdn\.tailwindcss\.com/, `${file} masih memakai Tailwind CDN`);
         assert.doesNotMatch(html, /tailwind\.config/, `${file} masih membawa konfigurasi runtime`);
     }
-    assert.match(read('sw.js'), /relawansync-v27-integritas-operasional-cache/);
+    assert.match(read('sw.js'), /relawansync-v28-personel-stok-cache/);
     assert.match(read('package.json'), /build:css/);
 });
 
@@ -107,6 +107,25 @@ test('fase 16 mempercepat RPC admin tanpa melewati pembatasan koordinator', () =
     assert.match(source, /REVOKE ALL ON FUNCTION public\.daftar_peringkat_admin_v2/);
     assert.match(source, /REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon/);
     assert.match(source, /ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public/);
+});
+
+test('fase 17 menyediakan personel khusus, stok massal bertanggal, detail, dan hapus permanen aman', () => {
+    const sql = read('db/fase17_personel_khusus_stok_massal.sql');
+    const master = read('js/master.js');
+    const seragam = read('js/seragam.js');
+    assert.match(sql, /kategori_personel/);
+    assert.match(sql, /catat_mutasi_stok_batch_v2/);
+    assert.match(sql, /proses_mutasi_stok_terjadwal/);
+    assert.match(sql, /ubah_tanggal_mutasi_stok/);
+    assert.match(sql, /pratinjau_hapus_personel/);
+    assert.match(sql, /p_frasa <> 'HAPUS PERMANEN'/);
+    assert.match(sql, /detail_personel_v2/);
+    assert.match(master, /bukaModalTambahPersonel/);
+    assert.match(master, /exportMasterExcel/);
+    assert.match(master, /hapus_personel_permanen/);
+    assert.match(seragam, /catat_mutasi_stok_batch_v2/);
+    assert.match(seragam, /stokBatchRows/);
+    assert.match(seragam, /ubah_tanggal_mutasi_stok/);
 });
 
 test('tema light dan dark tersimpan serta light mode memakai off-white', () => {

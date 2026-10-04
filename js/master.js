@@ -15,6 +15,10 @@ let manualMergeTargetNip = '';
 let organisasiData = [];
 let organisasiTerpilih = new Set();
 let riwayatMergeData = [];
+let currentEditMode = 'edit';
+let currentDetailPersonel = null;
+let pendingDeleteNips = [];
+let pendingDeleteImpact = {};
 
 function normalisasiKunciMaster(value) {
     return String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
@@ -128,6 +132,8 @@ document.addEventListener('keydown', event => {
     const modalMergeManual = document.getElementById('modalMergeManual');
     const modalOrganisasi = document.getElementById('modalOrganisasi');
     const modalRiwayatMerge = document.getElementById('modalRiwayatMerge');
+    const modalDetailPersonel = document.getElementById('modalDetailPersonel');
+    const modalHapusPermanen = document.getElementById('modalHapusPermanen');
     if (event.key === 'Escape' && modalEdit && !modalEdit.classList.contains('hidden')) {
         tutupModalEdit();
     }
@@ -136,6 +142,8 @@ document.addEventListener('keydown', event => {
     }
     if (event.key === 'Escape' && modalOrganisasi && !modalOrganisasi.classList.contains('hidden')) tutupModalOrganisasi();
     if (event.key === 'Escape' && modalRiwayatMerge && !modalRiwayatMerge.classList.contains('hidden')) tutupRiwayatMerge();
+    if (event.key === 'Escape' && modalDetailPersonel && !modalDetailPersonel.classList.contains('hidden')) tutupDetailPersonel();
+    if (event.key === 'Escape' && modalHapusPermanen && !modalHapusPermanen.classList.contains('hidden')) tutupHapusPermanen();
     if (event.ctrlKey && event.key === 'Enter' && modalEdit && !modalEdit.classList.contains('hidden')) {
         event.preventDefault();
         simpanEditMaster();
@@ -197,6 +205,7 @@ function terapkanFilterDanPaginasi() {
         (r.nama && r.nama.toLowerCase().includes(keyword)) || 
         (r.asal_organisasi && r.asal_organisasi.toLowerCase().includes(keyword)) ||
         (r.asal_daerah && r.asal_daerah.toLowerCase().includes(keyword)) ||
+        (r.jabatan_khusus && r.jabatan_khusus.toLowerCase().includes(keyword)) ||
         (kategoriWilayahEfektif(r) && kategoriWilayahEfektif(r).toLowerCase().includes(keyword)) ||
         (zonaAsalEfektif(r) && zonaAsalEfektif(r).includes(keyword)) ||
         (r.nip && r.nip.toLowerCase().includes(keyword))
@@ -283,6 +292,9 @@ function renderTabelMaster(data) {
         const zonaAttr = escapeAttribute(zonaEfektif);
         const ukuranAttr = escapeAttribute(r.ukuran_seragam);
         const catatanSeragamAttr = escapeAttribute(r.catatan_seragam);
+        const kategoriPersonelAttr = escapeAttribute(r.kategori_personel || 'reguler');
+        const jabatanKhususAttr = escapeAttribute(r.jabatan_khusus || '');
+        const alasanKhususAttr = escapeAttribute(r.alasan_khusus || '');
         const nipTampil = escapeHTML(r.nip);
         const namaTampil = escapeHTML(r.nama);
         const orgTampil = escapeHTML(r.asal_organisasi);
@@ -312,7 +324,7 @@ function renderTabelMaster(data) {
                 </td>
                 <td class="px-4 py-3 text-center text-slate-400 font-bold bg-slate-50 border-r border-slate-100">${noUrut}</td>
                 <td class="px-5 py-3 font-mono text-xs text-slate-500">${nipTampil}</td>
-                <td class="px-5 py-3 font-bold text-slate-800">${namaTampil}</td>
+                <td class="px-5 py-3 font-bold text-slate-800">${namaTampil}${r.kategori_personel === 'khusus' ? `<span class="ml-2 inline-flex px-2 py-0.5 rounded-full text-[9px] font-black bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300" title="Tidak ikut ranking dan syarat kehadiran otomatis">KHUSUS</span><p class="text-[10px] text-violet-600 mt-1">${escapeHTML(r.jabatan_khusus || normalisasiJabatanMaster(r.jabatan) || 'Personel khusus')}</p>` : ''}</td>
                 <td class="px-5 py-3 text-slate-600 font-medium">${orgTampil}</td>
                 <td class="px-5 py-3 text-slate-600"><span class="bg-slate-100 px-2 py-1 rounded-md text-xs font-bold border border-slate-200">${bidangTampil}</span></td>
                 <td class="px-5 py-3"><div class="flex flex-wrap gap-1"><span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black ${zonaEfektif ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'}">${escapeHTML(labelZona)}</span><span class="inline-flex px-2 py-1 rounded-full text-[10px] font-black ${warnaWilayah}" title="Aturan operasional">${escapeHTML(labelWilayah)}</span></div><p class="text-[10px] text-slate-400 mt-1">${daerahTampil}</p></td>
@@ -322,7 +334,8 @@ function renderTabelMaster(data) {
                 <td class="px-5 py-3 font-black text-center">${ukuranTampil}</td>
                 <td class="px-5 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
-                        <button onclick="bukaModalEditDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" data-bidang="${bidangAttr}" data-org="${orgAttr}" data-daerah="${daerahAttr}" data-kategori-wilayah="${kategoriAttr}" data-zona-asal="${zonaAttr}" data-ukuran="${ukuranAttr}" data-catatan-seragam="${catatanSeragamAttr}" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
+                        <button onclick="bukaDetailPersonelDariTombol(this)" data-nip="${nipAttr}" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-indigo-200 shadow-sm" title="Lihat lokasi dan tanggal kehadiran"><i class="fa-solid fa-eye"></i></button>
+                        <button onclick="bukaModalEditDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" data-bidang="${bidangAttr}" data-org="${orgAttr}" data-daerah="${daerahAttr}" data-kategori-wilayah="${kategoriAttr}" data-zona-asal="${zonaAttr}" data-ukuran="${ukuranAttr}" data-catatan-seragam="${catatanSeragamAttr}" data-kategori-personel="${kategoriPersonelAttr}" data-jabatan-khusus="${jabatanKhususAttr}" data-alasan-khusus="${alasanKhususAttr}" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
                             <i class="fa-solid fa-pen-to-square"></i> Edit
                         </button>
                         ${mergeAction}
@@ -797,32 +810,7 @@ function toggleMasterBulkAction() {
 async function deleteBulkMaster() {
     const checked = document.querySelectorAll('.master-checkbox:checked');
     if (checked.length === 0) return;
-    
-    const konfirmasi = confirm(`⚠️ PERINGATAN HAPUS MASSAL\n\nYakin ingin menghapus ${checked.length} data master terpilih secara permanen?`);
-    if (!konfirmasi) return;
-
-    let loading = showToast(`Menghapus ${checked.length} data...`, "loading");
-    
-    try {
-        const nips = Array.from(checked).map(cb => cb.value);
-        const results = await Promise.all(nips.map(nip => supabaseFetch(`master_relawan?nip=eq.${encodeURIComponent(nip)}`, 'DELETE')));
-        const berhasil = results.filter(r => r.status === 'success').length;
-        const gagal = results.length - berhasil;
-
-        loading.remove();
-        if (gagal > 0) {
-            showToast(`${berhasil} berhasil dihapus, ${gagal} gagal. Data dimuat ulang.`, "error");
-        } else {
-            showToast(`${berhasil} data master berhasil dihapus!`, "success");
-        }
-        
-        document.getElementById('checkAllMaster').checked = false;
-        toggleMasterBulkAction();
-        loadMasterData(); 
-    } catch (e) {
-        loading.remove();
-        showToast("Gagal menghapus beberapa data.", "error");
-    }
+    await bukaHapusPermanen(Array.from(checked).map(cb => cb.value));
 }
 
 function renderRingkasanMaster() {
@@ -866,23 +854,65 @@ function deleteSingleMasterDariTombol(button) {
 }
 
 async function deleteSingleMaster(nip, nama) {
-    const konfirmasi = confirm(`⚠️ PERINGATAN HAPUS DATA\n\nApakah Anda yakin ingin menghapus personel "${nama}" (NIP: ${nip}) dari Master Data secara permanen?`);
-    if (!konfirmasi) return;
+    void nama;
+    await bukaHapusPermanen([nip]);
+}
 
-    let loading = showToast("Menghapus data master...", "loading");
+async function bukaHapusPermanen(nips) {
+    pendingDeleteNips = [...new Set((nips || []).filter(Boolean))];
+    pendingDeleteImpact = {};
+    if (!pendingDeleteNips.length) return;
+    document.getElementById('hapusPermanenAlasan').value = '';
+    document.getElementById('hapusPermanenFrasa').value = '';
+    document.getElementById('hapusPermanenSeragam').checked = false;
+    document.getElementById('hapusPermanenSeragamWrap').classList.add('hidden');
+    document.getElementById('hapusPermanenDampak').innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Memeriksa data terkait...';
+    document.getElementById('modalHapusPermanen').classList.remove('hidden');
     try {
-        const res = await supabaseFetch(`master_relawan?nip=eq.${encodeURIComponent(nip)}`, 'DELETE');
-        loading.remove();
-        
-        if (res.status === "success" || res.status === 204 || res.status === 201) {
-            showToast("Data master berhasil dihapus!", "success");
-            loadMasterData(); 
-        } else {
-            throw new Error(res.message || "Gagal menghapus data");
-        }
-    } catch (err) {
-        if (loading) loading.remove();
-        showToast("Terjadi kesalahan saat menghapus data.", "error");
+        const res = await callSupabaseRpc('pratinjau_hapus_personel', { p_nips: pendingDeleteNips });
+        if (res.status !== 'success') throw new Error(res.message || 'Pratinjau penghapusan gagal');
+        pendingDeleteImpact = res.result && typeof res.result === 'object' ? res.result : res;
+        const d = pendingDeleteImpact;
+        document.getElementById('hapusPermanenDampak').innerHTML = `<p class="font-black mb-2">Dampak untuk ${Number(d.profil || pendingDeleteNips.length)} profil:</p><div class="grid grid-cols-2 gap-2 text-xs"><span>Absensi: <b>${Number(d.absensi || 0).toLocaleString('id-ID')}</b></span><span>Kredit historis: <b>${Number(d.historis || 0).toLocaleString('id-ID')}</b></span><span>Status seragam: <b>${Number(d.status_seragam || 0).toLocaleString('id-ID')}</b></span><span>Riwayat seragam: <b>${Number(d.riwayat_seragam || 0).toLocaleString('id-ID')}</b></span><span>Mutasi stok dianonimkan: <b>${Number(d.mutasi_stok || 0).toLocaleString('id-ID')}</b></span><span class="${Number(d.seragam_belum_selesai || 0) ? 'text-amber-700 font-black' : ''}">Seragam belum selesai: <b>${Number(d.seragam_belum_selesai || 0).toLocaleString('id-ID')}</b></span></div>`;
+        document.getElementById('hapusPermanenSeragamWrap').classList.toggle('hidden', !Number(d.seragam_belum_selesai || 0));
+    } catch (error) {
+        document.getElementById('hapusPermanenDampak').innerHTML = `<p class="text-red-600 font-bold">${escapeHTML(error.message || 'Pratinjau gagal.')}</p>`;
+    }
+}
+
+function tutupHapusPermanen() {
+    document.getElementById('modalHapusPermanen')?.classList.add('hidden');
+    pendingDeleteNips = [];
+    pendingDeleteImpact = {};
+}
+
+async function eksekusiHapusPermanen() {
+    const frasa = document.getElementById('hapusPermanenFrasa').value;
+    const alasan = document.getElementById('hapusPermanenAlasan').value.trim();
+    const seragamBelum = Number(pendingDeleteImpact.seragam_belum_selesai || 0);
+    const seragamSelesai = document.getElementById('hapusPermanenSeragam').checked;
+    if (frasa !== 'HAPUS PERMANEN') { showToast('Ketik HAPUS PERMANEN dengan tepat.', 'error'); return; }
+    if (!alasan) { showToast('Alasan penghapusan wajib diisi.', 'error'); return; }
+    if (seragamBelum && !seragamSelesai) { showToast('Selesaikan dan konfirmasi status fisik seragam terlebih dahulu.', 'error'); return; }
+    const btn = document.getElementById('btnEksekusiHapusPermanen');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Menghapus...';
+    try {
+        const res = await callSupabaseRpc('hapus_personel_permanen', {
+            p_nips: pendingDeleteNips, p_frasa: frasa, p_alasan: alasan,
+            p_selesaikan_seragam: seragamSelesai
+        });
+        if (res.status !== 'success' || res.ok === false) throw new Error(res.message || 'Penghapusan ditolak database');
+        showToast(`${Number(res.profil_dihapus || 0)} profil dan data terkait berhasil dihapus permanen.`, 'success');
+        tutupHapusPermanen();
+        document.getElementById('checkAllMaster').checked = false;
+        toggleMasterBulkAction();
+        await loadMasterData();
+    } catch (error) {
+        showToast(error.message || 'Hapus permanen gagal.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-trash mr-1"></i>Hapus Permanen';
     }
 }
 
@@ -902,13 +932,21 @@ function bukaModalEditDariTombol(button) {
         button.dataset.kategoriWilayah || 'belum_dilengkapi',
         button.dataset.zonaAsal || '',
         button.dataset.ukuran || '',
-        button.dataset.catatanSeragam || ''
+        button.dataset.catatanSeragam || '',
+        button.dataset.kategoriPersonel || 'reguler',
+        button.dataset.jabatanKhusus || '',
+        button.dataset.alasanKhusus || ''
     );
 }
 
-function bukaModalEdit(nip, nama, bidang, org, daerah = '', kategoriWilayah = 'belum_dilengkapi', zonaAsal = '', ukuran = '', catatanSeragam = '') {
+function bukaModalEdit(nip, nama, bidang, org, daerah = '', kategoriWilayah = 'belum_dilengkapi', zonaAsal = '', ukuran = '', catatanSeragam = '', kategoriPersonel = 'reguler', jabatanKhusus = '', alasanKhusus = '') {
+    currentEditMode = 'edit';
     currentEditNip = nip;
-    
+    document.getElementById('judulModalEdit').innerHTML = '<i class="fa-solid fa-pen-to-square mr-2"></i>Edit Data Personel';
+    document.getElementById('subjudulModalEdit').textContent = 'Ubah seluruh profil, termasuk status personel khusus dan wilayah.';
+    document.getElementById('labelEditNip').textContent = 'NIP / ID (Tidak bisa diubah)';
+    document.getElementById('editNip').readOnly = true;
+    document.getElementById('editNip').classList.add('cursor-not-allowed');
     document.getElementById('editNip').value = nip;
     document.getElementById('editNama').value = nama;
     document.getElementById('editBidang').value = normalisasiJabatanMaster(bidang);
@@ -920,8 +958,37 @@ function bukaModalEdit(nip, nama, bidang, org, daerah = '', kategoriWilayah = 'b
     document.getElementById('editZonaAsal').value = zonaAsal || '';
     document.getElementById('editUkuranSeragam').value = ukuran;
     document.getElementById('editCatatanSeragam').value = catatanSeragam;
+    document.getElementById('editKategoriPersonel').value = kategoriPersonel || 'reguler';
+    document.getElementById('editJabatanKhusus').value = jabatanKhusus;
+    document.getElementById('editAlasanKhusus').value = alasanKhusus;
+    ubahKategoriPersonelEdit();
     
     document.getElementById('modalEdit').classList.remove('hidden');
+}
+
+function bukaModalTambahPersonel() {
+    currentEditMode = 'add';
+    currentEditNip = '';
+    document.getElementById('judulModalEdit').innerHTML = '<i class="fa-solid fa-user-plus mr-2"></i>Tambah Personel Manual';
+    document.getElementById('subjudulModalEdit').textContent = 'Tambahkan personel reguler atau jabatan khusus. ID boleh dikosongkan agar dibuat otomatis.';
+    document.getElementById('labelEditNip').textContent = 'NIP / ID (Opsional — otomatis jika kosong)';
+    const nipInput = document.getElementById('editNip');
+    nipInput.readOnly = false;
+    nipInput.classList.remove('cursor-not-allowed');
+    nipInput.value = '';
+    ['editNama','editBidang','editOrg','editDaerah','editJabatanKhusus','editAlasanKhusus','editCatatanSeragam'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('editKategoriWilayah').value = 'belum_dilengkapi';
+    document.getElementById('editZonaAsal').value = '';
+    document.getElementById('editUkuranSeragam').value = '';
+    document.getElementById('editKategoriPersonel').value = 'reguler';
+    ubahKategoriPersonelEdit();
+    document.getElementById('modalEdit').classList.remove('hidden');
+    setTimeout(() => document.getElementById('editNama')?.focus(), 50);
+}
+
+function ubahKategoriPersonelEdit() {
+    const khusus = document.getElementById('editKategoriPersonel')?.value === 'khusus';
+    document.getElementById('editPersonelKhususFields')?.classList.toggle('hidden', !khusus);
 }
 
 function sarankanKategoriWilayahPusat() {
@@ -947,6 +1014,9 @@ async function simpanEditMaster() {
             : document.getElementById('editKategoriWilayah').value;
     const ukuranSeragamBaru = document.getElementById('editUkuranSeragam').value;
     const catatanSeragamBaru = document.getElementById('editCatatanSeragam').value.trim();
+    const kategoriPersonelBaru = document.getElementById('editKategoriPersonel').value;
+    const jabatanKhususBaru = document.getElementById('editJabatanKhusus').value.trim();
+    const alasanKhususBaru = document.getElementById('editAlasanKhusus').value.trim();
     
     if(!namaBaru) {
         showToast("Nama Relawan tidak boleh kosong!", "error");
@@ -966,19 +1036,39 @@ async function simpanEditMaster() {
         kategori_wilayah: kategoriWilayahBaru,
         zona_asal: zonaAsalBaru || null,
         ukuran_seragam: ukuranSeragamBaru || null,
-        catatan_seragam: catatanSeragamBaru || null
+        catatan_seragam: catatanSeragamBaru || null,
+        kategori_personel: kategoriPersonelBaru,
+        jabatan_khusus: kategoriPersonelBaru === 'khusus' ? (jabatanKhususBaru || bidangBaru || null) : null,
+        alasan_khusus: kategoriPersonelBaru === 'khusus' ? (alasanKhususBaru || null) : null
     };
 
     try {
-        let res = await supabaseFetch(`master_relawan?nip=eq.${encodeURIComponent(currentEditNip)}`, 'PATCH', payloadUpdate);
-        if (res.status !== 'success' && /kabupaten_normalisasi|schema cache|column/i.test(String(res.message || ''))) {
+        let res;
+        if (currentEditMode === 'add') {
+            res = await callSupabaseRpc('simpan_personel_manual_v2', {
+                p_nip: document.getElementById('editNip').value.trim() || null,
+                p_nama: namaBaru, p_jabatan: bidangBaru, p_asal_organisasi: orgBaru,
+                p_asal_daerah: daerahBaru || null,
+                p_kabupaten: payloadUpdate.kabupaten_normalisasi,
+                p_kategori_wilayah: kategoriWilayahBaru,
+                p_zona_asal: zonaAsalBaru || null,
+                p_ukuran_seragam: ukuranSeragamBaru || null,
+                p_catatan_seragam: catatanSeragamBaru || null,
+                p_kategori_personel: kategoriPersonelBaru,
+                p_jabatan_khusus: payloadUpdate.jabatan_khusus,
+                p_alasan_khusus: payloadUpdate.alasan_khusus
+            });
+        } else {
+            res = await supabaseFetch(`master_relawan?nip=eq.${encodeURIComponent(currentEditNip)}`, 'PATCH', payloadUpdate);
+        }
+        if (currentEditMode === 'edit' && res.status !== 'success' && /kabupaten_normalisasi|schema cache|column/i.test(String(res.message || ''))) {
             const payloadKompatibel = { ...payloadUpdate };
             delete payloadKompatibel.kabupaten_normalisasi;
             res = await supabaseFetch(`master_relawan?nip=eq.${encodeURIComponent(currentEditNip)}`, 'PATCH', payloadKompatibel);
         }
         
         if (res.status === "success" || res.status === 204 || res.status === 201) {
-            showToast("Data profil berhasil diperbarui!", "success");
+            showToast(currentEditMode === 'add' ? `Personel berhasil ditambahkan${res.nip ? ` dengan ID ${res.nip}` : ''}.` : "Data profil berhasil diperbarui!", "success");
             tutupModalEdit();
             loadMasterData(); 
         } else {
@@ -1752,4 +1842,121 @@ async function submitImportCSV() {
         btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Import ke Database';
         btn.disabled = false;
     }
+}
+
+// ------------------------------------------
+// DETAIL PERSONEL & EKSPOR
+// ------------------------------------------
+
+function bukaDetailPersonelDariTombol(button) {
+    return bukaDetailPersonel(button.dataset.nip || '');
+}
+
+async function bukaDetailPersonel(nip) {
+    if (!nip) return;
+    const modal = document.getElementById('modalDetailPersonel');
+    const content = document.getElementById('detailPersonelIsi');
+    currentDetailPersonel = null;
+    document.getElementById('detailPersonelJudul').textContent = nip;
+    content.innerHTML = '<div class="p-10 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Memuat detail...</div>';
+    modal.classList.remove('hidden');
+    try {
+        const res = await callSupabaseRpc('detail_personel_v2', { p_nip: nip });
+        if (res.status !== 'success' || !res.profile) throw new Error(res.message || 'Detail personel tidak tersedia');
+        currentDetailPersonel = res;
+        renderDetailPersonel();
+    } catch (error) {
+        content.innerHTML = `<div class="p-8 text-center text-red-600 font-bold">${escapeHTML(error.message || 'Gagal memuat detail personel.')}</div>`;
+    }
+}
+
+function tutupDetailPersonel() {
+    document.getElementById('modalDetailPersonel')?.classList.add('hidden');
+    currentDetailPersonel = null;
+}
+
+function renderDetailPersonel() {
+    const data = currentDetailPersonel || {};
+    const p = data.profile || {};
+    const projects = Array.isArray(data.projects) ? data.projects : [];
+    const attendance = Array.isArray(data.attendance) ? data.attendance : [];
+    const uniform = Array.isArray(data.uniform_history) ? data.uniform_history : [];
+    document.getElementById('detailPersonelJudul').textContent = `${p.nama || '-'} • ${p.nip || '-'}`;
+    const projectRows = projects.length ? projects.map(row => `<tr><td class="px-3 py-2 font-bold">${escapeHTML(row.nama_proyek || '-')}</td><td class="px-3 py-2">${escapeHTML(row.kategori === 'khususul_khusus' ? '5 Proyek Khususul Khusus' : 'Proyek Lainnya')}</td><td class="px-3 py-2 text-center font-black">${Number(row.total_hari_proyek || 0)}</td><td class="px-3 py-2 text-center">${Number(row.total_sesi_proyek || 0)}</td><td class="px-3 py-2">${formatTanggalMaster(row.hadir_pertama_proyek)}</td><td class="px-3 py-2">${formatTanggalMaster(row.hadir_terakhir_proyek)}</td></tr>`).join('') : '<tr><td colspan="6" class="p-5 text-center text-slate-400">Belum ada kehadiran proyek.</td></tr>';
+    const attendanceRows = attendance.length ? attendance.map(row => `<tr><td class="px-3 py-2">${formatTanggalMaster(row.tanggal)}</td><td class="px-3 py-2 font-bold">${escapeHTML(row.sesi || '-')}</td><td class="px-3 py-2">${escapeHTML(row.lokasi || '-')}</td></tr>`).join('') : '<tr><td colspan="3" class="p-5 text-center text-slate-400">Belum ada riwayat absensi.</td></tr>';
+    const uniformRows = uniform.length ? uniform.slice(0, 20).map(row => `<tr><td class="px-3 py-2">${new Date(row.dibuat_pada).toLocaleString('id-ID')}</td><td class="px-3 py-2">${escapeHTML(row.status_proses || '-')}</td><td class="px-3 py-2">${escapeHTML(row.status_penguasaan || '-')}</td><td class="px-3 py-2">${escapeHTML(`${row.ukuran_atasan || row.ukuran || '-'} / ${row.ukuran_bawahan || '-'}`)}</td><td class="px-3 py-2">${escapeHTML(row.catatan || '-')}</td></tr>`).join('') : '<tr><td colspan="5" class="p-5 text-center text-slate-400">Belum ada riwayat seragam.</td></tr>';
+    document.getElementById('detailPersonelIsi').innerHTML = `
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+            <div class="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3"><p class="text-[10px] uppercase font-black text-slate-400">Jenis</p><p class="font-black mt-1">${p.kategori_personel === 'khusus' ? 'Personel Khusus' : 'Reguler'}</p></div>
+            <div class="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3"><p class="text-[10px] uppercase font-black text-slate-400">Kehadiran</p><p class="font-black mt-1">${Number(p.total_hari || 0)} hari / ${Number(p.total_sesi || 0)} sesi</p></div>
+            <div class="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3"><p class="text-[10px] uppercase font-black text-slate-400">Pertama Hadir</p><p class="font-black mt-1">${formatTanggalMaster(p.hadir_pertama)}</p></div>
+            <div class="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3"><p class="text-[10px] uppercase font-black text-slate-400">Terakhir Hadir</p><p class="font-black mt-1">${formatTanggalMaster(p.hadir_terakhir)}</p></div>
+        </section>
+        <section class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-5"><h4 class="font-black mb-2">Profil</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm"><p><span class="text-slate-400">ID:</span> <b>${escapeHTML(p.nip || '-')}</b></p><p><span class="text-slate-400">Jabatan:</span> <b>${escapeHTML(p.jabatan_khusus || p.jabatan || '-')}</b></p><p><span class="text-slate-400">Organisasi:</span> <b>${escapeHTML(p.asal_organisasi || '-')}</b></p><p><span class="text-slate-400">Kabupaten/Kota:</span> <b>${escapeHTML(p.kabupaten_normalisasi || p.asal_daerah || '-')}</b></p><p><span class="text-slate-400">Zona:</span> <b>${escapeHTML(LABEL_ZONA_MASTER[p.zona_asal] || 'Belum diisi')}</b></p><p><span class="text-slate-400">Persentase:</span> <b>${Number(p.persentase_hari || 0).toFixed(1)}%</b></p></div></section>
+        <section class="mb-5"><h4 class="font-black mb-2"><i class="fa-solid fa-location-dot text-indigo-600 mr-2"></i>Lokasi/Proyek yang Pernah Dihadiri</h4><div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700"><table class="w-full text-xs"><thead class="bg-slate-100 dark:bg-slate-700"><tr><th class="px-3 py-2 text-left">Lokasi</th><th class="px-3 py-2 text-left">Kelompok</th><th class="px-3 py-2">Hari</th><th class="px-3 py-2">Sesi</th><th class="px-3 py-2 text-left">Pertama</th><th class="px-3 py-2 text-left">Terakhir</th></tr></thead><tbody>${projectRows}</tbody></table></div></section>
+        <details open class="mb-5"><summary class="font-black cursor-pointer mb-2">Riwayat Kehadiran (${attendance.length})</summary><div class="max-h-72 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700"><table class="w-full text-xs"><thead class="sticky top-0 bg-slate-100 dark:bg-slate-700"><tr><th class="px-3 py-2 text-left">Tanggal</th><th class="px-3 py-2 text-left">Sesi</th><th class="px-3 py-2 text-left">Lokasi</th></tr></thead><tbody>${attendanceRows}</tbody></table></div></details>
+        <details><summary class="font-black cursor-pointer mb-2">Riwayat Seragam (${uniform.length})</summary><div class="max-h-64 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700"><table class="w-full text-xs"><thead class="sticky top-0 bg-slate-100 dark:bg-slate-700"><tr><th class="px-3 py-2 text-left">Waktu</th><th class="px-3 py-2 text-left">Proses</th><th class="px-3 py-2 text-left">Keberadaan</th><th class="px-3 py-2 text-left">Ukuran</th><th class="px-3 py-2 text-left">Catatan</th></tr></thead><tbody>${uniformRows}</tbody></table></div></details>`;
+}
+
+function dataExportMaster() {
+    return (filteredData || []).map((r, index) => ({
+        No: index + 1, ID: r.nip || '', Nama: r.nama || '',
+        'Jenis Personel': r.kategori_personel === 'khusus' ? 'Khusus' : 'Reguler',
+        Jabatan: r.jabatan_khusus || r.jabatan || '', Organisasi: r.asal_organisasi || '',
+        'Kabupaten/Kota': r.kabupaten_normalisasi || r.asal_daerah || '',
+        Zona: LABEL_ZONA_MASTER[zonaAsalEfektif(r)] || 'Belum diisi',
+        'Total Hari': Number(r.total_hari || 0), 'Total Sesi': Number(r.total_sesi || 0),
+        'Jumlah Proyek': Number(r.jumlah_proyek || 0), 'Persentase Hari': Number(r.persentase_hari || 0),
+        'Pertama Hadir': r.hadir_pertama || '', 'Terakhir Hadir': r.hadir_terakhir || '',
+        'Ukuran Atasan': r.ukuran_seragam || '', Catatan: r.catatan_seragam || r.alasan_khusus || ''
+    }));
+}
+
+function exportMasterExcel() {
+    if (!window.XLSX) { showToast('Pustaka Excel belum termuat. Periksa koneksi lalu muat ulang.', 'error'); return; }
+    const rows = dataExportMaster();
+    if (!rows.length) { showToast('Tidak ada data sesuai filter untuk diekspor.', 'error'); return; }
+    const book = XLSX.utils.book_new();
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    sheet['!cols'] = Object.keys(rows[0]).map(key => ({ wch: Math.min(42, Math.max(12, key.length + 3)) }));
+    XLSX.utils.book_append_sheet(book, sheet, 'Master Personel');
+    XLSX.writeFile(book, `master-personel-${new Date().toISOString().slice(0,10)}.xlsx`);
+    showToast(`${rows.length} personel diekspor ke Excel.`, 'success');
+}
+
+function cetakLaporanHtml(judul, subjudul, isi) {
+    const popup = window.open('', '_blank', 'width=1100,height=800');
+    if (!popup) { showToast('Izinkan pop-up untuk membuat PDF.', 'error'); return; }
+    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHTML(judul)}</title><style>body{font-family:Arial,sans-serif;color:#172033;margin:28px}h1{font-size:20px;margin:0}p.meta{font-size:11px;color:#64748b;margin:6px 0 18px}table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #cbd5e1;padding:6px;text-align:left;vertical-align:top}th{background:#eef2ff}h2{font-size:14px;margin-top:22px}@page{size:A4 landscape;margin:10mm}</style></head><body><h1>${escapeHTML(judul)}</h1><p class="meta">${escapeHTML(subjudul)} • Dibuat ${new Date().toLocaleString('id-ID')}</p>${isi}<script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);
+    popup.document.close();
+}
+
+function exportMasterPdf() {
+    const rows = dataExportMaster();
+    if (!rows.length) { showToast('Tidak ada data sesuai filter untuk diekspor.', 'error'); return; }
+    const columns = ['No','ID','Nama','Jenis Personel','Jabatan','Organisasi','Kabupaten/Kota','Zona','Total Hari','Total Sesi','Persentase Hari','Pertama Hadir','Terakhir Hadir'];
+    const head = columns.map(key => `<th>${escapeHTML(key)}</th>`).join('');
+    const body = rows.map(row => `<tr>${columns.map(key => `<td>${escapeHTML(row[key] ?? '')}</td>`).join('')}</tr>`).join('');
+    cetakLaporanHtml('Master Data Personel', `${rows.length} data sesuai pencarian dan filter aktif`, `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`);
+}
+
+function exportDetailPersonelExcel() {
+    if (!currentDetailPersonel || !window.XLSX) { showToast('Detail atau pustaka Excel belum tersedia.', 'error'); return; }
+    const p = currentDetailPersonel.profile || {};
+    const book = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet([dataExportMaster().find(r => r.ID === p.nip) || p]), 'Profil');
+    XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(currentDetailPersonel.projects || []), 'Lokasi Proyek');
+    XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(currentDetailPersonel.attendance || []), 'Riwayat Kehadiran');
+    XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(currentDetailPersonel.uniform_history || []), 'Riwayat Seragam');
+    XLSX.writeFile(book, `detail-${String(p.nama || p.nip || 'personel').replace(/[^A-Za-z0-9]+/g,'-')}.xlsx`);
+}
+
+function exportDetailPersonelPdf() {
+    if (!currentDetailPersonel) { showToast('Detail personel belum tersedia.', 'error'); return; }
+    const p = currentDetailPersonel.profile || {};
+    const projects = currentDetailPersonel.projects || [];
+    const attendance = currentDetailPersonel.attendance || [];
+    const projectBody = projects.map(r => `<tr><td>${escapeHTML(r.nama_proyek || '-')}</td><td>${escapeHTML(r.kategori || '-')}</td><td>${Number(r.total_hari_proyek || 0)}</td><td>${Number(r.total_sesi_proyek || 0)}</td><td>${formatTanggalMaster(r.hadir_pertama_proyek)}</td><td>${formatTanggalMaster(r.hadir_terakhir_proyek)}</td></tr>`).join('');
+    const attendanceBody = attendance.map(r => `<tr><td>${formatTanggalMaster(r.tanggal)}</td><td>${escapeHTML(r.sesi || '-')}</td><td>${escapeHTML(r.lokasi || '-')}</td></tr>`).join('');
+    cetakLaporanHtml(`Detail Personel — ${p.nama || '-'}`, `ID ${p.nip || '-'} • ${Number(p.total_hari || 0)} hari • ${Number(p.total_sesi || 0)} sesi`, `<h2>Profil</h2><table><tbody><tr><th>Jabatan</th><td>${escapeHTML(p.jabatan_khusus || p.jabatan || '-')}</td><th>Organisasi</th><td>${escapeHTML(p.asal_organisasi || '-')}</td></tr><tr><th>Daerah</th><td>${escapeHTML(p.kabupaten_normalisasi || p.asal_daerah || '-')}</td><th>Jenis</th><td>${p.kategori_personel === 'khusus' ? 'Khusus' : 'Reguler'}</td></tr></tbody></table><h2>Lokasi/Proyek</h2><table><thead><tr><th>Lokasi</th><th>Kelompok</th><th>Hari</th><th>Sesi</th><th>Pertama</th><th>Terakhir</th></tr></thead><tbody>${projectBody}</tbody></table><h2>Riwayat Kehadiran</h2><table><thead><tr><th>Tanggal</th><th>Sesi</th><th>Lokasi</th></tr></thead><tbody>${attendanceBody}</tbody></table>`);
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = "relawansync-v27-integritas-operasional-cache";
+const CACHE_NAME = "relawansync-v28-personel-stok-cache";
 const PRECACHE_URLS = [
     "./",
     "index.html",
