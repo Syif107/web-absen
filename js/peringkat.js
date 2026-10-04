@@ -68,7 +68,10 @@ async function muatPeringkat(page = peringkatPage) {
 
     if (res.status !== 'success') {
         if (errorBox) {
-            errorBox.textContent = 'Peringkat belum dapat dibaca. Terapkan migrasi Fase 14 lalu muat ulang halaman.';
+            const pesan = `${res.message || ''} ${res.details || ''}`;
+            errorBox.textContent = /statement timeout|57014/i.test(pesan)
+                ? 'Waktu pemrosesan peringkat habis. Terapkan migrasi Fase 19 lalu segarkan halaman.'
+                : 'Peringkat gagal dimuat. Periksa koneksi dan migrasi database terbaru, lalu segarkan halaman.';
             errorBox.classList.remove('hidden');
         }
         if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center text-red-500 font-bold">Data peringkat belum tersedia.</td></tr>';

@@ -49,7 +49,7 @@ test('service worker hanya mencache GET dari origin aplikasi', () => {
     assert.doesNotMatch(source, /cache\.put\(event\.request/);
 });
 
-test('frontend memakai CSS produksi lokal dan cache versi 29', () => {
+test('frontend memakai CSS produksi lokal dan cache versi 30', () => {
     const htmlFiles = readdirSync(root).filter(name => name.endsWith('.html'));
     for (const file of htmlFiles) {
         const html = read(file);
@@ -57,7 +57,7 @@ test('frontend memakai CSS produksi lokal dan cache versi 29', () => {
         assert.doesNotMatch(html, /cdn\.tailwindcss\.com/, `${file} masih memakai Tailwind CDN`);
         assert.doesNotMatch(html, /tailwind\.config/, `${file} masih membawa konfigurasi runtime`);
     }
-    assert.match(read('sw.js'), /relawansync-v29-zona-otomatis-cache/);
+    assert.match(read('sw.js'), /relawansync-v30-peringkat-cepat-cache/);
     assert.match(read('package.json'), /build:css/);
 });
 
@@ -482,4 +482,22 @@ test('fase 12 memilih lebih dari setengah kandidat tanpa merge berantai', () => 
     assert.match(source, /v_sumber_tersisa <> 0/);
     assert.match(master, /Number\(row\?\.persentase_hari \|\| 0\)/);
     assert.match(master, /persentase tertinggi dipertahankan/i);
+});
+
+test('fase 19 memulihkan router cepat peringkat tanpa memasukkan personel khusus', () => {
+    const source = read('db/fase19_performa_peringkat_reguler.sql');
+    const peringkat = read('js/peringkat.js');
+    const sw = read('sw.js');
+
+    assert.match(source, /pg_get_functiondef/);
+    assert.match(source, /FUNCTION public\.daftar_peringkat_operator_v2\(/);
+    assert.match(source, /position\('kategori_personel' IN v_def\) > 0/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.daftar_peringkat_admin_v2/);
+    assert.match(source, /SECURITY DEFINER/);
+    assert.match(source, /CREATE OR REPLACE FUNCTION public\.daftar_peringkat_v2/);
+    assert.match(source, /ELSIF v_role = 'koordinator'/);
+    assert.match(source, /NOTIFY pgrst, 'reload schema'/);
+    assert.doesNotMatch(peringkat, /Terapkan migrasi Fase 14/);
+    assert.match(peringkat, /statement timeout\|57014/);
+    assert.match(sw, /relawansync-v30-peringkat-cepat-cache/);
 });

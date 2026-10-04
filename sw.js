@@ -1,4 +1,4 @@
-const CACHE_NAME = "relawansync-v29-zona-otomatis-cache";
+const CACHE_NAME = "relawansync-v30-peringkat-cepat-cache";
 const PRECACHE_URLS = [
     "./",
     "index.html",
