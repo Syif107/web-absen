@@ -7,13 +7,7 @@ let koreksiMasterData = [];
 let koreksiAwal = new Set();
 let riwayatMasterNips = new Set();
 
-const LOKASI_UTAMA_KOREKSI = [
-    'Perpustakaan Tashawwuf',
-    "Masjid Raya Fatchan Mubiina Chaddun 'Adhiim",
-    'Monumen Semboyan Sang Mursyid',
-    "Kanal Ta'at",
-    'Gapura Syukur'
-];
+const LOKASI_UTAMA_KOREKSI = window.RelawanDomain?.PROYEK_KHUSUS || [];
 
 document.addEventListener("DOMContentLoaded", async () => {
     await getAksesUser();
@@ -59,7 +53,7 @@ async function bukaModalKelolaKehadiran() {
     document.getElementById('koreksiLokasi').value ||= LOKASI_UTAMA_KOREKSI[0];
 
     if (!koreksiMasterData.length) {
-        const res = await supabaseFetchAll('master_relawan?select=nip,nama,jabatan,asal_organisasi&order=nama.asc');
+        const res = await supabaseFetchAll('v_personel_terpadu_v3?select=nip,nama,jabatan,asal_organisasi,zona_asal,kategori_personel&kategori_personel=eq.reguler&order=nama.asc');
         if (res.status !== 'success') {
             showToast(res.message || 'Gagal memuat daftar personel.', 'error');
             return;
@@ -342,7 +336,7 @@ async function loadRiwayatData() {
         const logUrl = await terapkanFilterLokasi('v_log_absensi_operasional?select=*&order=id.desc');
         const [res, masterRes] = await Promise.all([
             supabaseFetchAll(logUrl),
-            supabaseFetchAll('master_relawan?select=nip,nama,jabatan,asal_organisasi&order=nama.asc')
+            supabaseFetchAll('v_personel_terpadu_v3?select=nip,nama,jabatan,asal_organisasi,zona_asal,kategori_personel&kategori_personel=eq.reguler&order=nama.asc')
         ]);
         if (masterRes.status === 'success') {
             koreksiMasterData = masterRes.data || [];
@@ -726,7 +720,7 @@ function exportToCSV() {
         showToast("Tidak ada data untuk diekspor!", "error");
         return;
     }
-    let csvContent = "data:text/csv;charset=utf-8,No,Tanggal,Nama Relawan,Sesi,Lokasi Proyek,Organisasi\n";
+    let csvContent = "data:text/csv;charset=utf-8,No,Tanggal,Nama Personel,Sesi,Lokasi Proyek,Organisasi\n";
     barisTabel.forEach(row => {
         let cols = row.querySelectorAll("td");
         if (cols.length > 0) {
@@ -763,7 +757,7 @@ function exportToXLSX() {
     const aoa = [[
         { t: 's', v: 'No' },
         { t: 's', v: 'Tanggal' },
-        { t: 's', v: 'Nama Relawan' },
+        { t: 's', v: 'Nama Personel' },
         { t: 's', v: 'Sesi' },
         { t: 's', v: 'Lokasi Proyek' },
         { t: 's', v: 'Organisasi' }

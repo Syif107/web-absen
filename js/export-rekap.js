@@ -140,7 +140,7 @@ function perbaruiInfoExportRekap() {
         chip('Lokasi', lokasi === 'Semua' ? 'Semua' : escapeHTML(lokasi), 'text-primary') +
         chip('Hari Operasional', hasil.hariOperasional, 'text-emerald-600 dark:text-emerald-400') +
         chip('Total Sesi', hasil.totalKehadiran, 'text-slate-800 dark:text-slate-100') +
-        chip('Total Relawan', hasil.rows.length, 'text-indigo-600 dark:text-indigo-400') +
+        chip('Total Personel', hasil.rows.length, 'text-indigo-600 dark:text-indigo-400') +
         chip('Kandidat Duplikat', hasil.dups.length, hasil.dups.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400');
 }
 
@@ -149,16 +149,17 @@ function perbaruiInfoExportRekap() {
 // ==========================================
 
 function bangunRekap(logs, masters, tglAwal, tglAkhir, lokasi, sortBasis) {
+    const masterByNip = new Map();
+    (masters || []).forEach(m => {
+        if (m.nip) masterByNip.set(String(m.nip), m);
+    });
+
     const logsFilter = (logs || []).filter(l => {
         if (!l.tanggal) return false;
         if (String(l.tanggal) < tglAwal || String(l.tanggal) > tglAkhir) return false;
         if (lokasi !== 'Semua' && String(l.lokasi || '').trim() !== lokasi) return false;
+        if (l.nip && !masterByNip.has(String(l.nip))) return false;
         return true;
-    });
-
-    const masterByNip = new Map();
-    (masters || []).forEach(m => {
-        if (m.nip) masterByNip.set(String(m.nip), m);
     });
 
     const map = new Map();
@@ -180,6 +181,9 @@ function bangunRekap(logs, masters, tglAwal, tglAkhir, lokasi, sortBasis) {
                 nama: master ? master.nama : (l.nama || '').trim(),
                 org: master ? (master.asal_organisasi || '') : (l.organisasi || ''),
                 bidang: master ? (master.jabatan || '') : (l.bidang || ''),
+                daerah: master ? (master.kabupaten_normalisasi || master.asal_daerah || '') : '',
+                zona: master ? (master.zona_label || window.RelawanDomain?.labelZona(master.zona_asal) || '') : '',
+                jenis: master ? (master.jenis_personel_label || 'Reguler') : 'Belum terhubung',
                 total: 0,
                 hariSet: new Set()
             };
@@ -196,6 +200,9 @@ function bangunRekap(logs, masters, tglAwal, tglAkhir, lokasi, sortBasis) {
         nip: r.nip,
         org: r.org || '-',
         bidang: r.bidang || 'Helper',
+        daerah: r.daerah || '-',
+        zona: r.zona || 'Zona belum diisi',
+        jenis: r.jenis || 'Reguler',
         total: r.total,
         hariHadir: r.hariSet.size,
         persen: hariOperasional > 0 ? Number(((r.hariSet.size / hariOperasional) * 100).toFixed(1)) : 0
@@ -313,7 +320,7 @@ async function exportRekapExcel() {
 
         const [logRes, masterRes] = await Promise.all([
             supabaseFetchAll(urlLog),
-            supabaseFetchAll('master_relawan?select=nip,nama,jabatan,asal_organisasi&order=nip.asc')
+            supabaseFetchAll('v_personel_terpadu_v3?select=nip,nama,jabatan,asal_organisasi,kabupaten_normalisasi,asal_daerah,zona_asal,zona_label,kategori_personel,jenis_personel_label&kategori_personel=eq.reguler&order=nip.asc')
         ]);
 
         if (logRes.status !== "success" || masterRes.status !== "success") {
@@ -364,10 +371,10 @@ function susunWorkbookRekap(hasil, meta) {
         ['Dasar Peringkat', meta.sortBasisLabel],
         ['Hari Operasional', hasil.hariOperasional],
         ['Total Sesi Kehadiran', hasil.totalKehadiran],
-        ['Total Relawan', hasil.rows.length],
+        ['Total Personel', hasil.rows.length],
         ['Tanggal Cetak', new Date().toLocaleString('id-ID')],
         [],
-        ['No', 'Nama Relawan', 'Asal Organisasi', 'Bidang Utama', 'Total Sesi', 'Hari Hadir', '% Hari Hadir']
+        ['No', 'Nama Personel', 'Asal Organisasi', 'Bidang Utama', 'Kabupaten/Kota', 'Zona', 'Jenis', 'Total Sesi', 'Hari Hadir', '% Hari Hadir']
     ];
 
     const aoaData = hasil.rows.map((r, i) => [
@@ -375,6 +382,9 @@ function susunWorkbookRekap(hasil, meta) {
         { t: 's', v: r.nama },
         { t: 's', v: r.org },
         { t: 's', v: r.bidang },
+        { t: 's', v: r.daerah },
+        { t: 's', v: r.zona },
+        { t: 's', v: r.jenis },
         { t: 'n', v: r.total },
         { t: 'n', v: r.hariHadir },
         { t: 'n', v: r.persen }
@@ -383,10 +393,10 @@ function susunWorkbookRekap(hasil, meta) {
     const ws = XLSX.utils.aoa_to_sheet([...aoaMeta, ...aoaData]);
 
     ws['!cols'] = [
-        { wch: 5 }, { wch: 32 }, { wch: 28 }, { wch: 26 }, { wch: 16 }, { wch: 12 }, { wch: 10 }
+        { wch: 5 }, { wch: 32 }, { wch: 28 }, { wch: 26 }, { wch: 24 }, { wch: 30 }, { wch: 12 }, { wch: 16 }, { wch: 12 }, { wch: 10 }
     ];
 
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }];
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } }];
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Rekap Kehadiran');

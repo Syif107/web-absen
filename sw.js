@@ -1,4 +1,4 @@
-const CACHE_NAME = "relawansync-v30-peringkat-cepat-cache";
+const CACHE_NAME = "relawansync-v31-kontrak-terpadu-cache";
 const PRECACHE_URLS = [
     "./",
     "index.html",
@@ -18,6 +18,7 @@ const PRECACHE_URLS = [
     "css/style.css",
     "js/theme.js",
     "js/supabase-config.js",
+    "js/domain.js",
     "js/app.js",
     "js/dashboard.js",
     "js/input.js",

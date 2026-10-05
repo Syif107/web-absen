@@ -59,13 +59,14 @@ async function loadDashboardData() {
 
     try {
         const [masterRes, logRes] = await Promise.all([
-            supabaseFetchAll('master_relawan?select=*&order=nip.asc'),
+            supabaseFetchAll('v_personel_terpadu_v3?select=*&kategori_personel=eq.reguler&order=nip.asc'),
             supabaseFetchAll(await terapkanFilterLokasi('v_log_absensi_operasional?select=*&terhubung=eq.true&order=id.desc'))
         ]);
 
         if (masterRes.status === "success" && logRes.status === "success") {
             globalMasterData = masterRes.data;
-            globalLogData = logRes.data;
+            const nipReguler = new Set(globalMasterData.map(row => row.nip).filter(Boolean));
+            globalLogData = (logRes.data || []).filter(row => nipReguler.has(row.nip));
             pilihPeriodeTerbaruJikaKosong();
             terapkanFilterDashboard();
             cekNotifikasiReminder();
@@ -216,7 +217,7 @@ function renderTopRelawan() {
 // Fungsi untuk Membuka Modal Daftar Peringkat Menyeluruh
 function bukaModalLeaderboardSemua() {
     const tbody = document.getElementById('tbodyLeaderboardSemua');
-    document.getElementById('totalRelawanLeaderboard').innerText = `Total: ${cachedTopRelawanList.length} Relawan`;
+    document.getElementById('totalRelawanLeaderboard').innerText = `Total: ${cachedTopRelawanList.length} Personel`;
 
     if (cachedTopRelawanList.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium">Belum ada data peringkat untuk ditampilkan.</td></tr>`;
@@ -401,7 +402,7 @@ function bukaModalRincian(tipe, judul, sub, parameter = null) {
 
     if (tipe === 'master') {
         dataSumber = globalMasterData;
-        htmlHead = `<tr><th class="px-4 py-3 w-12 text-center">No</th><th class="px-4 py-3">NIP / ID</th><th class="px-4 py-3">Nama Relawan</th><th class="px-4 py-3">Organisasi Terdaftar</th><th class="px-4 py-3">Bidang Utama</th></tr>`;
+        htmlHead = `<tr><th class="px-4 py-3 w-12 text-center">No</th><th class="px-4 py-3">NIP / ID</th><th class="px-4 py-3">Nama Personel</th><th class="px-4 py-3">Organisasi Terdaftar</th><th class="px-4 py-3">Bidang Utama</th></tr>`;
         dataSumber.forEach((r, i) => {
             htmlBody += `<tr class="hover:bg-slate-50"><td class="px-4 py-2 text-center text-slate-500">${i+1}</td><td class="px-4 py-2 font-mono text-xs text-slate-400">${escapeHTML(r.nip)}</td><td class="px-4 py-2 font-bold">${escapeHTML(r.nama)}</td><td class="px-4 py-2 text-slate-600">${escapeHTML(r.asal_organisasi)}</td><td class="px-4 py-2 text-slate-600">${escapeHTML(r.jabatan)}</td></tr>`;
         });
@@ -418,7 +419,7 @@ function bukaModalRincian(tipe, judul, sub, parameter = null) {
             dataSumber = globalLogData.filter(r => r.tanggal && r.tanggal.startsWith(filterPrefix) && r.lokasi === parameter);
         }
 
-        htmlHead = `<tr><th class="px-4 py-3 w-12 text-center">No</th><th class="px-4 py-3">Tanggal & Sesi</th><th class="px-4 py-3">Nama Relawan</th><th class="px-4 py-3">Organisasi</th><th class="px-4 py-3">Bidang</th><th class="px-4 py-3">Lokasi</th></tr>`;
+        htmlHead = `<tr><th class="px-4 py-3 w-12 text-center">No</th><th class="px-4 py-3">Tanggal & Sesi</th><th class="px-4 py-3">Nama Personel</th><th class="px-4 py-3">Organisasi</th><th class="px-4 py-3">Bidang</th><th class="px-4 py-3">Lokasi</th></tr>`;
         dataSumber.forEach((r, i) => {
             htmlBody += `<tr class="hover:bg-slate-50">
                 <td class="px-4 py-2 text-center text-slate-500">${i+1}</td>

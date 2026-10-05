@@ -149,6 +149,31 @@ profil menerima penolakan `Akun tidak memiliki akses`. Hak `EXECUTE` anonim
 pada seluruh fungsi schema `public` juga dicabut, termasuk default untuk fungsi
 baru, karena aplikasi ini mewajibkan login.
 
+## Fase 17–19: Personel khusus, stok bertanggal, zona, dan peringkat cepat
+
+Jalankan berurutan `db/fase17_personel_khusus_stok_massal.sql`,
+`db/fase18_penerapan_zona_otomatis.sql`, lalu
+`db/fase19_performa_peringkat_reguler.sql`. Rangkaian ini menambahkan personel
+khusus di luar aturan kehadiran/ranking, stok seragam massal dan bertanggal,
+empat zona asal, detail profil, hapus permanen bertingkat, dan router peringkat
+yang hanya menghitung personel reguler.
+
+## Fase 20: Kontrak data terpadu lintas-menu
+
+`db/fase20_penyeragaman_sistem.sql` wajib diterapkan sebelum frontend versi
+cache 31 dipublikasikan. Migrasi ini membuat backup Fase 20, memakai satu
+resolver kabupaten/provinsi/zona, menyatukan ukuran atasan dan bawahan antara
+Master dan Kontrol Seragam, serta menyediakan sumber profil
+`v_personel_terpadu_v3` untuk Master, Input, Dashboard, Statistik, Riwayat,
+Peringkat, Seragam, detail, dan ekspor.
+
+Personel khusus tetap terlihat di Master dan Kontrol Seragam, tetapi tidak
+masuk pilihan absensi normal, statistik kehadiran, atau ranking. Transaksi stok
+terjadwal diproses saat admin membuka menu mana pun. Ekspor Kontrol Seragam
+mengambil seluruh hasil filter dari server, bukan hanya 50 baris yang sedang
+terlihat. Gunakan `v_audit_konsistensi_personel_v3` setelah migrasi; hasil
+`tidak_konsisten` harus nol sebelum rilis frontend.
+
 ## Urutan rilis
 
 1. Pastikan branch dan commit yang akan dirilis sudah ditetapkan.
@@ -157,7 +182,7 @@ baru, karena aplikasi ini mewajibkan login.
 4. Jalankan `db/audit_duplikat.sql` (read-only).
 5. Bila hasil audit mempunyai baris, tinjau dan gabungkan data secara manual.
 6. Jalankan `db/fase5_integritas_transaksi.sql`.
-7. Jalankan migrasi berurutan sampai Fase 13, lalu jalankan `db/fase14_integritas_operasional.sql`.
+7. Jalankan migrasi berurutan sampai Fase 20. Fase 20 harus selesai sebelum frontend versi cache 31 dipublikasikan.
 8. Uji input relawan lama, relawan baru, filter proyek, direktori, perapian duplikat, merge dari checkbox, edit wilayah, koreksi kehadiran, kredit historis, dan mutasi stok atasan–bawahan menggunakan akun admin.
 9. Jika multi-user akan digunakan:
    - jalankan `db/fase15_multi_user_aman.sql` hanya setelah mengonfirmasi perubahan hak akses;
@@ -167,7 +192,7 @@ baru, karena aplikasi ini mewajibkan login.
    - ubah `FASE4_ENABLED` di `js/supabase-config.js` menjadi `true`.
 10. Jalankan `npm install`, `npm run build:css`, dan `npm test`, lalu deploy frontend.
 11. Buka ulang aplikasi dua kali agar service worker versi baru mengambil alih,
-    kemudian pastikan cache lama sebelum `relawansync-v27-integritas-operasional-cache` sudah terhapus.
+    kemudian pastikan `relawansync-v31-kontrak-terpadu-cache` aktif dan cache lama sudah terhapus.
 
 ## Smoke test wajib
 
@@ -182,6 +207,12 @@ baru, karena aplikasi ini mewajibkan login.
 - Koordinator hanya melihat serta mengisi lokasi miliknya.
 - Dua pengiriman batch yang sama hanya menghasilkan satu absensi.
 - Relawan baru dan log-nya sama-sama tersimpan atau sama-sama batal.
+- Personel khusus terlihat di Master/Seragam tetapi tidak muncul di Input,
+  Statistik, Dashboard kehadiran, atau Peringkat.
+- Zona, kabupaten, kategori wilayah, ukuran atasan, dan ukuran bawahan konsisten
+  pada Master, detail personel, Peringkat, dan Kontrol Seragam.
+- Ekspor Kontrol Seragam memuat seluruh hasil filter meski jumlahnya lebih dari
+  satu halaman.
 - POST/PATCH/DELETE menampilkan hasil yang sesuai kondisi database.
 - Logout tidak menampilkan data API dari cache saat perangkat offline.
 

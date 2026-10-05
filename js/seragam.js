@@ -17,21 +17,15 @@ const seragamPageSize = 50;
 let seragamTimer = null;
 let stokBatchCounter = 0;
 
-const PROYEK_KHUSUS_SERAGAM = [
-    'Perpustakaan Tashawwuf',
-    "Masjid Raya Fatchan Mubiina Chaddun 'Adhiim",
-    'Monumen Semboyan Sang Mursyid',
-    "Kanal Ta'at",
-    'Gapura Syukur'
-];
+const PROYEK_KHUSUS_SERAGAM = window.RelawanDomain?.PROYEK_KHUSUS || [];
 
-const LABEL_PROSES = {
+const LABEL_PROSES = window.RelawanDomain?.STATUS_SERAGAM || {
     belum_memenuhi: 'Belum memenuhi', memenuhi_syarat: 'Memenuhi syarat',
     direncanakan: 'Direncanakan', menunggu_stok: 'Menunggu stok/ukuran',
     siap_diserahkan: 'Siap diserahkan', sudah_diserahkan: 'Sudah diserahkan'
 };
 
-const LABEL_PENGUASAAN = {
+const LABEL_PENGUASAAN = window.RelawanDomain?.PENGUASAAN_SERAGAM || {
     belum_memiliki: 'Belum memiliki', dipegang_personel: 'Dipegang personel',
     dititipkan_kantor: 'Dititipkan di kantor', perlu_diserahkan_kembali: 'Perlu diserahkan kembali',
     rusak_hilang: 'Rusak/hilang', menunggu_penggantian: 'Menunggu penggantian'
@@ -226,12 +220,7 @@ function labelJalur(value) {
     return { khususul_khusus: '5 Proyek Khususul Khusus', lainnya: 'Proyek Lainnya', zona_4: 'Zona 4' }[value] || '-';
 }
 function labelWilayahSeragam(value) {
-    return {
-        zona_1:'Zona 1 — Jawa Timur & Bali',
-        zona_2:'Zona 2 — Jawa Tengah & DIY',
-        zona_3:'Zona 3 — Jawa Barat, Jakarta & Banten',
-        zona_4:'Zona 4 — Sumatera & Kalimantan'
-    }[value] || 'Zona belum diisi';
+    return window.RelawanDomain?.labelZona(value) || 'Zona belum diisi';
 }
 
 function renderPaginationSeragam(proyekFilter) {
@@ -524,10 +513,36 @@ async function hapusMutasiStok(id) {
     } catch (error) { showToast(error.message || 'Transaksi tidak dapat dihapus.', 'error'); }
 }
 
-function exportSeragamExcel() {
+async function ambilSemuaSeragamUntukExport() {
+    const proyek = document.getElementById('filterProyekSeragam')?.value || 'semua';
+    const proses = document.getElementById('filterProsesSeragam')?.value || 'semua';
+    const penguasaan = document.getElementById('filterPenguasaanSeragam')?.value || 'semua';
+    const cari = (document.getElementById('cariSeragam')?.value || '').trim();
+    const rows = [];
+    let offset = 0;
+    let total = 1;
+    while (offset < total) {
+        const res = await callSupabaseRpc('daftar_seragam_v2', {
+            p_proyek: proyek, p_proses: proses, p_penguasaan: penguasaan,
+            p_cari: cari, p_limit: 100, p_offset: offset
+        });
+        if (res.status !== 'success') throw new Error(res.message || 'Data ekspor seragam gagal dimuat');
+        const pageRows = Array.isArray(res.rows) ? res.rows : [];
+        rows.push(...pageRows);
+        total = Number(res.total || 0);
+        offset += pageRows.length;
+        if (!pageRows.length) break;
+    }
+    return rows;
+}
+
+async function exportSeragamExcel() {
     if (!window.XLSX) { showToast('Pustaka Excel belum termuat. Periksa koneksi lalu muat ulang.', 'error'); return; }
+    let seluruh;
+    try { seluruh = await ambilSemuaSeragamUntukExport(); }
+    catch (error) { showToast(error.message || 'Gagal memuat seluruh data ekspor.', 'error'); return; }
     const book = XLSX.utils.book_new();
-    const penerima = dataStatusSeragam.map(row => ({
+    const penerima = seluruh.map(row => ({
         ID: row.nip, Nama: row.nama,
         Jenis: row.pengecualian_aturan ? 'Personel Khusus' : 'Reguler',
         Organisasi: row.asal_organisasi, Daerah: row.asal_daerah,
@@ -540,11 +555,11 @@ function exportSeragamExcel() {
         'Tanggal Diserahkan': row.tanggal_diserahkan || '',
         'Tanggal Efektif': row.tanggal_efektif_status || '', Catatan: row.catatan || ''
     }));
-    XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(penerima), 'Penerima Halaman Ini');
+    XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(penerima), 'Seluruh Penerima Terfilter');
     XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(dataStokSeragam), 'Saldo Stok');
     XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(dataMutasiStokSeragam), 'Mutasi Terakhir');
     XLSX.writeFile(book, `kontrol-seragam-${new Date().toISOString().slice(0,10)}.xlsx`);
-    showToast('Data penerima pada halaman ini, saldo, dan mutasi diekspor ke Excel.', 'success');
+    showToast(`${penerima.length} penerima terfilter, saldo, dan mutasi diekspor ke Excel.`, 'success');
 }
 
 function cetakSeragamHtml(judul, subjudul, isi) {
@@ -554,8 +569,11 @@ function cetakSeragamHtml(judul, subjudul, isi) {
     popup.document.close();
 }
 
-function exportSeragamPdf() {
-    if (!dataStatusSeragam.length) { showToast('Tidak ada data pada halaman ini untuk diekspor.', 'error'); return; }
-    const body = dataStatusSeragam.map(row => `<tr><td>${escapeHTML(row.nip || '')}</td><td>${escapeHTML(row.nama || '')}</td><td>${row.pengecualian_aturan ? 'Khusus' : (row.memenuhi_syarat ? 'Memenuhi' : 'Belum')}</td><td>${escapeHTML(row.ukuran_atasan || row.ukuran_dibutuhkan || '-')} / ${escapeHTML(row.ukuran_bawahan || '-')}</td><td>${escapeHTML(LABEL_PROSES[row.status_proses] || row.status_proses || '-')}</td><td>${escapeHTML(LABEL_PENGUASAAN[row.status_penguasaan] || row.status_penguasaan || '-')}</td><td>${formatTanggalSeragam(row.tanggal_diserahkan)}</td><td>${escapeHTML(row.catatan || '-')}</td></tr>`).join('');
-    cetakSeragamHtml('Kontrol Seragam', `Halaman ${seragamPage} • ${dataStatusSeragam.length} penerima ditampilkan`, `<table><thead><tr><th>ID</th><th>Nama</th><th>Kelayakan</th><th>Atasan/Bawahan</th><th>Proses</th><th>Keberadaan</th><th>Diserahkan</th><th>Catatan</th></tr></thead><tbody>${body}</tbody></table>`);
+async function exportSeragamPdf() {
+    let seluruh;
+    try { seluruh = await ambilSemuaSeragamUntukExport(); }
+    catch (error) { showToast(error.message || 'Gagal memuat seluruh data ekspor.', 'error'); return; }
+    if (!seluruh.length) { showToast('Tidak ada data sesuai filter untuk diekspor.', 'error'); return; }
+    const body = seluruh.map(row => `<tr><td>${escapeHTML(row.nip || '')}</td><td>${escapeHTML(row.nama || '')}</td><td>${row.pengecualian_aturan ? 'Khusus' : (row.memenuhi_syarat ? 'Memenuhi' : 'Belum')}</td><td>${escapeHTML(row.ukuran_atasan || row.ukuran_dibutuhkan || '-')} / ${escapeHTML(row.ukuran_bawahan || '-')}</td><td>${escapeHTML(LABEL_PROSES[row.status_proses] || row.status_proses || '-')}</td><td>${escapeHTML(LABEL_PENGUASAAN[row.status_penguasaan] || row.status_penguasaan || '-')}</td><td>${formatTanggalSeragam(row.tanggal_diserahkan)}</td><td>${escapeHTML(row.catatan || '-')}</td></tr>`).join('');
+    cetakSeragamHtml('Kontrol Seragam', `${seluruh.length} penerima sesuai filter aktif`, `<table><thead><tr><th>ID</th><th>Nama</th><th>Kelayakan</th><th>Atasan/Bawahan</th><th>Proses</th><th>Keberadaan</th><th>Diserahkan</th><th>Catatan</th></tr></thead><tbody>${body}</tbody></table>`);
 }

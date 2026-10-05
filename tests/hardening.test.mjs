@@ -49,7 +49,7 @@ test('service worker hanya mencache GET dari origin aplikasi', () => {
     assert.doesNotMatch(source, /cache\.put\(event\.request/);
 });
 
-test('frontend memakai CSS produksi lokal dan cache versi 30', () => {
+test('frontend memakai CSS produksi lokal dan cache kontrak terpadu versi 31', () => {
     const htmlFiles = readdirSync(root).filter(name => name.endsWith('.html'));
     for (const file of htmlFiles) {
         const html = read(file);
@@ -57,7 +57,7 @@ test('frontend memakai CSS produksi lokal dan cache versi 30', () => {
         assert.doesNotMatch(html, /cdn\.tailwindcss\.com/, `${file} masih memakai Tailwind CDN`);
         assert.doesNotMatch(html, /tailwind\.config/, `${file} masih membawa konfigurasi runtime`);
     }
-    assert.match(read('sw.js'), /relawansync-v30-peringkat-cepat-cache/);
+    assert.match(read('sw.js'), /relawansync-v31-kontrak-terpadu-cache/);
     assert.match(read('package.json'), /build:css/);
 });
 
@@ -277,7 +277,7 @@ test('fase 7 menyediakan rincian proyek, ringkasan direktori, dan peringatan abs
     assert.match(seragam, /daftar_seragam_v2/);
     assert.match(seragam, /kpiSeragamAbsenLama/);
     assert.match(seragam, /filterProyekSeragam/);
-    assert.match(master, /v_ringkasan_personel/);
+    assert.match(master, /v_personel_terpadu_v3/);
     assert.match(master, /ubahUrutanMaster/);
     assert.match(masterHtml, /ringkasanMasterGlobal/);
     assert.match(masterHtml, /Kehadiran terbanyak/);
@@ -320,7 +320,7 @@ test('fase 9 menyediakan merge checkbox dengan editor profil dan transaksi serve
     assert.match(source, /row_number\(\) OVER/);
     assert.match(source, /log_duplikat_dihapus/);
     assert.match(source, /COMMIT;/);
-    assert.match(master, /callSupabaseRpc\('merge_relawan_tercatat'/);
+    assert.match(master, /callSupabaseRpc\('merge_relawan_terpadu_v3'/);
     assert.match(master, /p_profile:/);
     assert.match(masterHtml, /btnMergeMasterTerpilih/);
     assert.match(masterHtml, /Gabungkan Terpilih/);
@@ -499,5 +499,44 @@ test('fase 19 memulihkan router cepat peringkat tanpa memasukkan personel khusus
     assert.match(source, /NOTIFY pgrst, 'reload schema'/);
     assert.doesNotMatch(peringkat, /Terapkan migrasi Fase 14/);
     assert.match(peringkat, /statement timeout\|57014/);
-    assert.match(sw, /relawansync-v30-peringkat-cepat-cache/);
+    assert.match(sw, /relawansync-v31-kontrak-terpadu-cache/);
+});
+
+test('fase 20 menyeragamkan profil, zona, seragam, sumber frontend, dan export', () => {
+    const sql = read('db/fase20_penyeragaman_sistem.sql');
+    const master = read('js/master.js');
+    const input = read('js/input.js');
+    const dashboard = read('js/dashboard.js');
+    const statistik = read('js/statistik.js');
+    const seragam = read('js/seragam.js');
+    const app = read('js/app.js');
+    const domain = read('js/domain.js');
+
+    assert.match(sql, /backup_fase20_master_relawan_20261005/);
+    assert.match(sql, /ADD COLUMN IF NOT EXISTS ukuran_bawahan_seragam/);
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.wilayah_personel_terpadu/);
+    assert.match(sql, /CREATE OR REPLACE VIEW public\.v_personel_terpadu_v3/);
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.simpan_personel_v3/);
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.merge_relawan_terpadu_v3/);
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.detail_personel_v3/);
+    assert.match(sql, /CREATE OR REPLACE VIEW public\.v_audit_konsistensi_personel_v3/);
+    assert.match(master, /simpan_personel_v3/);
+    assert.match(master, /detail_personel_v3/);
+    assert.match(input, /v_personel_terpadu_v3\?[^'\n]*kategori_personel=eq\.reguler/);
+    assert.match(dashboard, /v_personel_terpadu_v3\?[^'\n]*kategori_personel=eq\.reguler/);
+    assert.match(statistik, /v_personel_terpadu_v3\?[^'\n]*kategori_personel=eq\.reguler/);
+    assert.match(seragam, /ambilSemuaSeragamUntukExport/);
+    assert.match(app, /proses_mutasi_stok_terjadwal/);
+    assert.match(domain, /PROYEK_KHUSUS/);
+    assert.match(domain, /UKURAN_BAWAHAN/);
+
+    for (const page of ['index.html', 'input.html', 'riwayat.html', 'kalender.html', 'statistik.html', 'master.html', 'peringkat.html', 'seragam.html', 'panduan.html']) {
+        const html = read(page);
+        assert.match(html, /<script src="js\/domain\.js"><\/script>/, `${page} belum memuat kontrak domain`);
+        assert.ok(html.indexOf('js/domain.js') < html.indexOf('js/app.js'), `${page}: domain harus dimuat sebelum app`);
+    }
+
+    for (const file of ['js/input.js', 'js/riwayat.js', 'js/seragam.js']) {
+        assert.doesNotMatch(read(file), /v_status_seragam\?/i, `${file} masih memakai view seragam lama`);
+    }
 });

@@ -9,13 +9,7 @@ let peringkatPage = 1;
 const peringkatPageSize = 50;
 let peringkatTimer = null;
 
-const PROYEK_KHUSUS_PERINGKAT = [
-    'Perpustakaan Tashawwuf',
-    "Masjid Raya Fatchan Mubiina Chaddun 'Adhiim",
-    'Monumen Semboyan Sang Mursyid',
-    "Kanal Ta'at",
-    'Gapura Syukur'
-];
+const PROYEK_KHUSUS_PERINGKAT = window.RelawanDomain?.PROYEK_KHUSUS || [];
 
 document.addEventListener('DOMContentLoaded', async () => {
     await siapkanFilterProyekPeringkat();
@@ -106,12 +100,7 @@ function labelKategori(kategori) {
 }
 
 function labelZona(zona) {
-    return {
-        zona_1: 'Zona 1 — Jawa Timur & Bali',
-        zona_2: 'Zona 2 — Jawa Tengah & DIY',
-        zona_3: 'Zona 3 — Jawa Barat, Jakarta & Banten',
-        zona_4: 'Zona 4 — Sumatera & Kalimantan'
-    }[zona] || 'Zona belum diisi';
+    return window.RelawanDomain?.labelZona(zona) || 'Zona belum diisi';
 }
 
 function labelFilterProyekPeringkat(value) {

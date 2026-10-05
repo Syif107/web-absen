@@ -65,13 +65,14 @@ async function loadStatistikData() {
 
     try {
         const [masterRes, logRes] = await Promise.all([
-            supabaseFetchAll('master_relawan?select=*&order=nip.asc'),
+            supabaseFetchAll('v_personel_terpadu_v3?select=*&kategori_personel=eq.reguler&order=nip.asc'),
             supabaseFetchAll(await terapkanFilterLokasi('v_log_absensi_operasional?select=*&terhubung=eq.true&order=id.desc'))
         ]);
 
         if (masterRes.status === "success" && logRes.status === "success") {
             allMasterData = masterRes.data;
-            allLogData = logRes.data;
+            const nipReguler = new Set(allMasterData.map(row => row.nip).filter(Boolean));
+            allLogData = (logRes.data || []).filter(row => nipReguler.has(row.nip));
             computeAll();
         } else {
             showToast("Gagal menarik data dari server", "error");
@@ -119,6 +120,7 @@ function renderSummaryCards() {
 
 function computeVolunteerStats() {
     const map = {};
+    const masterByNip = new Map(allMasterData.map(row => [row.nip, row]));
     const periodePrefix = rekapBulan;
     const logs = periodePrefix
         ? allLogData.filter(l => l.tanggal && l.tanggal.slice(0, 7) === periodePrefix)
@@ -128,10 +130,12 @@ function computeVolunteerStats() {
         const nama = log.nama || '-';
         const identityKey = log.nip || `NAMA:${normalizeNama(nama)}`;
         if (!map[identityKey]) {
+            const profile = masterByNip.get(log.nip) || {};
             map[identityKey] = {
                 nip: log.nip || '',
                 nama: nama,
                 organisasi: log.organisasi || '-',
+                zona: profile.zona_label || window.RelawanDomain?.labelZona(profile.zona_asal) || 'Zona belum diisi',
                 totalHadir: 0,
                 hariSet: new Set(),
                 sesiTerakhir: log.tanggal || '-'
@@ -148,6 +152,7 @@ function computeVolunteerStats() {
         nip: v.nip,
         nama: v.nama,
         organisasi: v.organisasi,
+        zona: v.zona,
         totalHadir: v.totalHadir,
         hariAktif: v.hariSet.size,
         sesiTerakhir: v.sesiTerakhir
@@ -179,7 +184,7 @@ function sortVolunteerStats() {
 }
 
 function updateSortIcons() {
-    ['nama', 'organisasi', 'totalHadir', 'hariAktif', 'sesiTerakhir'].forEach(key => {
+    ['nama', 'organisasi', 'zona', 'totalHadir', 'hariAktif', 'sesiTerakhir'].forEach(key => {
         const icon = document.getElementById(`sort-icon-${key}`);
         if (!icon) return;
         icon.className = 'fa-solid text-[10px] text-slate-400';
@@ -210,7 +215,8 @@ function filterVolunteerTable() {
     } else {
         filteredStats = volunteerStats.filter(v =>
             v.nama.toLowerCase().includes(keyword) ||
-            v.organisasi.toLowerCase().includes(keyword)
+            v.organisasi.toLowerCase().includes(keyword) ||
+            v.zona.toLowerCase().includes(keyword)
         );
     }
     sortVolunteerStats();
@@ -231,7 +237,7 @@ function renderVolunteerTable() {
 
     let html = '';
     if (pageData.length === 0) {
-        html = '<tr><td colspan="6" class="text-center p-8 text-slate-400 font-medium">Tidak ada data ditemukan.</td></tr>';
+        html = '<tr><td colspan="7" class="text-center p-8 text-slate-400 font-medium">Tidak ada data ditemukan.</td></tr>';
     } else {
         pageData.forEach((v, i) => {
             const no = startIdx + i + 1;
@@ -240,6 +246,7 @@ function renderVolunteerTable() {
                     <td class="px-4 py-3 text-center text-slate-500 text-xs">${no}</td>
                     <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">${escapeHTML(v.nama)}</td>
                     <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase">${escapeHTML(v.organisasi)}</td>
+                    <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold">${escapeHTML(v.zona)}</td>
                     <td class="px-4 py-3 text-center"><span class="bg-indigo-100 dark:bg-indigo-500/10 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-200 dark:border-indigo-500/20">${v.totalHadir}</span></td>
                     <td class="px-4 py-3 text-center"><span class="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-black px-3 py-1 rounded-lg text-xs border border-emerald-200 dark:border-emerald-500/20">${v.hariAktif}</span></td>
                     <td class="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs font-semibold">${escapeHTML(v.sesiTerakhir)}</td>
@@ -446,12 +453,13 @@ function exportTableCSV() {
         showToast("Tidak ada data untuk diexport", "error");
         return;
     }
-    const headers = ['No', 'Nama', 'Organisasi', 'Total Hadir', 'Hari Aktif', 'Sesi Terakhir'];
+    const headers = ['No', 'Nama', 'Organisasi', 'Zona', 'Total Hadir', 'Hari Aktif', 'Sesi Terakhir'];
 
     const rows = filteredStats.map((v, i) => [
         i + 1,
         `"${(v.nama || '').replace(/"/g, '""')}"`,
         `"${(v.organisasi || '').replace(/"/g, '""')}"`,
+        `"${(v.zona || '').replace(/"/g, '""')}"`,
         v.totalHadir,
         v.hariAktif,
         v.sesiTerakhir
@@ -494,6 +502,7 @@ function exportTableXLSX() {
         { t: 's', v: 'No' },
         { t: 's', v: 'Nama' },
         { t: 's', v: 'Organisasi' },
+        { t: 's', v: 'Zona' },
         { t: 's', v: 'Total Hadir' },
         { t: 's', v: 'Hari Aktif' },
         { t: 's', v: 'Sesi Terakhir' }
@@ -504,6 +513,7 @@ function exportTableXLSX() {
             { t: 'n', v: i + 1 },
             { t: 's', v: String(v.nama || '') },
             { t: 's', v: String(v.organisasi || '') },
+            { t: 's', v: String(v.zona || '') },
             { t: 'n', v: Number(v.totalHadir) || 0 },
             { t: 'n', v: Number(v.hariAktif) || 0 },
             { t: 's', v: String(v.sesiTerakhir || '-') }
@@ -512,7 +522,7 @@ function exportTableXLSX() {
 
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = [
-        { wch: 5 }, { wch: 30 }, { wch: 25 }, { wch: 11 }, { wch: 10 }, { wch: 14 }
+        { wch: 5 }, { wch: 30 }, { wch: 25 }, { wch: 32 }, { wch: 11 }, { wch: 10 }, { wch: 14 }
     ];
 
     const wb = XLSX.utils.book_new();

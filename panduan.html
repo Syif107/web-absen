@@ -146,15 +146,16 @@
                         <i class="fa-solid fa-compass"></i><span class="text-xs font-black uppercase tracking-wider">0. Pengantar</span>
                     </div>
                     <h3 class="text-slate-800 dark:text-slate-100">Alur kerja aplikasi</h3>
-                    <p class="text-sm text-slate-600 dark:text-slate-400">RelawanSync V2 mengelola kehadiran relawan lapangan dalam 5 langkah utama:</p>
+                    <p class="text-sm text-slate-600 dark:text-slate-400">RelawanSync V2 mengelola personel, kehadiran, peringkat, dan seragam dalam satu alur data:</p>
                     <ol class="text-sm text-slate-700 dark:text-slate-300 font-medium">
                         <li data-step="1"><strong>Input</strong> — tempel (paste) kiriman laporan absen dari WhatsApp/Excel di halaman <em>Validasi Absensi</em>.</li>
                         <li data-step="2"><strong>Validasi</strong> — sistem mencocokkan nama ke Master Data, menandai <em>Mirip / Baru / Duplikat</em>, admin memperbaiki sebelum kirim.</li>
-                        <li data-step="3"><strong>Penyimpanan</strong> — data masuk tabel log absensi; relawan baru otomatis terdaftar di Master.</li>
+                        <li data-step="3"><strong>Penyimpanan</strong> — data masuk log kehadiran; personel reguler baru otomatis terdaftar di Master.</li>
                         <li data-step="4"><strong>Pelaporan</strong> — cek <em>Riwayat</em>, <em>Kalender</em>, <em>Statistik</em>; cetak atau export laporan kapan saja.</li>
                         <li data-step="5"><strong>Rekap WA</strong> — dari Dashboard, buat ringkasan kehadiran harian siap kirim ke grup WhatsApp.</li>
                     </ol>
                     <div class="rounded-xl border border-indigo-100 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 p-3 text-xs text-slate-600 dark:text-slate-300"><strong class="text-indigo-700 dark:text-indigo-300">Pembagian menu:</strong> Master Data mengurus identitas dan wilayah, Peringkat & Reward mengurus kelayakan/urutan, sedangkan Kontrol Seragam mengurus stok dan penyerahan. Ketiganya sengaja dipisah agar petugas tidak mencampur edit profil dengan transaksi seragam.</div>
+                    <div class="rounded-xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 p-3 text-xs text-slate-600 dark:text-slate-300"><strong class="text-emerald-700 dark:text-emerald-300">Aturan terpadu:</strong> kabupaten/kota menentukan Zona 1–4 secara konsisten; ukuran atasan dan bawahan yang diedit dari Master atau Kontrol Seragam tetap sama. Personel khusus tetap dikelola di Master dan dapat menerima seragam, tetapi tidak masuk input absensi normal, statistik kehadiran, atau ranking.</div>
                 </section>
 
                 <!-- 1. AKSES & LOGIN -->
@@ -193,7 +194,7 @@
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Top 10 Instansi</td><td class="px-3 py-2">Klik batang grafik untuk melihat personel instansi tersebut pada bulan terpilih.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Konsentrasi Lokasi</td><td class="px-3 py-2">Klik potongan donat untuk melacak relawan yang bertugas di lokasi proyek itu.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Live Feed Harian</td><td class="px-3 py-2">Daftar kehadiran khusus hari ini, tampil otomatis.</td></tr>
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Top Relawan</td><td class="px-3 py-2">9 relawan teratas + tombol <strong>Lihat Semua Peringkat</strong>; filter per lokasi tersedia.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Top Personel</td><td class="px-3 py-2">9 personel reguler teratas + tombol <strong>Lihat Semua Peringkat</strong>; filter per lokasi tersedia.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Rekap WA</td><td class="px-3 py-2">Tombol hijau kanan atas → pilih tanggal → centang "Sertakan daftar nama" → <strong>Buat Rekap</strong> → <strong>Salin</strong> / <strong>Kirim via WA</strong>.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Segarkan Data</td><td class="px-3 py-2">Tarik ulang data terbaru dari server.</td></tr>
                             </tbody>
@@ -279,7 +280,7 @@
                             </thead>
                             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Kartu Ringkasan</td><td class="px-3 py-2">Total kehadiran, relawan aktif, dan ikhtisar lain sesuai filter bulan/lokasi.</td></tr>
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Rekap Per Relawan</td><td class="px-3 py-2">Pilih bulan, cari nama, klik judul kolom untuk mengurutkan (total kehadiran, % hadir, dst).</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Rekap Per Personel</td><td class="px-3 py-2">Pilih bulan, cari nama/zona, klik judul kolom untuk mengurutkan (total kehadiran, hari aktif, zona, dan seterusnya).</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Chart</td><td class="px-3 py-2">Rekap organisasi/instansi, distribusi sesi Pagi–Malam, dan tren 6 bulan terakhir.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Export CSV / XLSX</td><td class="px-3 py-2">Unduh tabel statistik yang sedang tampil (flat, tanpa perhitungan %).</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Export Rekap</td><td class="px-3 py-2">Tombol <strong>Export Rekap</strong> → tentukan <strong>rentang bulan (dari–sampai)</strong> + <strong>lokasi</strong> → pilih <strong>dasar peringkat</strong> (Total Kehadiran atau % Hadir) → lihat pratinjau → <strong>Export Excel</strong>.</td></tr>
@@ -304,7 +305,7 @@
                     <div class="flex items-center gap-2 text-primary">
                         <i class="fa-solid fa-database"></i><span class="text-xs font-black uppercase tracking-wider">7. Master Data</span>
                     </div>
-                    <h3 class="text-slate-800 dark:text-slate-100">Database relawan (<code>master.html</code>)</h3>
+                    <h3 class="text-slate-800 dark:text-slate-100">Master data personel (<code>master.html</code>)</h3>
                     <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/50">
                         <table class="w-full text-left text-xs kisi-table">
                             <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold">
@@ -312,11 +313,12 @@
                             </thead>
                             <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-700 dark:text-slate-300">
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Import CSV</td><td class="px-3 py-2">Unggah file CSV (kolom: NIP, Nama, Bidang, Organisasi, dsb.) → preview → sistem menandai baris duplikat sebelum disimpan.</td></tr>
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Edit & Hapus</td><td class="px-3 py-2">Tombol <strong>Edit</strong> membuka seluruh profil: nama, asal organisasi, jabatan, kabupaten/kota asal, kategori wilayah, ukuran, dan catatan. Hapus satu atau massal hanya bila benar-benar yakin.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Edit & Hapus</td><td class="px-3 py-2">Tombol <strong>Edit</strong> membuka seluruh profil: nama, asal organisasi, jabatan, jenis reguler/khusus, kabupaten/kota, zona, ukuran atasan, ukuran bawahan, dan catatan. Hapus satu atau massal hanya bila benar-benar yakin.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Rapikan Master</td><td class="px-3 py-2">Nama identik setelah huruf besar/kecil dan tanda baca dinormalisasi dapat digabung otomatis hanya jika kabupatennya sama. Bidang boleh berbeda. Perbedaan satu huruf hanya ditampilkan untuk tinjauan manual.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Merge dari Checkbox</td><td class="px-3 py-2">Centang minimal dua profil → klik <strong>Gabungkan Terpilih</strong> → pilih ID utama → atur nama, organisasi, jabatan, daerah, kategori wilayah, ukuran, dan catatan hasil akhir. Gunakan hanya setelah memastikan semua pilihan adalah orang yang sama.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Pusat & Jabatan</td><td class="px-3 py-2"><strong>PUSAT</strong> masuk kategori Jombang, tetapi DPD JOMBANG/Jombang tidak otomatis Pusat. Istilah <strong>PJ</strong> dan <strong>Admin</strong> disatukan menjadi <strong>PJ / Admin</strong>.</td></tr>
-                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Filter & Sort</td><td class="px-3 py-2">Gunakan pencarian, filter judul kolom, serta urutan nama, kehadiran, persentase, tanggal pertama, atau ID. Kartu <strong>Belum diisi</strong> menampilkan data wilayah yang perlu dilengkapi.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Filter & Sort</td><td class="px-3 py-2">Gunakan pencarian, filter judul kolom, serta urutan nama, kehadiran, persentase, tanggal pertama, atau ID. Klik kartu Zona 1–4 untuk menyaring langsung; kartu <strong>Zona belum diisi</strong> menampilkan data yang perlu dilengkapi.</td></tr>
+                                <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Detail Terpadu</td><td class="px-3 py-2">Ikon mata menampilkan profil, zona, ukuran/status seragam, lokasi proyek, serta tanggal kehadiran pertama dan terakhir.</td></tr>
                                 <tr><td class="px-3 py-2 font-bold whitespace-nowrap">Batas Tampil</td><td class="px-3 py-2">Atur jumlah baris per halaman + paginasi (Sebelumnya / Berikutnya).</td></tr>
                             </tbody>
                         </table>
@@ -343,12 +345,14 @@
                     <h3 class="text-slate-800 dark:text-slate-100">Stok, penyerahan, dan penitipan (<code>seragam.html</code>)</h3>
                     <ul class="text-sm text-slate-600 dark:text-slate-300 space-y-2 list-disc pl-5">
                         <li>Masukkan stok melalui <strong>Kelola Stok</strong>: pilih atasan atau bawahan, ukuran, jenis transaksi, jumlah, dan catatan. Saldo tidak ditimpa; setiap perubahan masuk riwayat mutasi.</li>
+                        <li>Tambahkan beberapa baris stok sekaligus dan tentukan tanggal efektif masa lalu, hari ini, atau masa depan. Transaksi masa depan diproses otomatis saat admin membuka salah satu menu.</li>
                         <li>Atasan memakai ukuran huruf (S, M, L, XL, dan seterusnya), sedangkan bawahan memakai nomor. Penyerahan baru wajib satu set dan mengurangi masing-masing satu stok secara bersamaan.</li>
                         <li>Untuk seragam yang sudah telanjur dibagikan, centang <strong>pencatatan seragam lama</strong> agar stok kantor tidak berkurang.</li>
                         <li>Personel luar Jombang dan Zona 4 wajib tercatat <strong>Dititipkan di kantor</strong> saat meninggalkan proyek.</li>
                         <li>Gunakan filter proyek untuk melihat penerima terkait; penerima yang sudah diserahi seragam tetapi absen lebih dari 30 hari diberi peringatan merah.</li>
                         <li>Ketika mereka kembali hadir, sistem menampilkan pengingat tanpa menghambat petugas mencatat absensi.</li>
                         <li>Setiap perubahan status disimpan di riwayat audit.</li>
+                        <li>Export Excel/PDF memuat seluruh penerima sesuai filter aktif, bukan hanya halaman 50 baris yang sedang terlihat.</li>
                     </ul>
                 </section>
 
@@ -443,6 +447,7 @@
     </nav>
 
     <script src="js/supabase-config.js"></script>
+    <script src="js/domain.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

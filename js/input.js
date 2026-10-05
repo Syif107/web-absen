@@ -125,7 +125,7 @@ function hapusDraft() {
 
 async function loadMasterDataUntukStaging() {
     try {
-        const res = await supabaseFetchAll('master_relawan?select=nip,nama,jabatan,asal_organisasi&order=nip.asc');
+        const res = await supabaseFetchAll('v_personel_terpadu_v3?select=nip,nama,jabatan,asal_organisasi,zona_asal,kategori_personel&kategori_personel=eq.reguler&order=nip.asc');
         if (res.status === "success") {
             masterDataCache = res.data;
             bangunSetDikenal();
@@ -845,7 +845,7 @@ async function submitDataToServer() {
             if (arrayDataMasterBaru.length > 0) {
                 const resMaster = await supabaseFetch('master_relawan', 'POST', arrayDataMasterBaru);
                 if (resMaster.status !== 'success') {
-                    throw new Error(resMaster.message || 'Gagal menyimpan relawan baru ke Master Data.');
+                    throw new Error(resMaster.message || 'Gagal menyimpan personel baru ke Master Data.');
                 }
             }
             resRpc = await callSupabaseRpc('insert_absensi_batch', {
@@ -864,7 +864,7 @@ async function submitDataToServer() {
 
             let pesanBerhasil = `${inserted} data absensi berhasil dicatat!`;
             if (skipped > 0) pesanBerhasil += ` (${skipped} dilewati karena sudah ada).`;
-            if (masterInserted > 0) pesanBerhasil += ` ${masterInserted} relawan baru ditambahkan ke Master Data.`;
+            if (masterInserted > 0) pesanBerhasil += ` ${masterInserted} personel baru ditambahkan ke Master Data.`;
             if (masterSkipped > 0) pesanBerhasil += ` ${masterSkipped} data Master sudah ada dan dilewati.`;
             showToast(pesanBerhasil, "success");
 
@@ -894,7 +894,7 @@ async function cekNotifikasiPengembalianSetelahAbsen(nipList) {
     try {
         const target = new Set((nipList || []).filter(Boolean));
         if (!target.size) return;
-        const res = await supabaseFetchAll('v_status_seragam?select=nip,nama&notifikasi_pengembalian=eq.true');
+        const res = await supabaseFetchAll('v_status_seragam_set_v2?select=nip,nama&notifikasi_pengembalian=eq.true');
         if (res.status !== 'success') return;
         const perluKembali = (res.data || []).filter(row => target.has(row.nip));
         if (!perluKembali.length) return;

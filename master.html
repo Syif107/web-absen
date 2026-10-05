@@ -73,7 +73,7 @@
                     <i class="fa-solid fa-bars text-lg"></i>
                 </button>
                 <div>
-                    <h1 class="text-lg font-extrabold text-slate-800 dark:text-slate-100 leading-none mt-1">Database Relawan</h1>
+                    <h1 class="text-lg font-extrabold text-slate-800 dark:text-slate-100 leading-none mt-1">Master Data Personel</h1>
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">Manajemen Entitas Data</p>
                 </div>
             </div>
@@ -116,18 +116,18 @@
                 </select>
                 <div class="relative flex-1 md:w-64">
                     <i class="fa-solid fa-search absolute left-3 top-2.5 text-slate-400"></i>
-                    <input type="text" id="cariData" onkeyup="filterTabelMaster()" placeholder="Cari nama relawan..." class="pl-9 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary w-full bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-sm">
+                    <input type="text" id="cariData" onkeyup="filterTabelMaster()" placeholder="Cari nama, ID, organisasi, zona, atau ukuran..." class="pl-9 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary w-full bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-sm">
                 </div>
             </div>
         </header>
 
         <div class="flex-1 overflow-auto p-4 lg:p-6 custom-scroll">
             <div class="max-w-[1400px] mx-auto grid grid-cols-2 md:grid-cols-6 gap-3 mb-4">
-                <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-indigo-200 dark:border-indigo-500/30 shadow-sm"><p class="text-[10px] font-black uppercase text-indigo-600">Global</p><p id="ringkasanMasterGlobal" class="text-2xl font-black mt-1">0</p><p class="text-[10px] text-slate-400">seluruh personel</p></div>
-                <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-blue-200 dark:border-blue-500/30 shadow-sm"><p class="text-[10px] font-black uppercase text-blue-600">Zona 1</p><p id="ringkasanMasterZona1" class="text-2xl font-black mt-1">0</p><p class="text-[10px] text-slate-400">Jawa Timur, Bali</p></div>
-                <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-cyan-200 dark:border-cyan-500/30 shadow-sm"><p class="text-[10px] font-black uppercase text-cyan-600">Zona 2</p><p id="ringkasanMasterZona2" class="text-2xl font-black mt-1">0</p><p class="text-[10px] text-slate-400">Jawa Tengah, DIY</p></div>
-                <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-fuchsia-200 dark:border-fuchsia-500/30 shadow-sm"><p class="text-[10px] font-black uppercase text-fuchsia-600">Zona 3</p><p id="ringkasanMasterZona3" class="text-2xl font-black mt-1">0</p><p class="text-[10px] text-slate-400">Jabar, Jakarta, Banten</p></div>
-                <div class="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-violet-200 dark:border-violet-500/30 shadow-sm"><p class="text-[10px] font-black uppercase text-violet-600">Zona 4</p><p id="ringkasanMasterZona4" class="text-2xl font-black mt-1">0</p><p class="text-[10px] text-slate-400">Sumatera, Kalimantan</p></div>
+                <div onclick="filterMasterZona('')" class="cursor-pointer bg-white dark:bg-slate-800 rounded-2xl p-4 border border-indigo-200 dark:border-indigo-500/30 shadow-sm hover:border-indigo-400 transition-colors" title="Klik untuk menampilkan seluruh zona"><p class="text-[10px] font-black uppercase text-indigo-600">Global</p><p id="ringkasanMasterGlobal" class="text-2xl font-black mt-1">0</p><p class="text-[10px] text-slate-400">seluruh personel</p></div>
+                <div onclick="filterMasterZona('zona_1')" class="cursor-pointer bg-white dark:bg-slate-800 rounded-2xl p-4 border border-blue-200 dark:border-blue-500/30 shadow-sm hover:border-blue-400 transition-colors" title="Klik untuk menyaring Zona 1"><p class="text-[10px] font-black uppercase text-blue-600">Zona 1</p><p id="ringkasanMasterZona1" class="text-2xl font-black mt-1">0</p><p class="text-[10px] text-slate-400">Jawa Timur, Bali</p></div>
+                <div onclick="filterMasterZona('zona_2')" class="cursor-pointer bg-white dark:bg-slate-800 rounded-2xl p-4 border border-cyan-200 dark:border-cyan-500/30 shadow-sm hover:border-cyan-400 transition-colors" title="Klik untuk menyaring Zona 2"><p class="text-[10px] font-black uppercase text-cyan-600">Zona 2</p><p id="ringkasanMasterZona2" class="text-2xl font-black mt-1">0</p><p class="text-[10px] text-slate-400">Jawa Tengah, DIY</p></div>
+                <div onclick="filterMasterZona('zona_3')" class="cursor-pointer bg-white dark:bg-slate-800 rounded-2xl p-4 border border-fuchsia-200 dark:border-fuchsia-500/30 shadow-sm hover:border-fuchsia-400 transition-colors" title="Klik untuk menyaring Zona 3"><p class="text-[10px] font-black uppercase text-fuchsia-600">Zona 3</p><p id="ringkasanMasterZona3" class="text-2xl font-black mt-1">0</p><p class="text-[10px] text-slate-400">Jabar, Jakarta, Banten</p></div>
+                <div onclick="filterMasterZona('zona_4')" class="cursor-pointer bg-white dark:bg-slate-800 rounded-2xl p-4 border border-violet-200 dark:border-violet-500/30 shadow-sm hover:border-violet-400 transition-colors" title="Klik untuk menyaring Zona 4"><p class="text-[10px] font-black uppercase text-violet-600">Zona 4</p><p id="ringkasanMasterZona4" class="text-2xl font-black mt-1">0</p><p class="text-[10px] text-slate-400">Sumatera, Kalimantan</p></div>
                 <div onclick="filterMasterWilayahKosong()" class="cursor-pointer bg-white dark:bg-slate-800 rounded-2xl p-4 border border-rose-200 dark:border-rose-500/30 shadow-sm hover:border-rose-400 transition-colors" title="Klik untuk menampilkan data yang belum dilengkapi"><p class="text-[10px] font-black uppercase text-rose-600">Zona belum diisi</p><p id="ringkasanMasterBelum" class="text-2xl font-black mt-1">0</p><p class="text-[10px] text-slate-400">klik untuk melengkapi</p></div>
             </div>
             <div class="max-w-[1400px] mx-auto bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 flex flex-col h-full max-h-[80vh] fade-in">
@@ -165,7 +165,7 @@
                                 </th>
                                 <th class="px-4 py-3 text-xs uppercase tracking-wide min-w-[180px] relative">
                                     <div class="flex items-center justify-between gap-2">
-                                        <span>Nama Relawan</span>
+                                        <span>Nama Personel</span>
                                         <button onclick="bukaExcelFilterMaster('nama', event)" class="text-slate-400 hover:text-primary p-1 rounded transition-colors"><i class="fa-solid fa-filter text-xs"></i></button>
                                     </div>
                                 </th>
@@ -374,9 +374,15 @@
                                 </select>
                             </div>
                             <div>
-                                <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Ukuran Seragam</label>
+                                <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Ukuran Atasan</label>
                                 <select id="mergeUkuranSeragam" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm font-semibold outline-none focus:border-amber-500">
                                     <option value="">Belum diketahui</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>XXXL</option><option>Khusus</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Ukuran Bawahan</label>
+                                <select id="mergeUkuranBawahan" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm font-semibold outline-none focus:border-amber-500">
+                                    <option value="">Belum diketahui</option><option>20</option><option>22</option><option>24</option><option>26</option><option>28</option><option>30</option><option>32</option><option>34</option><option>36</option><option>38</option><option>40</option><option>Khusus</option>
                                 </select>
                             </div>
                             <div class="sm:col-span-2">
@@ -456,9 +462,15 @@
                         </select>
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Ukuran Seragam</label>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Ukuran Atasan</label>
                         <select id="editUkuranSeragam" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
                             <option value="">Belum diketahui</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option><option>XXXL</option><option>Khusus</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Ukuran Bawahan</label>
+                        <select id="editUkuranBawahan" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
+                            <option value="">Belum diketahui</option><option>20</option><option>22</option><option>24</option><option>26</option><option>28</option><option>30</option><option>32</option><option>34</option><option>36</option><option>38</option><option>40</option><option>Khusus</option>
                         </select>
                     </div>
                     <div>
@@ -627,6 +639,7 @@
     
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="js/supabase-config.js"></script>
+    <script src="js/domain.js"></script>
     <script src="js/app.js"></script>
     <script src="js/master.js"></script>
 </body>

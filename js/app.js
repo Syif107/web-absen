@@ -167,6 +167,14 @@ async function applyAccessUi() {
             setTimeout(() => window.location.replace('peringkat.html'), 700);
         }
     }
+
+    // Transaksi stok yang dijadwalkan harus diproses saat admin membuka menu
+    // mana pun, bukan hanya ketika halaman Kontrol Seragam dibuka.
+    if (akses.role === 'admin' && typeof callSupabaseRpc === 'function') {
+        callSupabaseRpc('proses_mutasi_stok_terjadwal', {}).catch(error => {
+            console.warn('Proses stok terjadwal belum dapat dijalankan:', error);
+        });
+    }
 }
 
 // ==========================================

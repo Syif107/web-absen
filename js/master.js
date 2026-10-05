@@ -93,12 +93,14 @@ function kategoriWilayahEfektif(row) {
     return row?.kategori_wilayah || 'belum_dilengkapi';
 }
 
-const LABEL_ZONA_MASTER = {
-    zona_1: 'Zona 1',
-    zona_2: 'Zona 2',
-    zona_3: 'Zona 3',
-    zona_4: 'Zona 4'
-};
+const LABEL_ZONA_MASTER = Object.fromEntries(
+    Object.entries(globalThis.RelawanDomain?.ZONA || {
+        zona_1: { label: 'Zona 1 — Jawa Timur & Bali' },
+        zona_2: { label: 'Zona 2 — Jawa Tengah & DIY' },
+        zona_3: { label: 'Zona 3 — Jawa Barat, Jakarta & Banten' },
+        zona_4: { label: 'Zona 4 — Sumatera & Kalimantan' }
+    }).map(([key, value]) => [key, value.label])
+);
 
 function zonaAsalEfektif(row) {
     const zona = String(row?.zona_asal || '').trim().toLowerCase();
@@ -153,23 +155,14 @@ document.addEventListener('keydown', event => {
 // 1. Tarik Data Master Sekali di Awal
 async function loadMasterData() {
     try {
-        const [res, ringkasanRes] = await Promise.all([
-            supabaseFetchAll('master_relawan?select=*&order=nip.asc'),
-            supabaseFetchAll('v_ringkasan_personel?select=*&order=nama.asc')
-        ]);
-        if (ringkasanRes.status === "success") {
-            masterData = Array.isArray(ringkasanRes.data) ? ringkasanRes.data : [];
+        const res = await supabaseFetchAll('v_personel_terpadu_v3?select=*&order=nama.asc');
+        if (res.status === "success") {
+            masterData = Array.isArray(res.data) ? res.data : [];
             renderRingkasanMaster();
-            document.getElementById('totalMasterInfo').innerText = `Total: ${masterData.length} Relawan`;
-            
-            terapkanFilterDanPaginasi();
-        } else if (res.status === "success") {
-            masterData = res.data || [];
-            renderRingkasanMaster();
-            document.getElementById('totalMasterInfo').innerText = `Total: ${masterData.length} Relawan`;
+            document.getElementById('totalMasterInfo').innerText = `Total: ${masterData.length} Personel`;
             terapkanFilterDanPaginasi();
         } else {
-            showToast("Gagal mengambil data master.", "error");
+            showToast(res.message || "Gagal mengambil data Master terpadu. Pastikan Fase 20 sudah diterapkan.", "error");
         }
     } catch (err) {
         showToast("Terjadi kesalahan jaringan.", "error");
@@ -208,6 +201,10 @@ function terapkanFilterDanPaginasi() {
         (r.jabatan_khusus && r.jabatan_khusus.toLowerCase().includes(keyword)) ||
         (kategoriWilayahEfektif(r) && kategoriWilayahEfektif(r).toLowerCase().includes(keyword)) ||
         (zonaAsalEfektif(r) && zonaAsalEfektif(r).includes(keyword)) ||
+        ((LABEL_ZONA_MASTER[zonaAsalEfektif(r)] || '').toLowerCase().includes(keyword)) ||
+        (r.ukuran_atasan_efektif && String(r.ukuran_atasan_efektif).toLowerCase().includes(keyword)) ||
+        (r.ukuran_bawahan_efektif && String(r.ukuran_bawahan_efektif).toLowerCase().includes(keyword)) ||
+        (r.status_seragam && String(r.status_seragam).toLowerCase().includes(keyword)) ||
         (r.nip && r.nip.toLowerCase().includes(keyword))
     );
 
@@ -285,12 +282,13 @@ function renderTabelMaster(data) {
         const namaAttr = escapeAttribute(r.nama);
         const bidangAttr = escapeAttribute(normalisasiJabatanMaster(r.jabatan));
         const orgAttr = escapeAttribute(r.asal_organisasi);
-        const daerahAttr = escapeAttribute(r.asal_daerah);
+        const daerahAttr = escapeAttribute(r.kabupaten_normalisasi || r.asal_daerah);
         const kategoriEfektif = kategoriWilayahEfektif(r);
         const kategoriAttr = escapeAttribute(kategoriEfektif);
         const zonaEfektif = zonaAsalEfektif(r);
         const zonaAttr = escapeAttribute(zonaEfektif);
         const ukuranAttr = escapeAttribute(r.ukuran_seragam);
+        const ukuranBawahanAttr = escapeAttribute(r.ukuran_bawahan_efektif || r.ukuran_bawahan_seragam || '');
         const catatanSeragamAttr = escapeAttribute(r.catatan_seragam);
         const kategoriPersonelAttr = escapeAttribute(r.kategori_personel || 'reguler');
         const jabatanKhususAttr = escapeAttribute(r.jabatan_khusus || '');
@@ -299,8 +297,8 @@ function renderTabelMaster(data) {
         const namaTampil = escapeHTML(r.nama);
         const orgTampil = escapeHTML(r.asal_organisasi);
         const bidangTampil = escapeHTML(normalisasiJabatanMaster(r.jabatan));
-        const daerahTampil = escapeHTML(r.asal_daerah || 'Belum diisi');
-        const ukuranTampil = escapeHTML(r.ukuran_seragam || '-');
+        const daerahTampil = escapeHTML(r.kabupaten_normalisasi || r.asal_daerah || 'Belum diisi');
+        const ukuranTampil = escapeHTML(`${r.ukuran_atasan_efektif || r.ukuran_seragam || '-'} / ${r.ukuran_bawahan_efektif || r.ukuran_bawahan_seragam || '-'}`);
         const labelWilayah = {
             jombang: 'Jombang',
             luar_jombang: 'Luar Jombang',
@@ -335,7 +333,7 @@ function renderTabelMaster(data) {
                 <td class="px-5 py-3 text-center">
                     <div class="flex items-center justify-center gap-2">
                         <button onclick="bukaDetailPersonelDariTombol(this)" data-nip="${nipAttr}" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-indigo-200 shadow-sm" title="Lihat lokasi dan tanggal kehadiran"><i class="fa-solid fa-eye"></i></button>
-                        <button onclick="bukaModalEditDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" data-bidang="${bidangAttr}" data-org="${orgAttr}" data-daerah="${daerahAttr}" data-kategori-wilayah="${kategoriAttr}" data-zona-asal="${zonaAttr}" data-ukuran="${ukuranAttr}" data-catatan-seragam="${catatanSeragamAttr}" data-kategori-personel="${kategoriPersonelAttr}" data-jabatan-khusus="${jabatanKhususAttr}" data-alasan-khusus="${alasanKhususAttr}" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
+                        <button onclick="bukaModalEditDariTombol(this)" data-nip="${nipAttr}" data-nama="${namaAttr}" data-bidang="${bidangAttr}" data-org="${orgAttr}" data-daerah="${daerahAttr}" data-kategori-wilayah="${kategoriAttr}" data-zona-asal="${zonaAttr}" data-ukuran="${ukuranAttr}" data-ukuran-bawahan="${ukuranBawahanAttr}" data-catatan-seragam="${catatanSeragamAttr}" data-kategori-personel="${kategoriPersonelAttr}" data-jabatan-khusus="${jabatanKhususAttr}" data-alasan-khusus="${alasanKhususAttr}" class="bg-blue-100 text-blue-700 hover:bg-blue-200 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors border border-blue-200 shadow-sm flex items-center gap-1" title="Edit Data">
                             <i class="fa-solid fa-pen-to-square"></i> Edit
                         </button>
                         ${mergeAction}
@@ -581,18 +579,19 @@ async function gabungkanKelompokAman(index, tampilkanKonfirmasi = true) {
     if (!target || !sources.length) return { berhasil: 0, gagal: 0 };
     if (tampilkanKonfirmasi && !confirm(`Gabungkan ${sources.length} profil duplikat untuk ${target.nama} dari ${target.asal_organisasi}?\n\nNIP ${target.nip} dipertahankan. Data sumber dipindahkan ke profil utama dan salinan sebelum merge disimpan agar dapat dipisahkan kembali.`)) return { dibatalkan: true };
     try {
-        const res = await callSupabaseRpc('merge_relawan_tercatat', {
+        const res = await callSupabaseRpc('merge_relawan_terpadu_v3', {
             p_nips: group.rows.map(row => row.nip),
             p_target_nip: target.nip,
             p_profile: {
                 nama: rapikanNamaMaster(target.nama),
                 asal_organisasi: rapikanOrganisasiMaster(target.asal_organisasi),
                 jabatan: normalisasiJabatanMaster(target.jabatan),
-                asal_daerah: target.asal_daerah || null,
+                asal_daerah: target.kabupaten_normalisasi || target.asal_daerah || null,
                 kabupaten_normalisasi: kabupatenMaster(target) || null,
                 kategori_wilayah: kategoriWilayahEfektif(target),
                 zona_asal: zonaAsalEfektif(target) || null,
                 ukuran_seragam: target.ukuran_seragam || null,
+                ukuran_bawahan_seragam: target.ukuran_bawahan_efektif || target.ukuran_bawahan_seragam || null,
                 catatan_seragam: target.catatan_seragam || null
             },
             p_alasan: 'Nama identik dan kabupaten sama'
@@ -849,6 +848,18 @@ function filterMasterWilayahKosong() {
     showToast('Menampilkan personel yang zona asalnya belum dilengkapi.', 'info');
 }
 
+function filterMasterZona(zona) {
+    isNewestFilter = false;
+    const limit = document.getElementById('limitData');
+    if (limit) limit.value = '50';
+    rowsPerPage = 50;
+    if (zona) activeExcelFilters.zona_asal = [zona];
+    else delete activeExcelFilters.zona_asal;
+    currentPage = 1;
+    terapkanFilterDanPaginasi();
+    showToast(zona ? `Menampilkan ${LABEL_ZONA_MASTER[zona] || zona}.` : 'Menampilkan seluruh zona.', 'info');
+}
+
 function deleteSingleMasterDariTombol(button) {
     deleteSingleMaster(button.dataset.nip || '', button.dataset.nama || '');
 }
@@ -932,6 +943,7 @@ function bukaModalEditDariTombol(button) {
         button.dataset.kategoriWilayah || 'belum_dilengkapi',
         button.dataset.zonaAsal || '',
         button.dataset.ukuran || '',
+        button.dataset.ukuranBawahan || '',
         button.dataset.catatanSeragam || '',
         button.dataset.kategoriPersonel || 'reguler',
         button.dataset.jabatanKhusus || '',
@@ -939,7 +951,7 @@ function bukaModalEditDariTombol(button) {
     );
 }
 
-function bukaModalEdit(nip, nama, bidang, org, daerah = '', kategoriWilayah = 'belum_dilengkapi', zonaAsal = '', ukuran = '', catatanSeragam = '', kategoriPersonel = 'reguler', jabatanKhusus = '', alasanKhusus = '') {
+function bukaModalEdit(nip, nama, bidang, org, daerah = '', kategoriWilayah = 'belum_dilengkapi', zonaAsal = '', ukuran = '', ukuranBawahan = '', catatanSeragam = '', kategoriPersonel = 'reguler', jabatanKhusus = '', alasanKhusus = '') {
     currentEditMode = 'edit';
     currentEditNip = nip;
     document.getElementById('judulModalEdit').innerHTML = '<i class="fa-solid fa-pen-to-square mr-2"></i>Edit Data Personel';
@@ -957,6 +969,7 @@ function bukaModalEdit(nip, nama, bidang, org, daerah = '', kategoriWilayah = 'b
         : (kategoriWilayah || 'belum_dilengkapi');
     document.getElementById('editZonaAsal').value = zonaAsal || '';
     document.getElementById('editUkuranSeragam').value = ukuran;
+    document.getElementById('editUkuranBawahan').value = ukuranBawahan;
     document.getElementById('editCatatanSeragam').value = catatanSeragam;
     document.getElementById('editKategoriPersonel').value = kategoriPersonel || 'reguler';
     document.getElementById('editJabatanKhusus').value = jabatanKhusus;
@@ -980,6 +993,7 @@ function bukaModalTambahPersonel() {
     document.getElementById('editKategoriWilayah').value = 'belum_dilengkapi';
     document.getElementById('editZonaAsal').value = '';
     document.getElementById('editUkuranSeragam').value = '';
+    document.getElementById('editUkuranBawahan').value = '';
     document.getElementById('editKategoriPersonel').value = 'reguler';
     ubahKategoriPersonelEdit();
     document.getElementById('modalEdit').classList.remove('hidden');
@@ -1013,13 +1027,14 @@ async function simpanEditMaster() {
             ? 'jombang'
             : document.getElementById('editKategoriWilayah').value;
     const ukuranSeragamBaru = document.getElementById('editUkuranSeragam').value;
+    const ukuranBawahanBaru = document.getElementById('editUkuranBawahan').value;
     const catatanSeragamBaru = document.getElementById('editCatatanSeragam').value.trim();
     const kategoriPersonelBaru = document.getElementById('editKategoriPersonel').value;
     const jabatanKhususBaru = document.getElementById('editJabatanKhusus').value.trim();
     const alasanKhususBaru = document.getElementById('editAlasanKhusus').value.trim();
     
     if(!namaBaru) {
-        showToast("Nama Relawan tidak boleh kosong!", "error");
+        showToast("Nama personel tidak boleh kosong!", "error");
         return;
     }
 
@@ -1036,6 +1051,7 @@ async function simpanEditMaster() {
         kategori_wilayah: kategoriWilayahBaru,
         zona_asal: zonaAsalBaru || null,
         ukuran_seragam: ukuranSeragamBaru || null,
+        ukuran_bawahan_seragam: ukuranBawahanBaru || null,
         catatan_seragam: catatanSeragamBaru || null,
         kategori_personel: kategoriPersonelBaru,
         jabatan_khusus: kategoriPersonelBaru === 'khusus' ? (jabatanKhususBaru || bidangBaru || null) : null,
@@ -1043,29 +1059,16 @@ async function simpanEditMaster() {
     };
 
     try {
-        let res;
-        if (currentEditMode === 'add') {
-            res = await callSupabaseRpc('simpan_personel_manual_v2', {
-                p_nip: document.getElementById('editNip').value.trim() || null,
-                p_nama: namaBaru, p_jabatan: bidangBaru, p_asal_organisasi: orgBaru,
-                p_asal_daerah: daerahBaru || null,
-                p_kabupaten: payloadUpdate.kabupaten_normalisasi,
-                p_kategori_wilayah: kategoriWilayahBaru,
-                p_zona_asal: zonaAsalBaru || null,
-                p_ukuran_seragam: ukuranSeragamBaru || null,
-                p_catatan_seragam: catatanSeragamBaru || null,
-                p_kategori_personel: kategoriPersonelBaru,
-                p_jabatan_khusus: payloadUpdate.jabatan_khusus,
-                p_alasan_khusus: payloadUpdate.alasan_khusus
-            });
-        } else {
-            res = await supabaseFetch(`master_relawan?nip=eq.${encodeURIComponent(currentEditNip)}`, 'PATCH', payloadUpdate);
-        }
-        if (currentEditMode === 'edit' && res.status !== 'success' && /kabupaten_normalisasi|schema cache|column/i.test(String(res.message || ''))) {
-            const payloadKompatibel = { ...payloadUpdate };
-            delete payloadKompatibel.kabupaten_normalisasi;
-            res = await supabaseFetch(`master_relawan?nip=eq.${encodeURIComponent(currentEditNip)}`, 'PATCH', payloadKompatibel);
-        }
+        const res = await callSupabaseRpc('simpan_personel_v3', {
+            p_nip: currentEditMode === 'add' ? (document.getElementById('editNip').value.trim() || null) : currentEditNip,
+            p_nama: namaBaru, p_jabatan: bidangBaru, p_asal_organisasi: orgBaru,
+            p_asal_daerah: daerahBaru || null, p_kabupaten: payloadUpdate.kabupaten_normalisasi,
+            p_kategori_wilayah: kategoriWilayahBaru, p_zona_asal: zonaAsalBaru || null,
+            p_ukuran_atasan: ukuranSeragamBaru || null, p_ukuran_bawahan: ukuranBawahanBaru || null,
+            p_catatan_seragam: catatanSeragamBaru || null, p_kategori_personel: kategoriPersonelBaru,
+            p_jabatan_khusus: payloadUpdate.jabatan_khusus, p_alasan_khusus: payloadUpdate.alasan_khusus,
+            p_buat_baru: currentEditMode === 'add'
+        });
         
         if (res.status === "success" || res.status === 204 || res.status === 201) {
             showToast(currentEditMode === 'add' ? `Personel berhasil ditambahkan${res.nip ? ` dengan ID ${res.nip}` : ''}.` : "Data profil berhasil diperbarui!", "success");
@@ -1134,10 +1137,11 @@ function isiFormMergeManual(row) {
     document.getElementById('mergeNama').value = row.nama || '';
     document.getElementById('mergeOrg').value = row.asal_organisasi || '';
     document.getElementById('mergeBidang').value = normalisasiJabatanMaster(row.jabatan);
-    document.getElementById('mergeDaerah').value = row.asal_daerah || '';
+    document.getElementById('mergeDaerah').value = row.kabupaten_normalisasi || row.asal_daerah || '';
     document.getElementById('mergeKategoriWilayah').value = kategoriWilayahEfektif(row);
     document.getElementById('mergeZonaAsal').value = zonaAsalEfektif(row);
     document.getElementById('mergeUkuranSeragam').value = row.ukuran_seragam || '';
+    document.getElementById('mergeUkuranBawahan').value = row.ukuran_bawahan_efektif || row.ukuran_bawahan_seragam || '';
     document.getElementById('mergeCatatanSeragam').value = row.catatan_seragam || '';
 }
 
@@ -1173,6 +1177,7 @@ async function eksekusiMergeManual() {
             ? 'jombang'
             : document.getElementById('mergeKategoriWilayah').value;
     const ukuranSeragam = document.getElementById('mergeUkuranSeragam').value;
+    const ukuranBawahan = document.getElementById('mergeUkuranBawahan').value;
     const catatanSeragam = document.getElementById('mergeCatatanSeragam').value.trim();
 
     if (!nama || !asalOrganisasi) {
@@ -1189,7 +1194,7 @@ async function eksekusiMergeManual() {
     button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menggabungkan...';
 
     try {
-        const res = await callSupabaseRpc('merge_relawan_tercatat', {
+        const res = await callSupabaseRpc('merge_relawan_terpadu_v3', {
             p_nips: rows.map(row => row.nip),
             p_target_nip: target.nip,
             p_profile: {
@@ -1201,6 +1206,7 @@ async function eksekusiMergeManual() {
                 kategori_wilayah: kategoriWilayah,
                 zona_asal: zonaAsal || null,
                 ukuran_seragam: ukuranSeragam || null,
+                ukuran_bawahan_seragam: ukuranBawahan || null,
                 catatan_seragam: catatanSeragam || null
             },
             p_alasan: 'Merge manual dari pilihan Master Data'
@@ -1377,18 +1383,19 @@ async function eksekusiMerge() {
     btn.disabled = true;
 
     try {
-        const res = await callSupabaseRpc('merge_relawan_tercatat', {
+        const res = await callSupabaseRpc('merge_relawan_terpadu_v3', {
             p_nips: [currentSourceNip, targetNip],
             p_target_nip: targetNip,
             p_profile: {
                 nama: rapikanNamaMaster(targetProfile.nama),
                 asal_organisasi: rapikanOrganisasiMaster(targetProfile.asal_organisasi),
                 jabatan: normalisasiJabatanMaster(targetProfile.jabatan),
-                asal_daerah: targetProfile.asal_daerah || null,
+                asal_daerah: targetProfile.kabupaten_normalisasi || targetProfile.asal_daerah || null,
                 kabupaten_normalisasi: kabupatenMaster(targetProfile) || null,
                 kategori_wilayah: kategoriWilayahEfektif(targetProfile),
                 zona_asal: zonaAsalEfektif(targetProfile) || null,
                 ukuran_seragam: targetProfile.ukuran_seragam || null,
+                ukuran_bawahan_seragam: targetProfile.ukuran_bawahan_efektif || targetProfile.ukuran_bawahan_seragam || null,
                 catatan_seragam: targetProfile.catatan_seragam || null
             },
             p_alasan: 'Merge cepat nama identik dan kabupaten sama'
@@ -1885,7 +1892,7 @@ async function bukaDetailPersonel(nip) {
     content.innerHTML = '<div class="p-10 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Memuat detail...</div>';
     modal.classList.remove('hidden');
     try {
-        const res = await callSupabaseRpc('detail_personel_v2', { p_nip: nip });
+        const res = await callSupabaseRpc('detail_personel_v3', { p_nip: nip });
         if (res.status !== 'success' || !res.profile) throw new Error(res.message || 'Detail personel tidak tersedia');
         currentDetailPersonel = res;
         renderDetailPersonel();
@@ -1916,7 +1923,7 @@ function renderDetailPersonel() {
             <div class="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3"><p class="text-[10px] uppercase font-black text-slate-400">Pertama Hadir</p><p class="font-black mt-1">${formatTanggalMaster(p.hadir_pertama)}</p></div>
             <div class="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3"><p class="text-[10px] uppercase font-black text-slate-400">Terakhir Hadir</p><p class="font-black mt-1">${formatTanggalMaster(p.hadir_terakhir)}</p></div>
         </section>
-        <section class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-5"><h4 class="font-black mb-2">Profil</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm"><p><span class="text-slate-400">ID:</span> <b>${escapeHTML(p.nip || '-')}</b></p><p><span class="text-slate-400">Jabatan:</span> <b>${escapeHTML(p.jabatan_khusus || p.jabatan || '-')}</b></p><p><span class="text-slate-400">Organisasi:</span> <b>${escapeHTML(p.asal_organisasi || '-')}</b></p><p><span class="text-slate-400">Kabupaten/Kota:</span> <b>${escapeHTML(p.kabupaten_normalisasi || p.asal_daerah || '-')}</b></p><p><span class="text-slate-400">Zona:</span> <b>${escapeHTML(LABEL_ZONA_MASTER[p.zona_asal] || 'Belum diisi')}</b></p><p><span class="text-slate-400">Persentase:</span> <b>${Number(p.persentase_hari || 0).toFixed(1)}%</b></p></div></section>
+        <section class="rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-5"><h4 class="font-black mb-2">Profil Terpadu</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-sm"><p><span class="text-slate-400">ID:</span> <b>${escapeHTML(p.nip || '-')}</b></p><p><span class="text-slate-400">Jenis:</span> <b>${escapeHTML(p.jenis_personel_label || 'Reguler')}</b></p><p><span class="text-slate-400">Jabatan:</span> <b>${escapeHTML(p.jabatan_khusus || p.jabatan || '-')}</b></p><p><span class="text-slate-400">Organisasi:</span> <b>${escapeHTML(p.asal_organisasi || '-')}</b></p><p><span class="text-slate-400">Kabupaten/Kota:</span> <b>${escapeHTML(p.kabupaten_normalisasi || p.asal_daerah || '-')}</b></p><p><span class="text-slate-400">Zona:</span> <b>${escapeHTML(p.zona_label || LABEL_ZONA_MASTER[p.zona_asal] || 'Belum diisi')}</b></p><p><span class="text-slate-400">Ukuran atasan/bawahan:</span> <b>${escapeHTML(`${p.ukuran_atasan_efektif || '-'} / ${p.ukuran_bawahan_efektif || '-'}`)}</b></p><p><span class="text-slate-400">Status seragam:</span> <b>${escapeHTML(p.status_seragam || 'Belum tercatat')}</b></p><p><span class="text-slate-400">Persentase:</span> <b>${Number(p.persentase_hari || 0).toFixed(1)}%</b></p></div></section>
         <section class="mb-5"><h4 class="font-black mb-2"><i class="fa-solid fa-location-dot text-indigo-600 mr-2"></i>Lokasi/Proyek yang Pernah Dihadiri</h4><div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700"><table class="w-full text-xs"><thead class="bg-slate-100 dark:bg-slate-700"><tr><th class="px-3 py-2 text-left">Lokasi</th><th class="px-3 py-2 text-left">Kelompok</th><th class="px-3 py-2">Hari</th><th class="px-3 py-2">Sesi</th><th class="px-3 py-2 text-left">Pertama</th><th class="px-3 py-2 text-left">Terakhir</th></tr></thead><tbody>${projectRows}</tbody></table></div></section>
         <details open class="mb-5"><summary class="font-black cursor-pointer mb-2">Riwayat Kehadiran (${attendance.length})</summary><div class="max-h-72 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700"><table class="w-full text-xs"><thead class="sticky top-0 bg-slate-100 dark:bg-slate-700"><tr><th class="px-3 py-2 text-left">Tanggal</th><th class="px-3 py-2 text-left">Sesi</th><th class="px-3 py-2 text-left">Lokasi</th></tr></thead><tbody>${attendanceRows}</tbody></table></div></details>
         <details><summary class="font-black cursor-pointer mb-2">Riwayat Seragam (${uniform.length})</summary><div class="max-h-64 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700"><table class="w-full text-xs"><thead class="sticky top-0 bg-slate-100 dark:bg-slate-700"><tr><th class="px-3 py-2 text-left">Waktu</th><th class="px-3 py-2 text-left">Proses</th><th class="px-3 py-2 text-left">Keberadaan</th><th class="px-3 py-2 text-left">Ukuran</th><th class="px-3 py-2 text-left">Catatan</th></tr></thead><tbody>${uniformRows}</tbody></table></div></details>`;
@@ -1932,7 +1939,10 @@ function dataExportMaster() {
         'Total Hari': Number(r.total_hari || 0), 'Total Sesi': Number(r.total_sesi || 0),
         'Jumlah Proyek': Number(r.jumlah_proyek || 0), 'Persentase Hari': Number(r.persentase_hari || 0),
         'Pertama Hadir': r.hadir_pertama || '', 'Terakhir Hadir': r.hadir_terakhir || '',
-        'Ukuran Atasan': r.ukuran_seragam || '', Catatan: r.catatan_seragam || r.alasan_khusus || ''
+        'Ukuran Atasan': r.ukuran_atasan_efektif || r.ukuran_seragam || '',
+        'Ukuran Bawahan': r.ukuran_bawahan_efektif || r.ukuran_bawahan_seragam || '',
+        'Status Seragam': r.status_seragam || '',
+        Catatan: r.catatan_seragam || r.alasan_khusus || ''
     }));
 }
 
