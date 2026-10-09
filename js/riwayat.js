@@ -6,6 +6,10 @@ let riwayatData = [];
 let koreksiMasterData = [];
 let koreksiAwal = new Set();
 let riwayatMasterNips = new Set();
+let riwayatFilteredData = [];
+let riwayatCurrentPage = 1;
+let riwayatRowsPerPage = 50;
+let riwayatSortMode = 'tanggal_desc';
 
 const LOKASI_UTAMA_KOREKSI = window.RelawanDomain?.PROYEK_KHUSUS || [];
 
@@ -373,10 +377,18 @@ function resetFilter() {
     document.getElementById('filterLokasi').value = '';
     document.getElementById('filterOrganisasi').value = '';
     document.getElementById('filterCari').value = '';
+    const sort = document.getElementById('sortRiwayat');
+    const limit = document.getElementById('limitRiwayat');
+    if (sort) sort.value = 'tanggal_desc';
+    if (limit) limit.value = '50';
     const filterYatim = document.getElementById('filterYatim');
     if (filterYatim) filterYatim.checked = false;
     activeExcelFilters = {};
     activeSortColumn = null;
+    activeSortDirection = 'asc';
+    riwayatSortMode = 'tanggal_desc';
+    riwayatRowsPerPage = 50;
+    riwayatCurrentPage = 1;
     jalankanFilterDanSortRiwayat();
 }
 
@@ -412,10 +424,8 @@ function jalankanFilterDanSortRiwayat() {
         let matchOrg = filterOrg ? (r.organisasi === filterOrg) : true;
 
         // Pencarian global
-        let matchGlobal = globalKey ?
-            (r.nama && r.nama.toLowerCase().includes(globalKey)) ||
-            (r.organisasi && r.organisasi.toLowerCase().includes(globalKey)) ||
-            (r.lokasi && r.lokasi.toLowerCase().includes(globalKey)) : true;
+        let matchGlobal = globalKey ? [r.nama, r.nip, r.organisasi, r.lokasi, r.sesi]
+            .some(value => String(value || '').toLowerCase().includes(globalKey)) : true;
 
         const matchYatim = hanyaYatim ? !riwayatMasterNips.has(String(r.nip || '')) : true;
 
@@ -428,7 +438,7 @@ function jalankanFilterDanSortRiwayat() {
         filtered = filtered.filter(item => allowedVals.includes(item[col] || '-'));
     });
 
-    // Sorting A-Z / Z-A
+    // Sorting dari filter kolom atau dropdown terpadu.
     if (activeSortColumn) {
         filtered.sort((a, b) => {
             let valA = (a[activeSortColumn] || '').toString().toLowerCase();
@@ -437,10 +447,43 @@ function jalankanFilterDanSortRiwayat() {
             if (valA > valB) return activeSortDirection === 'asc' ? 1 : -1;
             return 0;
         });
+    } else {
+        const sortMode = document.getElementById('sortRiwayat')?.value || riwayatSortMode || 'tanggal_desc';
+        riwayatSortMode = sortMode;
+        const splitAt = sortMode.lastIndexOf('_');
+        const key = splitAt > 0 ? sortMode.slice(0, splitAt) : 'tanggal';
+        const direction = sortMode.endsWith('_asc') ? 'asc' : 'desc';
+        filtered.sort((a, b) => {
+            const valA = String(a[key] || '').toLowerCase();
+            const valB = String(b[key] || '').toLowerCase();
+            const result = valA.localeCompare(valB, 'id', { numeric: true });
+            return direction === 'asc' ? result : -result;
+        });
     }
 
-    renderTabelRiwayat(filtered);
+    riwayatFilteredData = filtered;
+    riwayatCurrentPage = 1;
+    renderTabelRiwayat(riwayatFilteredData);
     updateSummaryCards(filtered);
+}
+
+function ubahUrutanRiwayat() {
+    activeSortColumn = null;
+    activeSortDirection = 'asc';
+    riwayatSortMode = document.getElementById('sortRiwayat')?.value || 'tanggal_desc';
+    jalankanFilterDanSortRiwayat();
+}
+
+function ubahBatasRiwayat() {
+    riwayatRowsPerPage = Math.max(25, Number.parseInt(document.getElementById('limitRiwayat')?.value, 10) || 50);
+    riwayatCurrentPage = 1;
+    renderTabelRiwayat(riwayatFilteredData);
+}
+
+function ubahHalamanRiwayat(delta) {
+    const totalPages = Math.max(1, Math.ceil(riwayatFilteredData.length / riwayatRowsPerPage));
+    riwayatCurrentPage = Math.min(totalPages, Math.max(1, riwayatCurrentPage + Number(delta || 0)));
+    renderTabelRiwayat(riwayatFilteredData);
 }
 
 // ==========================================
@@ -485,22 +528,34 @@ function updateSummaryCards(data) {
 // ==========================================
 // RENDER TABEL
 // ==========================================
-function renderTabelRiwayat(data) {
+function renderTabelRiwayat(data, tampilkanSemua = false) {
     const tbody = document.getElementById('riwayatBody');
-    document.getElementById('totalDataInfo').innerText = `Menampilkan ${data.length.toLocaleString('id-ID')} riwayat absen`;
+    const totalItems = data.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / riwayatRowsPerPage));
+    riwayatCurrentPage = Math.min(totalPages, Math.max(1, riwayatCurrentPage));
+    const startIndex = tampilkanSemua ? 0 : (riwayatCurrentPage - 1) * riwayatRowsPerPage;
+    const endIndex = tampilkanSemua ? totalItems : Math.min(startIndex + riwayatRowsPerPage, totalItems);
+    const rows = tampilkanSemua ? data : data.slice(startIndex, endIndex);
+    const startLabel = totalItems ? startIndex + 1 : 0;
+    document.getElementById('totalDataInfo').innerText = `Baris ${startLabel}-${endIndex} dari ${totalItems.toLocaleString('id-ID')} riwayat`;
+    document.getElementById('pageInfo').innerText = tampilkanSemua ? 'Semua hasil terfilter' : `Halaman ${riwayatCurrentPage} / ${totalPages}`;
+    const prev = document.getElementById('btnRiwayatPrev');
+    const next = document.getElementById('btnRiwayatNext');
+    if (prev) prev.disabled = tampilkanSemua || riwayatCurrentPage <= 1;
+    if (next) next.disabled = tampilkanSemua || riwayatCurrentPage >= totalPages;
 
     const checkAllBtn = document.getElementById('checkAll');
     if (checkAllBtn) checkAllBtn.checked = false;
     toggleBulkActionBanner();
 
-    if (data.length === 0) {
+    if (totalItems === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-slate-400 font-medium">Tidak ada data absensi yang sesuai filter.</td></tr>';
         return;
     }
 
     let html = '';
-    data.forEach((r, idx) => {
-        const noUrut = idx + 1;
+    rows.forEach((r, idx) => {
+        const noUrut = startIndex + idx + 1;
         const idAttr = escapeAttribute(r.id);
         const tanggalAttr = escapeAttribute(r.tanggal);
         const sesiNormal = r.sesi === 'Siang' ? 'Pagi' : r.sesi;
@@ -715,35 +770,38 @@ async function deleteBulkLogs() {
 }
 
 function exportToCSV() {
-    const barisTabel = document.querySelectorAll('#riwayatBody tr');
-    if (barisTabel.length === 0 || barisTabel[0].innerText.includes("Tidak ada data")) {
+    if (riwayatFilteredData.length === 0) {
         showToast("Tidak ada data untuk diekspor!", "error");
         return;
     }
-    let csvContent = "data:text/csv;charset=utf-8,No,Tanggal,Nama Personel,Sesi,Lokasi Proyek,Organisasi\n";
-    barisTabel.forEach(row => {
-        let cols = row.querySelectorAll("td");
-        if (cols.length > 0) {
-            let rowArray = [
-                cols[1].innerText, cols[2].innerText, `"${cols[3].innerText}"`,
-                cols[4].innerText, `"${cols[5].innerText}"`, `"${cols[6].innerText}"`
-            ];
-            csvContent += rowArray.join(",") + "\n";
-        }
-    });
+    const csvCell = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const rows = riwayatFilteredData.map((row, index) => [
+        index + 1,
+        row.tanggal || '',
+        row.nama || '',
+        row.sesi === 'Siang' ? 'Pagi' : (row.sesi || ''),
+        row.lokasi || '',
+        row.organisasi || ''
+    ]);
+    const csvContent = '\uFEFF' + [
+        ['No', 'Tanggal', 'Nama Personel', 'Sesi', 'Lokasi Proyek', 'Organisasi'],
+        ...rows
+    ].map(row => row.map(csvCell).join(',')).join('\n');
     const filterTgl = document.getElementById('filterTanggal').value || 'SemuaTanggal';
-    const encodedUri = encodeURI(csvContent);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", objectUrl);
     link.setAttribute("download", `Laporan_Absen_${filterTgl}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(objectUrl);
+    showToast(`${rows.length.toLocaleString('id-ID')} riwayat terfilter diekspor ke CSV.`, "success");
 }
 
 function exportToXLSX() {
-    const barisTabel = document.querySelectorAll('#riwayatBody tr');
-    if (barisTabel.length === 0 || barisTabel[0].innerText.includes("Tidak ada data")) {
+    if (riwayatFilteredData.length === 0) {
         showToast("Tidak ada data untuk diekspor!", "error");
         return;
     }
@@ -763,16 +821,14 @@ function exportToXLSX() {
         { t: 's', v: 'Organisasi' }
     ]];
 
-    barisTabel.forEach(row => {
-        const cols = row.querySelectorAll('td');
-        if (cols.length < 7) return;
+    riwayatFilteredData.forEach((row, index) => {
         aoa.push([
-            { t: 'n', v: Number(cols[1].innerText) || 0 },
-            { t: 's', v: cols[2].innerText },
-            { t: 's', v: cols[3].innerText },
-            { t: 's', v: cols[4].innerText },
-            { t: 's', v: cols[5].innerText },
-            { t: 's', v: cols[6].innerText }
+            { t: 'n', v: index + 1 },
+            { t: 's', v: row.tanggal || '' },
+            { t: 's', v: row.nama || '' },
+            { t: 's', v: row.sesi === 'Siang' ? 'Pagi' : (row.sesi || '') },
+            { t: 's', v: row.lokasi || '' },
+            { t: 's', v: row.organisasi || '' }
         ]);
     });
 
@@ -786,7 +842,7 @@ function exportToXLSX() {
 
     const filterTgl = document.getElementById('filterTanggal').value || 'SemuaTanggal';
     XLSX.writeFile(wb, `Laporan_Absen_${filterTgl}.xlsx`);
-    showToast("Export Excel berhasil.", "success");
+    showToast(`${riwayatFilteredData.length.toLocaleString('id-ID')} riwayat terfilter diekspor ke Excel.`, "success");
 }
 
 // ==========================================
@@ -801,7 +857,9 @@ async function cetakLaporanAbsen() {
             throw new Error("Data riwayat tidak berhasil diperbarui");
         }
 
+        renderTabelRiwayat(riwayatFilteredData, true);
         isiElemenLaporan();
+        window.addEventListener('afterprint', () => renderTabelRiwayat(riwayatFilteredData), { once: true });
 
         if (loading) loading.remove();
 
@@ -839,7 +897,7 @@ function isiElemenLaporan() {
     // Meta laporan berdasarkan filter
     const filterTgl = document.getElementById('filterTanggal').value;
     const filterCari = document.getElementById('filterCari').value.trim();
-    const jumlahData = document.querySelectorAll('#riwayatBody tr').length;
+    const jumlahData = riwayatFilteredData.length;
 
     let periode = 'Semua Periode';
     if (filterTgl) periode = `Periode: ${formatTanggalID(filterTgl)}`;

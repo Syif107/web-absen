@@ -105,20 +105,12 @@
             <div class="max-w-7xl mx-auto space-y-4 fade-in">
 
                 <!-- FILTER BAR -->
-                <div class="no-print bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700/50">
-                    <div class="flex items-center gap-2 mb-3">
-                        <i class="fa-solid fa-filter text-primary"></i>
-                        <span class="font-bold text-slate-700 dark:text-slate-200 text-sm">Filter Data</span>
-                    </div>
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Tanggal</label>
-                            <input type="date" id="filterTanggal" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-lg px-3 py-2 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-primary">
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Bulan</label>
-                            <select id="filterBulan" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-lg px-3 py-2 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-primary">
-                                <option value="">Semua</option>
+                <div class="no-print bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700/50 overflow-hidden">
+                    <div class="data-toolbar">
+                        <div class="data-toolbar__search"><i class="fa-solid fa-search"></i><input type="search" id="filterCari" placeholder="Cari nama, NIP, organisasi, lokasi, atau sesi..." autocomplete="off" aria-label="Cari riwayat absensi"></div>
+                        <input type="date" id="filterTanggal" class="data-control" aria-label="Filter tanggal tertentu" title="Tanggal tertentu">
+                        <select id="filterBulan" class="data-control" aria-label="Filter bulan">
+                                <option value="">Semua Bulan</option>
                                 <option value="01">Januari</option>
                                 <option value="02">Februari</option>
                                 <option value="03">Maret</option>
@@ -132,41 +124,20 @@
                                 <option value="11">November</option>
                                 <option value="12">Desember</option>
                             </select>
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Tahun</label>
-                            <select id="filterTahun" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-lg px-3 py-2 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-primary">
-                                <option value="">Semua</option>
+                        <select id="filterTahun" class="data-control" aria-label="Filter tahun">
+                                <option value="">Semua Tahun</option>
                             </select>
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Lokasi</label>
-                            <select id="filterLokasi" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-lg px-3 py-2 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-primary">
+                        <select id="filterLokasi" class="data-control" aria-label="Filter lokasi">
                                 <option value="">Semua Lokasi</option>
                             </select>
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Organisasi</label>
-                            <select id="filterOrganisasi" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-lg px-3 py-2 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-primary">
+                        <select id="filterOrganisasi" class="data-control" aria-label="Filter organisasi">
                                 <option value="">Semua Organisasi</option>
                             </select>
-                        </div>
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Cari</label>
-                            <div class="relative">
-                                <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                                <input type="text" id="filterCari" placeholder="Nama / Instansi..." class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-lg pl-8 pr-3 py-2 outline-none text-slate-800 dark:text-slate-100 focus:border-primary">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
-                        <button onclick="loadRiwayatData()" class="bg-primary hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold transition-colors text-sm shadow-sm flex items-center gap-2">
-                            <i class="fa-solid fa-magnifying-glass"></i> Cari
-                        </button>
-                        <button onclick="resetFilter()" class="bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg font-bold transition-colors text-sm shadow-sm flex items-center gap-2">
-                            <i class="fa-solid fa-rotate-left"></i> Reset
-                        </button>
-                        <label class="ml-auto flex items-center gap-2 px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-xs font-black text-rose-700 dark:text-rose-300 cursor-pointer"><input id="filterYatim" type="checkbox" class="accent-rose-600">Hanya belum terhubung</label>
+                        <select id="sortRiwayat" onchange="ubahUrutanRiwayat()" class="data-control" aria-label="Urutkan riwayat"><option value="tanggal_desc">Tanggal terbaru</option><option value="tanggal_asc">Tanggal terlama</option><option value="nama_asc">Nama A–Z</option><option value="nama_desc">Nama Z–A</option><option value="lokasi_asc">Lokasi A–Z</option><option value="organisasi_asc">Organisasi A–Z</option></select>
+                        <select id="limitRiwayat" onchange="ubahBatasRiwayat()" class="data-control data-control--compact" aria-label="Jumlah baris per halaman"><option value="25">25 Baris</option><option value="50" selected>50 Baris</option><option value="100">100 Baris</option><option value="200">200 Baris</option></select>
+                        <label class="h-[42px] flex items-center gap-2 px-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 text-xs font-black text-rose-700 dark:text-rose-300 cursor-pointer whitespace-nowrap"><input id="filterYatim" type="checkbox" class="accent-rose-600">Belum terhubung</label>
+                        <button type="button" onclick="resetFilter()" class="data-reset-button"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+                        <p class="data-toolbar__hint">Pencarian dan seluruh filter diterapkan langsung. Ekspor tetap memuat semua hasil yang sesuai, bukan hanya halaman yang sedang terlihat.</p>
                     </div>
                 </div>
 
@@ -285,9 +256,9 @@
                             <tbody id="riwayatBody" class="divide-y divide-slate-100 dark:divide-slate-700/50"></tbody>
                             </table>
                         </div>
-                        <div class="no-print p-4 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-700/30 flex justify-between items-center text-xs font-bold text-slate-500 dark:text-slate-400">
+                        <div class="no-print p-4 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-700/30 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs font-bold text-slate-500 dark:text-slate-400">
                             <span id="totalDataInfo">Menampilkan 0 data</span>
-                            <span id="pageInfo">Halaman 1 dari 1</span>
+                            <div class="flex items-center gap-2"><button id="btnRiwayatPrev" onclick="ubahHalamanRiwayat(-1)" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 disabled:opacity-40" disabled>‹ Sebelumnya</button><span id="pageInfo">Halaman 1 / 1</span><button id="btnRiwayatNext" onclick="ubahHalamanRiwayat(1)" class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 disabled:opacity-40" disabled>Berikutnya ›</button></div>
                         </div>
                     </div>
 

@@ -6,7 +6,6 @@ let masterData = [];
 let filteredData = []; // Menyimpan data setelah difilter/search
 let currentPage = 1;
 let rowsPerPage = 50;
-let isNewestFilter = false;
 let masterSortMode = 'nama';
 let duplikatMasterGroups = [];
 let duplikatMasterMirip = [];
@@ -172,13 +171,7 @@ async function loadMasterData() {
 // 2. Fungsi Saat Pilihan Dropdown Diubah
 function gantiBatasData() {
     const val = document.getElementById('limitData').value;
-    if(val === 'newest') {
-        isNewestFilter = true;
-        rowsPerPage = 50; 
-    } else {
-        isNewestFilter = false;
-        rowsPerPage = parseInt(val);
-    }
+    rowsPerPage = Math.max(25, Number.parseInt(val, 10) || 50);
     currentPage = 1; 
     terapkanFilterDanPaginasi();
 }
@@ -189,24 +182,30 @@ function filterTabelMaster() {
     terapkanFilterDanPaginasi();
 }
 
+function ubahFilterMaster() {
+    currentPage = 1;
+    terapkanFilterDanPaginasi();
+}
+
 // 4. Inti Mesin Penyaringan, Excel Filter, & Pengurutan Data
 function terapkanFilterDanPaginasi() {
-    const keyword = document.getElementById('cariData').value.toLowerCase();
+    const keyword = (document.getElementById('cariData')?.value || '').trim().toLowerCase();
+    const zonaFilter = document.getElementById('filterZonaMaster')?.value || '';
+    const jenisFilter = document.getElementById('filterJenisMaster')?.value || '';
     
     // Filter Pencarian Global
-    filteredData = masterData.filter(r => 
-        (r.nama && r.nama.toLowerCase().includes(keyword)) || 
-        (r.asal_organisasi && r.asal_organisasi.toLowerCase().includes(keyword)) ||
-        (r.asal_daerah && r.asal_daerah.toLowerCase().includes(keyword)) ||
-        (r.jabatan_khusus && r.jabatan_khusus.toLowerCase().includes(keyword)) ||
-        (kategoriWilayahEfektif(r) && kategoriWilayahEfektif(r).toLowerCase().includes(keyword)) ||
-        (zonaAsalEfektif(r) && zonaAsalEfektif(r).includes(keyword)) ||
-        ((LABEL_ZONA_MASTER[zonaAsalEfektif(r)] || '').toLowerCase().includes(keyword)) ||
-        (r.ukuran_atasan_efektif && String(r.ukuran_atasan_efektif).toLowerCase().includes(keyword)) ||
-        (r.ukuran_bawahan_efektif && String(r.ukuran_bawahan_efektif).toLowerCase().includes(keyword)) ||
-        (r.status_seragam && String(r.status_seragam).toLowerCase().includes(keyword)) ||
-        (r.nip && r.nip.toLowerCase().includes(keyword))
-    );
+    filteredData = masterData.filter(r => {
+        const zona = zonaAsalEfektif(r);
+        const cocokZona = !zonaFilter || (zonaFilter === 'belum' ? !zona : zona === zonaFilter);
+        const cocokJenis = !jenisFilter || (r.kategori_personel || 'reguler') === jenisFilter;
+        const cocokKata = !keyword || [
+            r.nama, r.nip, r.asal_organisasi, r.asal_daerah, r.kabupaten_normalisasi,
+            r.jabatan, r.jabatan_khusus, kategoriWilayahEfektif(r), zona,
+            LABEL_ZONA_MASTER[zona], r.ukuran_atasan_efektif, r.ukuran_bawahan_efektif,
+            r.status_seragam, r.status_proses, r.status_penguasaan
+        ].some(value => String(value || '').toLowerCase().includes(keyword));
+        return cocokZona && cocokJenis && cocokKata;
+    });
 
     // Filter berdasarkan pop-up Excel (Checkbox kolom aktif)
     Object.keys(activeExcelFilters).forEach(col => {
@@ -230,17 +229,15 @@ function terapkanFilterDanPaginasi() {
             return 0;
         });
     } else {
-        if (isNewestFilter && keyword === "" && Object.keys(activeExcelFilters).length === 0) {
-            filteredData = [...masterData].reverse();
-        } else {
-            filteredData.sort((a, b) => {
-                if (masterSortMode === 'total_hari') return Number(b.total_hari || 0) - Number(a.total_hari || 0) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
-                if (masterSortMode === 'persentase_hari') return Number(b.persentase_hari || 0) - Number(a.persentase_hari || 0) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
-                if (masterSortMode === 'hadir_pertama') return String(a.hadir_pertama || '9999-12-31').localeCompare(String(b.hadir_pertama || '9999-12-31')) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
-                if (masterSortMode === 'nip') return String(a.nip || '').localeCompare(String(b.nip || ''), 'id');
-                return String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
-            });
-        }
+        filteredData.sort((a, b) => {
+            if (masterSortMode === 'nama_desc') return String(b.nama || '').localeCompare(String(a.nama || ''), 'id');
+            if (masterSortMode === 'total_hari') return Number(b.total_hari || 0) - Number(a.total_hari || 0) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
+            if (masterSortMode === 'persentase_hari') return Number(b.persentase_hari || 0) - Number(a.persentase_hari || 0) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
+            if (masterSortMode === 'hadir_pertama') return String(a.hadir_pertama || '9999-12-31').localeCompare(String(b.hadir_pertama || '9999-12-31')) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
+            if (masterSortMode === 'hadir_terakhir') return String(b.hadir_terakhir || '').localeCompare(String(a.hadir_terakhir || '')) || String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
+            if (masterSortMode === 'nip') return String(a.nip || '').localeCompare(String(b.nip || ''), 'id');
+            return String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
+        });
     }
 
     renderTabelMaster(filteredData);
@@ -837,24 +834,40 @@ function ubahUrutanMaster() {
     terapkanFilterDanPaginasi();
 }
 
-function filterMasterWilayahKosong() {
-    isNewestFilter = false;
-    const limit = document.getElementById('limitData');
-    if (limit) limit.value = '50';
+function resetKontrolMaster() {
+    const values = {
+        cariData: '',
+        filterZonaMaster: '',
+        filterJenisMaster: '',
+        sortMaster: 'nama',
+        limitData: '50'
+    };
+    Object.entries(values).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    });
     rowsPerPage = 50;
-    activeExcelFilters.zona_asal = ['-'];
+    masterSortMode = 'nama';
+    activeExcelFilters = {};
+    activeSortColumn = '';
+    activeSortDirection = 'asc';
+    currentPage = 1;
+    terapkanFilterDanPaginasi();
+}
+
+function filterMasterWilayahKosong() {
+    const zona = document.getElementById('filterZonaMaster');
+    if (zona) zona.value = 'belum';
+    delete activeExcelFilters.zona_asal;
     currentPage = 1;
     terapkanFilterDanPaginasi();
     showToast('Menampilkan personel yang zona asalnya belum dilengkapi.', 'info');
 }
 
 function filterMasterZona(zona) {
-    isNewestFilter = false;
-    const limit = document.getElementById('limitData');
-    if (limit) limit.value = '50';
-    rowsPerPage = 50;
-    if (zona) activeExcelFilters.zona_asal = [zona];
-    else delete activeExcelFilters.zona_asal;
+    const select = document.getElementById('filterZonaMaster');
+    if (select) select.value = zona || '';
+    delete activeExcelFilters.zona_asal;
     currentPage = 1;
     terapkanFilterDanPaginasi();
     showToast(zona ? `Menampilkan ${LABEL_ZONA_MASTER[zona] || zona}.` : 'Menampilkan seluruh zona.', 'info');

@@ -12,7 +12,7 @@ let chartSesiInst = null;
 let chartMonthlyInst = null;
 
 let volCurrentPage = 1;
-const volPerPage = 50;
+let volPerPage = 50;
 let volSortKey = 'totalHadir';
 let volSortDir = 'desc';
 let rekapBulan = '';
@@ -45,7 +45,7 @@ function inisialisasiFilterBulanRekap() {
     sel.addEventListener('change', () => {
         rekapBulan = sel.value;
         computeVolunteerStats();
-        renderVolunteerTable();
+        filterVolunteerTable();
     });
 }
 
@@ -92,7 +92,7 @@ async function loadStatistikData() {
 function computeAll() {
     renderSummaryCards();
     computeVolunteerStats();
-    renderVolunteerTable();
+    filterVolunteerTable();
     renderOrgChart();
     renderSesiChart();
     renderMonthlyTrend();
@@ -205,6 +205,11 @@ function sortVolunteerTable(key) {
     }
     sortVolunteerStats();
     volCurrentPage = 1;
+    const select = document.getElementById('sortVolunteer');
+    const selectedValue = `${volSortKey}_${volSortDir}`;
+    if (select && Array.from(select.options).some(option => option.value === selectedValue)) {
+        select.value = selectedValue;
+    }
     renderVolunteerTable();
 }
 
@@ -215,6 +220,7 @@ function filterVolunteerTable() {
     } else {
         filteredStats = volunteerStats.filter(v =>
             v.nama.toLowerCase().includes(keyword) ||
+            String(v.nip || '').toLowerCase().includes(keyword) ||
             v.organisasi.toLowerCase().includes(keyword) ||
             v.zona.toLowerCase().includes(keyword)
         );
@@ -257,7 +263,8 @@ function renderVolunteerTable() {
 
     tbody.innerHTML = html;
 
-    document.getElementById('volunteerPaginationInfo').innerText = `Menampilkan ${startIdx + 1}-${endIdx} dari ${totalItems} data`;
+    const startLabel = totalItems ? startIdx + 1 : 0;
+    document.getElementById('volunteerPaginationInfo').innerText = `Baris ${startLabel}-${endIdx} dari ${totalItems.toLocaleString('id-ID')} data • Halaman ${volCurrentPage}/${totalPages}`;
 
     const btnPrev = document.getElementById('btnVolPrev');
     const btnNext = document.getElementById('btnVolNext');
@@ -271,6 +278,40 @@ function changeVolunteerPage(delta) {
     if (volCurrentPage < 1) volCurrentPage = 1;
     if (volCurrentPage > totalPages) volCurrentPage = totalPages;
     renderVolunteerTable();
+}
+
+function ubahUrutanStatistik() {
+    const value = document.getElementById('sortVolunteer')?.value || 'totalHadir_desc';
+    const splitAt = value.lastIndexOf('_');
+    volSortKey = splitAt > 0 ? value.slice(0, splitAt) : 'totalHadir';
+    volSortDir = value.endsWith('_asc') ? 'asc' : 'desc';
+    volCurrentPage = 1;
+    sortVolunteerStats();
+    renderVolunteerTable();
+}
+
+function ubahBatasStatistik() {
+    volPerPage = Math.max(25, Number.parseInt(document.getElementById('limitVolunteer')?.value, 10) || 50);
+    volCurrentPage = 1;
+    renderVolunteerTable();
+}
+
+function resetKontrolStatistik() {
+    const search = document.getElementById('searchVolunteer');
+    const bulan = document.getElementById('filterBulanRekap');
+    const sort = document.getElementById('sortVolunteer');
+    const limit = document.getElementById('limitVolunteer');
+    if (search) search.value = '';
+    if (bulan) bulan.value = '';
+    if (sort) sort.value = 'totalHadir_desc';
+    if (limit) limit.value = '50';
+    rekapBulan = '';
+    volSortKey = 'totalHadir';
+    volSortDir = 'desc';
+    volPerPage = 50;
+    volCurrentPage = 1;
+    computeVolunteerStats();
+    filterVolunteerTable();
 }
 
 // ==========================================

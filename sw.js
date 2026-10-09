@@ -1,4 +1,4 @@
-const CACHE_NAME = "relawansync-v31-kontrak-terpadu-cache";
+const CACHE_NAME = "relawansync-v32-kontrol-daftar-cache";
 const PRECACHE_URLS = [
     "./",
     "index.html",

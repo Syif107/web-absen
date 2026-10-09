@@ -311,6 +311,141 @@ html[data-user-role="blocked"] .admin-only {
 .print-header { display: none; }
 .ttd-block { display: none; }
 
+/* ========================================== */
+/* KONTROL DAFTAR TERPADU                     */
+/* ========================================== */
+.data-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fffdf8;
+}
+
+.data-toolbar__search {
+    position: relative;
+    flex: 1 1 300px;
+    min-width: min(100%, 240px);
+}
+
+.data-toolbar__search > i {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.data-toolbar__search input,
+.data-control {
+    height: 42px;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.75rem;
+    background: #f8f6f0;
+    color: #1e293b;
+    font-size: 0.8125rem;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.data-toolbar__search input {
+    width: 100%;
+    padding: 0 0.9rem 0 2.4rem;
+}
+
+.data-control {
+    min-width: 150px;
+    max-width: 260px;
+    padding: 0 2.15rem 0 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.data-control--compact {
+    min-width: 118px;
+    max-width: 145px;
+}
+
+.data-toolbar__search input:focus,
+.data-control:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    background: #fff;
+}
+
+.data-reset-button {
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0 0.9rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.75rem;
+    background: #fff;
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 800;
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.data-reset-button:hover {
+    border-color: #a5b4fc;
+    background: #eef2ff;
+    color: #4338ca;
+}
+
+.data-toolbar__hint {
+    flex-basis: 100%;
+    margin: -0.1rem 0 0;
+    color: #64748b;
+    font-size: 0.6875rem;
+    line-height: 1.45;
+}
+
+.dark .data-toolbar {
+    border-color: #334155;
+    background: #1e293b;
+}
+
+.dark .data-toolbar__search input,
+.dark .data-control {
+    border-color: #475569;
+    background: #334155;
+    color: #f1f5f9;
+}
+
+.dark .data-toolbar__search input:focus,
+.dark .data-control:focus {
+    border-color: #818cf8;
+    background: #334155;
+}
+
+.dark .data-reset-button {
+    border-color: #475569;
+    background: #334155;
+    color: #e2e8f0;
+}
+
+.dark .data-reset-button:hover {
+    border-color: #6366f1;
+    background: rgba(79, 70, 229, 0.15);
+    color: #c7d2fe;
+}
+
+.dark .data-toolbar__hint { color: #94a3b8; }
+
+@media (max-width: 767px) {
+    .data-toolbar { align-items: stretch; }
+    .data-toolbar__search { flex-basis: 100%; }
+    .data-control { flex: 1 1 calc(50% - 0.375rem); max-width: none; min-width: 0; }
+    .data-reset-button { flex: 1 1 100%; }
+}
+
 @media print {
     @page {
         size: A4 portrait;

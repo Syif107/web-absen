@@ -13,7 +13,7 @@ let stokSeragamFase10Aktif = false;
 let seragamKpi = {};
 let seragamTotal = 0;
 let seragamPage = 1;
-const seragamPageSize = 50;
+let seragamPageSize = 50;
 let seragamTimer = null;
 let stokBatchCounter = 0;
 
@@ -49,12 +49,20 @@ async function loadSeragam(page = seragamPage) {
         const proses = document.getElementById('filterProsesSeragam')?.value || 'semua';
         const penguasaan = document.getElementById('filterPenguasaanSeragam')?.value || 'semua';
         const cari = (document.getElementById('cariSeragam')?.value || '').trim();
-        const [statusRes, stokRes, mutasiRes] = await Promise.all([
-            callSupabaseRpc('daftar_seragam_v2', {
+        const urut = document.getElementById('sortSeragam')?.value || 'prioritas';
+        let statusRes = await callSupabaseRpc('daftar_seragam_v3', {
+            p_proyek: proyek, p_proses: proses, p_penguasaan: penguasaan,
+            p_cari: cari, p_urut: urut, p_limit: seragamPageSize,
+            p_offset: (seragamPage - 1) * seragamPageSize
+        });
+        if (statusRes.status !== 'success' && /daftar_seragam_v3|PGRST202|schema cache/i.test(`${statusRes.message || ''} ${statusRes.details || ''}`)) {
+            statusRes = await callSupabaseRpc('daftar_seragam_v2', {
                 p_proyek: proyek, p_proses: proses, p_penguasaan: penguasaan,
-                p_cari: cari, p_limit: seragamPageSize,
-                p_offset: (seragamPage - 1) * seragamPageSize
-            }),
+                p_cari: cari, p_limit: Math.min(seragamPageSize, 100),
+                p_offset: (seragamPage - 1) * Math.min(seragamPageSize, 100)
+            });
+        }
+        const [stokRes, mutasiRes] = await Promise.all([
             muatStokSeragamKompatibel(),
             supabaseFetch('mutasi_stok_seragam?select=*&order=tanggal_efektif.desc,dibuat_pada.desc&limit=100', 'GET')
         ]);
@@ -240,6 +248,32 @@ function renderPaginationSeragam(proyekFilter) {
 
 function gantiHalamanSeragam(delta) {
     return loadSeragam(seragamPage + Number(delta || 0));
+}
+
+function ubahUrutanSeragam() {
+    return loadSeragam(1);
+}
+
+function ubahBatasSeragam() {
+    seragamPageSize = Math.max(25, Number.parseInt(document.getElementById('limitSeragam')?.value, 10) || 50);
+    return loadSeragam(1);
+}
+
+function resetKontrolSeragam() {
+    const defaults = {
+        cariSeragam: '',
+        filterProyekSeragam: 'semua',
+        filterProsesSeragam: 'semua',
+        filterPenguasaanSeragam: 'semua',
+        sortSeragam: 'prioritas',
+        limitSeragam: '50'
+    };
+    Object.entries(defaults).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    });
+    seragamPageSize = 50;
+    return loadSeragam(1);
 }
 function formatTanggalSeragam(value) {
     if (!value) return '-';
@@ -518,14 +552,21 @@ async function ambilSemuaSeragamUntukExport() {
     const proses = document.getElementById('filterProsesSeragam')?.value || 'semua';
     const penguasaan = document.getElementById('filterPenguasaanSeragam')?.value || 'semua';
     const cari = (document.getElementById('cariSeragam')?.value || '').trim();
+    const urut = document.getElementById('sortSeragam')?.value || 'prioritas';
     const rows = [];
     let offset = 0;
     let total = 1;
     while (offset < total) {
-        const res = await callSupabaseRpc('daftar_seragam_v2', {
+        let res = await callSupabaseRpc('daftar_seragam_v3', {
             p_proyek: proyek, p_proses: proses, p_penguasaan: penguasaan,
-            p_cari: cari, p_limit: 100, p_offset: offset
+            p_cari: cari, p_urut: urut, p_limit: 200, p_offset: offset
         });
+        if (res.status !== 'success' && /daftar_seragam_v3|PGRST202|schema cache/i.test(`${res.message || ''} ${res.details || ''}`)) {
+            res = await callSupabaseRpc('daftar_seragam_v2', {
+                p_proyek: proyek, p_proses: proses, p_penguasaan: penguasaan,
+                p_cari: cari, p_limit: 100, p_offset: offset
+            });
+        }
         if (res.status !== 'success') throw new Error(res.message || 'Data ekspor seragam gagal dimuat');
         const pageRows = Array.isArray(res.rows) ? res.rows : [];
         rows.push(...pageRows);

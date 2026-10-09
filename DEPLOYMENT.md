@@ -174,6 +174,25 @@ mengambil seluruh hasil filter dari server, bukan hanya 50 baris yang sedang
 terlihat. Gunakan `v_audit_konsistensi_personel_v3` setelah migrasi; hasil
 `tidak_konsisten` harus nol sebelum rilis frontend.
 
+## Fase 21: Kontrol daftar terpadu
+
+`db/fase21_kontrol_daftar_terpadu.sql` telah diterapkan pada produksi tanggal
+8 Oktober 2026 setelah Fase 20. Migrasi ini
+menambahkan RPC Peringkat dan Kontrol Seragam versi 3 agar pencarian, filter,
+pengurutan, jumlah baris 25/50/100/200, dan pagination dihitung terhadap
+seluruh hasil di server—bukan hanya baris pada halaman aktif. Jalur admin tetap
+memakai router cepat terverifikasi; koordinator tetap dibatasi RLS; anon tidak
+mendapat hak eksekusi.
+
+Verifikasi produksi mengembalikan `true` untuk keberadaan kedua RPC, router
+invoker, serta hak `authenticated`; hak `anon` untuk keduanya mengembalikan
+`false`.
+
+Frontend cache 32 memakai pola kontrol daftar yang sama pada Master Data,
+Peringkat, Kontrol Seragam, Statistik, dan Riwayat: **Cari → filter khusus →
+urutkan → jumlah baris → Reset**. Ekspor dan cetak Riwayat memakai seluruh
+hasil terfilter, meskipun tabel sedang menampilkan satu halaman saja.
+
 ## Urutan rilis
 
 1. Pastikan branch dan commit yang akan dirilis sudah ditetapkan.
@@ -182,7 +201,7 @@ terlihat. Gunakan `v_audit_konsistensi_personel_v3` setelah migrasi; hasil
 4. Jalankan `db/audit_duplikat.sql` (read-only).
 5. Bila hasil audit mempunyai baris, tinjau dan gabungkan data secara manual.
 6. Jalankan `db/fase5_integritas_transaksi.sql`.
-7. Jalankan migrasi berurutan sampai Fase 20. Fase 20 harus selesai sebelum frontend versi cache 31 dipublikasikan.
+7. Jalankan migrasi berurutan sampai Fase 21. Fase 21 harus selesai sebelum frontend versi cache 32 dipublikasikan.
 8. Uji input relawan lama, relawan baru, filter proyek, direktori, perapian duplikat, merge dari checkbox, edit wilayah, koreksi kehadiran, kredit historis, dan mutasi stok atasan–bawahan menggunakan akun admin.
 9. Jika multi-user akan digunakan:
    - jalankan `db/fase15_multi_user_aman.sql` hanya setelah mengonfirmasi perubahan hak akses;
@@ -192,7 +211,7 @@ terlihat. Gunakan `v_audit_konsistensi_personel_v3` setelah migrasi; hasil
    - ubah `FASE4_ENABLED` di `js/supabase-config.js` menjadi `true`.
 10. Jalankan `npm install`, `npm run build:css`, dan `npm test`, lalu deploy frontend.
 11. Buka ulang aplikasi dua kali agar service worker versi baru mengambil alih,
-    kemudian pastikan `relawansync-v31-kontrak-terpadu-cache` aktif dan cache lama sudah terhapus.
+    kemudian pastikan `relawansync-v32-kontrol-daftar-cache` aktif dan cache lama sudah terhapus.
 
 ## Smoke test wajib
 
@@ -213,6 +232,11 @@ terlihat. Gunakan `v_audit_konsistensi_personel_v3` setelah migrasi; hasil
   pada Master, detail personel, Peringkat, dan Kontrol Seragam.
 - Ekspor Kontrol Seragam memuat seluruh hasil filter meski jumlahnya lebih dari
   satu halaman.
+- Master, Peringkat, Seragam, Statistik, dan Riwayat memiliki urutan kontrol
+  Cari → filter → urutkan → jumlah baris → Reset; pindah halaman tidak mengubah
+  hasil pengurutan.
+- Ekspor CSV/XLSX dan cetak Riwayat memuat seluruh hasil filter, bukan hanya
+  halaman yang sedang terlihat.
 - POST/PATCH/DELETE menampilkan hasil yang sesuai kondisi database.
 - Logout tidak menampilkan data API dari cache saat perangkat offline.
 

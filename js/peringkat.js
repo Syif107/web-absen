@@ -6,7 +6,7 @@ let peringkatRows = [];
 let peringkatTotal = 0;
 let peringkatKpi = {};
 let peringkatPage = 1;
-const peringkatPageSize = 50;
+let peringkatPageSize = 50;
 let peringkatTimer = null;
 
 const PROYEK_KHUSUS_PERINGKAT = window.RelawanDomain?.PROYEK_KHUSUS || [];
@@ -52,13 +52,25 @@ async function muatPeringkat(page = peringkatPage) {
     const proyek = document.getElementById('filterProyekPeringkat')?.value || 'semua';
     const status = document.getElementById('filterStatusPeringkat')?.value || 'semua';
     const cari = (document.getElementById('cariPeringkat')?.value || '').trim();
-    const res = await callSupabaseRpc('daftar_peringkat_v2', {
+    const urut = document.getElementById('sortPeringkat')?.value || 'prioritas';
+    let res = await callSupabaseRpc('daftar_peringkat_v3', {
         p_proyek: proyek,
         p_status: status,
         p_cari: cari,
+        p_urut: urut,
         p_limit: peringkatPageSize,
         p_offset: (peringkatPage - 1) * peringkatPageSize
     });
+
+    if (res.status !== 'success' && /daftar_peringkat_v3|PGRST202|schema cache/i.test(`${res.message || ''} ${res.details || ''}`)) {
+        res = await callSupabaseRpc('daftar_peringkat_v2', {
+            p_proyek: proyek,
+            p_status: status,
+            p_cari: cari,
+            p_limit: Math.min(peringkatPageSize, 100),
+            p_offset: (peringkatPage - 1) * Math.min(peringkatPageSize, 100)
+        });
+    }
 
     if (res.status !== 'success') {
         if (errorBox) {
@@ -165,6 +177,31 @@ function gambarPaginationPeringkat(proyekFilter) {
 
 function gantiHalamanPeringkat(delta) {
     return muatPeringkat(peringkatPage + Number(delta || 0));
+}
+
+function ubahUrutanPeringkat() {
+    return muatPeringkat(1);
+}
+
+function ubahBatasPeringkat() {
+    peringkatPageSize = Math.max(25, Number.parseInt(document.getElementById('limitPeringkat')?.value, 10) || 50);
+    return muatPeringkat(1);
+}
+
+function resetKontrolPeringkat() {
+    const defaults = {
+        cariPeringkat: '',
+        filterProyekPeringkat: 'semua',
+        filterStatusPeringkat: 'semua',
+        sortPeringkat: 'prioritas',
+        limitPeringkat: '50'
+    };
+    Object.entries(defaults).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    });
+    peringkatPageSize = 50;
+    return muatPeringkat(1);
 }
 
 function formatTanggal(value) {

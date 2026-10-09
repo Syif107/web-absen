@@ -49,7 +49,7 @@ test('service worker hanya mencache GET dari origin aplikasi', () => {
     assert.doesNotMatch(source, /cache\.put\(event\.request/);
 });
 
-test('frontend memakai CSS produksi lokal dan cache kontrak terpadu versi 31', () => {
+test('frontend memakai CSS produksi lokal dan cache kontrol daftar versi 32', () => {
     const htmlFiles = readdirSync(root).filter(name => name.endsWith('.html'));
     for (const file of htmlFiles) {
         const html = read(file);
@@ -57,7 +57,7 @@ test('frontend memakai CSS produksi lokal dan cache kontrak terpadu versi 31', (
         assert.doesNotMatch(html, /cdn\.tailwindcss\.com/, `${file} masih memakai Tailwind CDN`);
         assert.doesNotMatch(html, /tailwind\.config/, `${file} masih membawa konfigurasi runtime`);
     }
-    assert.match(read('sw.js'), /relawansync-v31-kontrak-terpadu-cache/);
+    assert.match(read('sw.js'), /relawansync-v32-kontrol-daftar-cache/);
     assert.match(read('package.json'), /build:css/);
 });
 
@@ -281,7 +281,7 @@ test('fase 7 menyediakan rincian proyek, ringkasan direktori, dan peringatan abs
     assert.match(master, /ubahUrutanMaster/);
     assert.match(masterHtml, /ringkasanMasterGlobal/);
     assert.match(masterHtml, /Kehadiran terbanyak/);
-    assert.match(masterHtml, /Persentase hadir/);
+    assert.match(masterHtml, /Persentase tertinggi/);
 });
 
 test('fase 8 tetap aman dan UI terbaru mengelompokkan nama identik per kabupaten', () => {
@@ -499,7 +499,7 @@ test('fase 19 memulihkan router cepat peringkat tanpa memasukkan personel khusus
     assert.match(source, /NOTIFY pgrst, 'reload schema'/);
     assert.doesNotMatch(peringkat, /Terapkan migrasi Fase 14/);
     assert.match(peringkat, /statement timeout\|57014/);
-    assert.match(sw, /relawansync-v31-kontrak-terpadu-cache/);
+    assert.match(sw, /relawansync-v32-kontrol-daftar-cache/);
 });
 
 test('fase 20 menyeragamkan profil, zona, seragam, sumber frontend, dan export', () => {
@@ -538,5 +538,43 @@ test('fase 20 menyeragamkan profil, zona, seragam, sumber frontend, dan export',
 
     for (const file of ['js/input.js', 'js/riwayat.js', 'js/seragam.js']) {
         assert.doesNotMatch(read(file), /v_status_seragam\?/i, `${file} masih memakai view seragam lama`);
+    }
+});
+
+test('fase 21 menyeragamkan pencarian filter urutan batas baris dan export daftar', () => {
+    const sql = read('db/fase21_kontrol_daftar_terpadu.sql');
+    const peringkat = read('js/peringkat.js');
+    const seragam = read('js/seragam.js');
+    const riwayat = read('js/riwayat.js');
+
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.daftar_peringkat_operator_v3/);
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.daftar_peringkat_admin_v3/);
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.daftar_peringkat_v3/);
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.daftar_seragam_operator_v3/);
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.daftar_seragam_admin_v3/);
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.daftar_seragam_v3/);
+    assert.match(sql, /greatest\(1, least\(coalesce\(p_limit, 50\), 200\)\)/i);
+    assert.match(sql, /SECURITY INVOKER/);
+    assert.match(sql, /SECURITY DEFINER/);
+    assert.match(sql, /REVOKE ALL ON FUNCTION public\.daftar_peringkat_v3[^;]+FROM PUBLIC, anon/);
+    assert.match(sql, /REVOKE ALL ON FUNCTION public\.daftar_seragam_v3[^;]+FROM PUBLIC, anon/);
+    assert.match(peringkat, /daftar_peringkat_v3/);
+    assert.match(peringkat, /p_urut: urut/);
+    assert.match(seragam, /daftar_seragam_v3/);
+    assert.match(seragam, /p_urut: urut/);
+    assert.match(riwayat, /riwayatFilteredData\.forEach/);
+    assert.match(riwayat, /renderTabelRiwayat\(riwayatFilteredData, true\)/);
+
+    const controlContracts = [
+        ['master.html', ['cariData', 'filterZonaMaster', 'filterJenisMaster', 'sortMaster', 'limitData', 'resetKontrolMaster']],
+        ['peringkat.html', ['cariPeringkat', 'filterProyekPeringkat', 'filterStatusPeringkat', 'sortPeringkat', 'limitPeringkat', 'resetKontrolPeringkat']],
+        ['seragam.html', ['cariSeragam', 'filterProyekSeragam', 'filterProsesSeragam', 'filterPenguasaanSeragam', 'sortSeragam', 'limitSeragam', 'resetKontrolSeragam']],
+        ['statistik.html', ['searchVolunteer', 'filterBulanRekap', 'sortVolunteer', 'limitVolunteer', 'resetKontrolStatistik']],
+        ['riwayat.html', ['filterCari', 'filterTanggal', 'sortRiwayat', 'limitRiwayat', 'resetFilter']]
+    ];
+    for (const [file, markers] of controlContracts) {
+        const html = read(file);
+        assert.match(html, /data-toolbar/, `${file} belum memakai toolbar terpadu`);
+        for (const marker of markers) assert.match(html, new RegExp(marker), `${file}: ${marker} belum tersedia`);
     }
 });
