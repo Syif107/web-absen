@@ -6,7 +6,6 @@ let dataStatusSeragam = [];
 let dataStokSeragam = [];
 let dataMutasiStokSeragam = [];
 let dataPenerimaTersimpan = [];
-let kehadiranProyekSeragam = [];
 let nipSeragamAktif = '';
 let parameterSeragamSudahDibuka = false;
 let stokSeragamFase10Aktif = false;
@@ -106,7 +105,6 @@ async function muatStokSeragamKompatibel() {
     return lama;
 }
 
-function uniqueNip(rows) { return new Set(rows.map(r => r.nip).filter(Boolean)).size; }
 function setKpi(id, value) { const el = document.getElementById(id); if (el) el.textContent = Number(value || 0).toLocaleString('id-ID'); }
 
 function renderKpiSeragam() {
@@ -146,8 +144,8 @@ async function siapkanFilterProyekSeragam() {
     if (!select || !group) return;
     const res = await supabaseFetchAll('v_daftar_proyek_absensi?select=kategori,nama_proyek&order=nama_proyek.asc');
     if (res.status !== 'success') return;
-    kehadiranProyekSeragam = res.data || [];
-    const names = [...new Set(kehadiranProyekSeragam
+    const proyekTersedia = res.data || [];
+    const names = [...new Set(proyekTersedia
         .filter(row => row.kategori === 'lainnya' && row.nama_proyek)
         .map(row => row.nama_proyek))]
         .filter(name => !PROYEK_KHUSUS_SERAGAM.includes(name))
@@ -160,14 +158,6 @@ function labelFilterProyekSeragam(value) {
     if (value === 'khususul_khusus') return '5 Proyek Khususul Khusus';
     if (value === 'lainnya') return 'Semua Proyek Lainnya';
     return String(value || '').replace(/^proyek:/, '');
-}
-
-function cocokFilterProyekSeragam(row, value) {
-    if (!value || value === 'semua') return true;
-    if (value === 'khususul_khusus' || value === 'lainnya') return row.jalur_kelayakan === value || kehadiranProyekSeragam.some(proyek => proyek.nip === row.nip && proyek.kategori === value);
-    if (!value.startsWith('proyek:')) return true;
-    const namaProyek = value.slice('proyek:'.length);
-    return kehadiranProyekSeragam.some(proyek => proyek.nip === row.nip && proyek.nama_proyek === namaProyek);
 }
 
 function warnaProses(status) {

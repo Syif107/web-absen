@@ -67,8 +67,8 @@
         <div class="bg-indigo-900/5 dark:bg-indigo-500/5 border-b border-indigo-100/60 dark:border-indigo-500/10 py-1 px-4 text-center shrink-0">
             <span class="text-[9px] font-black text-indigo-700 dark:text-indigo-400 tracking-[0.25em] uppercase">Atas Berkat Rochmat Alloh Yang Maha Kuasa</span>
         </div>        
-        <header class="h-auto md:h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700/50 flex flex-col md:flex-row items-start md:items-center justify-between p-4 lg:px-6 shadow-sm shrink-0 z-10 gap-3">
-            <div class="flex items-center gap-4 w-full md:w-auto">
+        <header class="h-auto md:min-h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700/50 flex flex-col md:flex-row items-start md:items-center p-4 lg:px-6 shadow-sm shrink-0 z-10 gap-3">
+            <div class="flex items-center gap-4 w-full md:w-auto shrink-0">
                 <button id="btnToggleSidebar" onclick="toggleSidebar()" class="text-slate-500 dark:text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 w-10 h-10 rounded-lg transition-colors flex items-center justify-center">
                     <i class="fa-solid fa-bars text-lg"></i>
                 </button>
@@ -77,29 +77,40 @@
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">Manajemen Entitas Data</p>
                 </div>
             </div>
+
+            <div id="masterSelectionActions" class="hidden w-full md:flex-1 md:justify-center md:px-3" aria-live="polite">
+                <div class="inline-flex flex-wrap items-center justify-center gap-1.5 rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 p-1.5 shadow-sm">
+                    <span class="px-2 text-[11px] font-black text-indigo-700 dark:text-indigo-300 whitespace-nowrap"><span id="selectedMasterCount">0</span> dipilih</span>
+                    <button id="btnDetailMasterTerpilih" type="button" onclick="bukaDetailMasterTerpilih()" class="hidden bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-500/30" title="Lihat detail personel terpilih"><i class="fa-solid fa-eye"></i> Detail</button>
+                    <button id="btnEditMasterTerpilih" type="button" onclick="bukaEditMasterTerpilih()" class="hidden bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg" title="Edit personel terpilih"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                    <button id="btnMergeMasterTerpilih" type="button" onclick="bukaModalMergeTerpilih()" class="hidden bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg" title="Gabungkan profil yang dipilih"><i class="fa-solid fa-code-merge"></i> Gabungkan</button>
+                    <button type="button" onclick="deleteBulkMaster()" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg" title="Hapus permanen profil yang dipilih"><i class="fa-solid fa-trash"></i> Hapus</button>
+                    <button type="button" onclick="bersihkanPilihanMaster()" class="w-7 h-7 rounded-lg text-slate-500 hover:bg-white dark:hover:bg-slate-800" title="Batalkan pilihan" aria-label="Batalkan pilihan"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
             
-            <div class="flex flex-wrap items-center gap-2 w-full md:w-auto pl-14 md:pl-0">
+            <div class="flex flex-wrap items-center justify-end gap-2 w-full md:w-auto md:ml-auto pl-14 md:pl-0 shrink-0">
                 <button onclick="bukaModalTambahPersonel()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap">
                     <i class="fa-solid fa-user-plus"></i> Tambah Personel
                 </button>
                 <button onclick="bukaModalImportCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap">
                     <i class="fa-solid fa-file-import"></i> Import CSV
                 </button>
-                <button onclick="exportMasterExcel()" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap" title="Ekspor data sesuai filter ke Excel">
-                    <i class="fa-solid fa-file-excel"></i> Excel
-                </button>
-                <button onclick="exportMasterPdf()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap" title="Buka laporan siap simpan sebagai PDF">
-                    <i class="fa-solid fa-file-pdf"></i> PDF
-                </button>
-                <button onclick="bukaModalRapikanMaster()" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap" title="Tinjau nama identik atau mirip dalam kabupaten yang sama">
-                    <i class="fa-solid fa-code-merge"></i> Rapikan <span id="badgeDuplikatMaster" class="bg-white/20 rounded-full px-1.5">0</span>
-                </button>
-                <button onclick="bukaModalOrganisasi()" class="bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap" title="Tambah, edit, hapus, atau gabungkan asal organisasi">
-                    <i class="fa-solid fa-sitemap"></i> Organisasi & Zona
-                </button>
-                <button onclick="bukaRiwayatMerge()" class="bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap" title="Tinjau dan pisahkan hasil merge">
-                    <i class="fa-solid fa-clock-rotate-left"></i> Riwayat Merge
-                </button>
+                <details class="relative">
+                    <summary class="list-none cursor-pointer bg-slate-700 hover:bg-slate-800 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap" title="Ekspor data sesuai filter"><i class="fa-solid fa-file-export"></i> Ekspor <i class="fa-solid fa-chevron-down text-[9px] opacity-70"></i></summary>
+                    <div class="absolute right-0 top-full mt-2 z-50 min-w-40 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl">
+                        <button onclick="this.closest('details').removeAttribute('open'); exportMasterExcel()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold"><i class="fa-solid fa-file-excel w-5"></i> Excel</button>
+                        <button onclick="this.closest('details').removeAttribute('open'); exportMasterPdf()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 text-rose-700 dark:text-rose-300 text-xs font-bold"><i class="fa-solid fa-file-pdf w-5"></i> PDF</button>
+                    </div>
+                </details>
+                <details class="relative">
+                    <summary class="list-none cursor-pointer bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap" title="Perapian profil, organisasi, zona, dan riwayat merge"><i class="fa-solid fa-sliders"></i> Kelola Data <span id="badgeDuplikatMaster" class="bg-white/20 rounded-full px-1.5">0</span> <i class="fa-solid fa-chevron-down text-[9px] opacity-70"></i></summary>
+                    <div class="absolute right-0 top-full mt-2 z-50 min-w-56 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl">
+                        <button onclick="this.closest('details').removeAttribute('open'); bukaModalRapikanMaster()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-bold" title="Tinjau nama identik atau mirip"><i class="fa-solid fa-code-merge w-5"></i> Rapikan Personel</button>
+                        <button onclick="this.closest('details').removeAttribute('open'); bukaModalOrganisasi()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-cyan-50 dark:hover:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 text-xs font-bold"><i class="fa-solid fa-sitemap w-5"></i> Organisasi & Zona</button>
+                        <button onclick="this.closest('details').removeAttribute('open'); bukaRiwayatMerge()" class="w-full text-left px-3 py-2 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-500/10 text-violet-700 dark:text-violet-300 text-xs font-bold"><i class="fa-solid fa-clock-rotate-left w-5"></i> Riwayat Merge / Pisahkan</button>
+                    </div>
+                </details>
             </div>
         </header>
 
@@ -116,7 +127,7 @@
                 <div class="p-5 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-slate-50 dark:bg-slate-700/30 rounded-t-2xl shrink-0">
                     <div>
                         <h2 class="font-bold text-slate-800 dark:text-slate-100"><i class="fa-solid fa-users mr-2 text-primary"></i>Direktori Personel</h2>
-                        <p class="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 mt-1">Edit satu profil dari tombol Edit. Untuk merge manual, centang minimal dua baris lalu pilih Gabungkan Terpilih.</p>
+                        <p class="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 mt-1">Centang satu personel untuk Detail/Edit/Hapus; centang minimal dua untuk Gabungkan. Aksi muncul di header halaman.</p>
                     </div>
                     <span class="bg-indigo-100 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[10px] md:text-xs px-3 py-1.5 rounded-lg font-bold shadow-sm whitespace-nowrap" id="totalMasterInfo">Memuat...</span>
                 </div>
@@ -157,18 +168,6 @@
                     <button type="button" onclick="resetKontrolMaster()" class="data-reset-button"><i class="fa-solid fa-rotate-left"></i> Reset</button>
                 </div>
                 
-                <div id="bulkMasterBanner" class="hidden bg-indigo-50 dark:bg-indigo-500/10 border-b border-indigo-100 dark:border-indigo-500/20 p-3 px-5 flex flex-wrap justify-between items-center gap-3 transition-all shrink-0">
-                    <span class="text-indigo-700 dark:text-indigo-300 font-bold text-sm"><span id="selectedMasterCount">0</span> Data Terpilih</span>
-                    <div class="flex items-center gap-2">
-                        <button id="btnMergeMasterTerpilih" onclick="bukaModalMergeTerpilih()" class="hidden bg-amber-500 hover:bg-amber-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
-                            <i class="fa-solid fa-code-merge"></i> Gabungkan Terpilih
-                        </button>
-                        <button onclick="deleteBulkMaster()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2">
-                            <i class="fa-solid fa-trash"></i> Hapus Permanen
-                        </button>
-                    </div>
-                </div>
-
                 <div class="flex-1 overflow-auto bg-white dark:bg-slate-800 custom-scroll relative">
                     <table class="w-full text-left text-sm whitespace-nowrap min-w-max">
                         <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold sticky top-0 z-10 shadow-sm border-b border-slate-200 dark:border-slate-600">
@@ -202,7 +201,7 @@
                                 <th class="px-4 py-3 text-xs uppercase tracking-wide min-w-[190px] relative">
                                     <div class="flex items-center justify-between gap-2">
                                         <span>Kabupaten/Kota Asal</span>
-                                        <button onclick="bukaExcelFilterMaster('kategori_wilayah', event)" class="text-slate-400 hover:text-primary p-1 rounded transition-colors"><i class="fa-solid fa-filter text-xs"></i></button>
+                                        <button onclick="bukaExcelFilterMaster('kabupaten_normalisasi', event)" class="text-slate-400 hover:text-primary p-1 rounded transition-colors"><i class="fa-solid fa-filter text-xs"></i></button>
                                     </div>
                                 </th>
                                 <th class="px-4 py-3 text-xs uppercase tracking-wide min-w-[150px]">Kehadiran</th>
@@ -214,11 +213,10 @@
                                         <button onclick="bukaExcelFilterMaster('ukuran_seragam', event)" class="text-slate-400 hover:text-primary p-1 rounded transition-colors"><i class="fa-solid fa-filter text-xs"></i></button>
                                     </div>
                                 </th>
-                                <th class="px-4 py-3 text-center w-24 text-xs uppercase tracking-wide">Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="tabelMasterBody" class="divide-y divide-slate-100 dark:divide-slate-700/50">
-                            <tr><td colspan="12" class="text-center p-8 text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Mengambil data dari server...</td></tr>
+                            <tr><td colspan="11" class="text-center p-8 text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Mengambil data dari server...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -361,7 +359,7 @@
                             </div>
                             <div>
                                 <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Asal Organisasi / DPD *</label>
-                                <input id="mergeOrg" oninput="sarankanKategoriMergePusat()" type="text" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm font-semibold outline-none focus:border-amber-500">
+                                <input id="mergeOrg" type="text" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm font-semibold outline-none focus:border-amber-500">
                             </div>
                             <div>
                                 <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Bidang / Jabatan</label>
@@ -373,15 +371,6 @@
                                 <input id="mergeDaerah" type="text" placeholder="Contoh: Jombang" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm font-semibold outline-none focus:border-amber-500">
                             </div>
                             <div>
-                                <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Kategori Wilayah</label>
-                                <select id="mergeKategoriWilayah" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm font-semibold outline-none focus:border-amber-500">
-                                    <option value="belum_dilengkapi">Belum dilengkapi</option>
-                                    <option value="jombang">Jombang / Pusat</option>
-                                    <option value="luar_jombang">Luar Jombang — Jawa/Madura/Bali</option>
-                                    <option value="zona_4">Zona 4 — Sumatera/Kalimantan</option>
-                                </select>
-                            </div>
-                            <div>
                                 <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Zona Asal</label>
                                 <select id="mergeZonaAsal" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm font-semibold outline-none focus:border-amber-500">
                                     <option value="">Belum dipetakan</option>
@@ -390,6 +379,7 @@
                                     <option value="zona_3">Zona 3 — Jawa Barat, Jakarta, Banten</option>
                                     <option value="zona_4">Zona 4 — Sumatera, Kalimantan</option>
                                 </select>
+                                <p class="text-[10px] text-slate-400 mt-1">Kategori operasional Jombang/luar Jombang dihitung otomatis dari kabupaten, organisasi, dan zona.</p>
                             </div>
                             <div>
                                 <label class="text-[10px] font-black uppercase text-slate-400 block mb-1">Ukuran Atasan</label>
@@ -436,7 +426,7 @@
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Asal Organisasi / DPD</label>
-                        <input type="text" id="editOrg" oninput="sarankanKategoriWilayahPusat()" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
+                        <input type="text" id="editOrg" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
                         <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">PUSAT otomatis masuk Jombang. DPD JOMBANG/Jombang tidak otomatis dianggap Pusat.</p>
                     </div>
                     <div>
@@ -460,16 +450,6 @@
                         <input type="text" id="editDaerah" placeholder="Contoh: Jombang, Malang, Balikpapan" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Kategori Wilayah</label>
-                        <select id="editKategoriWilayah" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
-                            <option value="belum_dilengkapi">Belum dilengkapi</option>
-                            <option value="jombang">Jombang / Pusat</option>
-                            <option value="luar_jombang">Luar Jombang — Jawa/Madura/Bali</option>
-                            <option value="zona_4">Zona 4 — Sumatera/Kalimantan</option>
-                        </select>
-                        <p class="text-[10px] text-slate-400 mt-1">Dipakai untuk aturan operasional Jombang/luar Jombang. Reward hari pertama hanya mengikuti Zona Asal 4.</p>
-                    </div>
-                    <div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Zona Asal</label>
                         <select id="editZonaAsal" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-4 py-2.5 font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
                             <option value="">Belum dipetakan</option>
@@ -478,6 +458,7 @@
                             <option value="zona_3">Zona 3 — Jawa Barat, Jakarta, Banten</option>
                             <option value="zona_4">Zona 4 — Sumatera, Kalimantan</option>
                         </select>
+                        <p class="text-[10px] text-slate-400 mt-1">Satu klasifikasi zona untuk seluruh sistem. Kabupaten yang dikenali akan dikoreksi otomatis oleh database; pilihan ini menjadi cadangan manual.</p>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1">Ukuran Atasan</label>
@@ -527,45 +508,6 @@
                     <label class="block"><span class="text-[10px] uppercase font-black text-red-600">Ketik HAPUS PERMANEN</span><input id="hapusPermanenFrasa" autocomplete="off" class="mt-1 w-full px-3 py-2.5 rounded-xl border border-red-300 bg-white dark:bg-slate-700 font-black" placeholder="HAPUS PERMANEN"></label>
                 </div>
                 <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2"><button onclick="tutupHapusPermanen()" class="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-bold text-sm">Batal</button><button id="btnEksekusiHapusPermanen" onclick="eksekusiHapusPermanen()" class="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-sm"><i class="fa-solid fa-trash mr-1"></i>Hapus Permanen</button></div>
-            </div>
-        </div>
-
-        <!-- MODAL MERGE -->
-        <div id="modalMerge" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex flex-col items-center justify-center backdrop-blur-sm p-4 sm:p-8 transition-opacity">
-            <div class="bg-white dark:bg-slate-800 w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col modal-scale-in border border-slate-200 dark:border-slate-700/50">
-                <div class="p-6 border-b border-slate-100 dark:border-slate-700/50 bg-amber-50 dark:bg-amber-500/10">
-                    <h3 class="font-black text-xl text-amber-600 dark:text-amber-400"><i class="fa-solid fa-code-merge mr-2"></i>Gabung Data Relawan (Merge)</h3>
-                    <p class="text-xs text-amber-700 dark:text-amber-400/70 font-medium mt-2">Perhatian: Proses ini akan memindahkan seluruh riwayat absen dari profil lama ke profil tujuan, dan menghapus profil lama secara permanen.</p>
-                </div>
-                <div class="p-6 space-y-6 relative min-h-[320px]">
-                    <div class="bg-slate-50 dark:bg-slate-700/30 p-4 rounded-xl border border-slate-200 dark:border-slate-600">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Data yang Salah (Akan Dihapus):</label>
-                        <div class="mt-2 flex justify-between items-center">
-                            <div>
-                                <p class="font-bold text-lg text-slate-800 dark:text-slate-100" id="sumberNama">-</p>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 font-mono" id="sumberNip">-</p>
-                            </div>
-                            <span class="text-red-500 text-2xl"><i class="fa-solid fa-trash-can"></i></span>
-                        </div>
-                    </div>
-                    <div class="flex justify-center text-amber-500 text-xl"><i class="fa-solid fa-angles-down animate-bounce"></i></div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2 block">Cari Profil Tujuan (Yang Benar):</label>
-                        <div class="relative">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400"></i>
-                            <input type="text" id="searchInputMerge" onkeyup="filterDropdownMerge()" onclick="toggleDropdownMerge(true)" placeholder="Ketik nama relawan untuk mencari..." autocomplete="off" class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl pl-10 pr-10 py-3 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all">
-                            <i class="fa-solid fa-xmark absolute right-4 top-4 text-slate-400 cursor-pointer hover:text-red-500 hidden" id="clearSearchMerge" onclick="resetInputMerge()"></i>
-                            <input type="hidden" id="targetMergeNip">
-                            <ul id="dropdownMergeList" class="absolute z-50 w-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 mt-2 rounded-xl shadow-2xl max-h-80 overflow-y-auto hidden custom-scroll"></ul>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-5 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-700/30 rounded-b-2xl flex justify-end gap-3 shrink-0">
-                    <button onclick="tutupModalMerge()" class="text-sm bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 font-bold px-5 py-2.5 rounded-xl transition-colors shadow-sm">Batal</button>
-                    <button id="btnEksekusiMerge" onclick="eksekusiMerge()" class="text-sm bg-amber-500 hover:bg-amber-600 text-white font-bold px-6 py-2.5 rounded-xl transition-colors shadow-sm flex items-center gap-2">
-                        <i class="fa-solid fa-bolt"></i> Eksekusi Gabung
-                    </button>
-                </div>
             </div>
         </div>
 

@@ -49,7 +49,7 @@ test('service worker hanya mencache GET dari origin aplikasi', () => {
     assert.doesNotMatch(source, /cache\.put\(event\.request/);
 });
 
-test('frontend memakai CSS produksi lokal dan cache kontrol daftar versi 32', () => {
+test('frontend memakai CSS produksi lokal dan cache aksi Master versi 33', () => {
     const htmlFiles = readdirSync(root).filter(name => name.endsWith('.html'));
     for (const file of htmlFiles) {
         const html = read(file);
@@ -57,7 +57,7 @@ test('frontend memakai CSS produksi lokal dan cache kontrol daftar versi 32', ()
         assert.doesNotMatch(html, /cdn\.tailwindcss\.com/, `${file} masih memakai Tailwind CDN`);
         assert.doesNotMatch(html, /tailwind\.config/, `${file} masih membawa konfigurasi runtime`);
     }
-    assert.match(read('sw.js'), /relawansync-v32-kontrol-daftar-cache/);
+    assert.match(read('sw.js'), /relawansync-v33-master-aksi-cache/);
     assert.match(read('package.json'), /build:css/);
 });
 
@@ -138,7 +138,7 @@ test('fase 18 menerapkan empat zona tanpa menimpa zona manual', () => {
     assert.match(sql, /WHERE m\.zona_asal IS NULL/);
     assert.match(sql, /Zona 4: Sumatera dan Kalimantan/);
     assert.match(masterHtml, /Isi Zona Otomatis/);
-    assert.match(masterHtml, /Zona 4 — Sumatera\/Kalimantan/);
+    assert.match(masterHtml, /Zona 4 — Sumatera, Kalimantan/);
     assert.match(masterJs, /async function sinkronkanZonaOtomatis/);
 });
 
@@ -322,12 +322,26 @@ test('fase 9 menyediakan merge checkbox dengan editor profil dan transaksi serve
     assert.match(source, /COMMIT;/);
     assert.match(master, /callSupabaseRpc\('merge_relawan_terpadu_v3'/);
     assert.match(master, /p_profile:/);
+    assert.match(masterHtml, /masterSelectionActions/);
     assert.match(masterHtml, /btnMergeMasterTerpilih/);
-    assert.match(masterHtml, /Gabungkan Terpilih/);
+    assert.match(masterHtml, /Ekspor/);
+    assert.match(masterHtml, /Kelola Data/);
+    assert.match(masterHtml, /centang minimal dua untuk Gabungkan/i);
     assert.match(masterHtml, /Pengaturan Hasil Merge/);
     assert.match(masterHtml, /mergeNama/);
     assert.match(masterHtml, /mergeOrg/);
     assert.match(masterHtml, /mergeDaerah/);
+    assert.doesNotMatch(masterHtml, /bulkMasterBanner/);
+    assert.doesNotMatch(masterHtml, /<th[^>]*>Aksi<\/th>/i);
+    assert.doesNotMatch(masterHtml, /id="editKategoriWilayah"/);
+    assert.doesNotMatch(masterHtml, /id="mergeKategoriWilayah"/);
+    assert.doesNotMatch(masterHtml, /Kategori Wilayah/i);
+    assert.doesNotMatch(read('panduan.html'), /<strong>Kategori Wilayah<\/strong>/i);
+    assert.doesNotMatch(master, /bukaModalMergeDariTombol/);
+    assert.doesNotMatch(read('js/app.js'), /function bukaExcelFilterMaster/);
+    for (const helper of ['normalizeNama', 'bersihkanTitel', 'levenshtein', 'similarityRasio']) {
+        assert.doesNotMatch(read('js/input.js'), new RegExp(`function ${helper}\\s*\\(`), `${helper} terduplikasi di input.js`);
+    }
 });
 
 test('fase 13 menyediakan merge reversibel, CRUD organisasi, dan empat zona asal', () => {
@@ -499,7 +513,7 @@ test('fase 19 memulihkan router cepat peringkat tanpa memasukkan personel khusus
     assert.match(source, /NOTIFY pgrst, 'reload schema'/);
     assert.doesNotMatch(peringkat, /Terapkan migrasi Fase 14/);
     assert.match(peringkat, /statement timeout\|57014/);
-    assert.match(sw, /relawansync-v32-kontrol-daftar-cache/);
+    assert.match(sw, /relawansync-v33-master-aksi-cache/);
 });
 
 test('fase 20 menyeragamkan profil, zona, seragam, sumber frontend, dan export', () => {

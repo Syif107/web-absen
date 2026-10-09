@@ -173,51 +173,6 @@ function populateDatalists() {
     });
 }
 
-// ==========================================
-// 2. UTILITAS NORMALISASI & FUZZY MATCH
-// ==========================================
-
-function normalizeNama(s) {
-    return String(s || '')
-        .toUpperCase()
-        .replace(/[^A-Z0-9\s]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-}
-
-function bersihkanTitel(s) {
-    let t = String(s || '').trim();
-    const titel = ['BAPAK', 'PAK', 'IBU', 'BU', 'SDR', 'SDRI', 'SAUDARA', 'SAUDARI', 'H.', 'HJ.', 'A.N.'];
-    for (const k of titel) {
-        if (t.startsWith(k + ' ')) {
-            t = t.slice(k.length).trim();
-        }
-    }
-    return t;
-}
-
-function levenshtein(a, b) {
-    const m = a.length, n = b.length;
-    if (m === 0) return n;
-    if (n === 0) return m;
-    if (Math.abs(m - n) > 6) return Math.max(m, n);
-    const dp = [];
-    for (let i = 0; i <= m; i++) dp.push([i]);
-    for (let j = 1; j <= n; j++) dp[0].push(j);
-    for (let i = 1; i <= m; i++) {
-        for (let j = 1; j <= n; j++) {
-            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-            dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
-        }
-    }
-    return dp[m][n];
-}
-
-function similarityRasio(a, b) {
-    const maxLen = Math.max(a.length, b.length);
-    return maxLen === 0 ? 1 : 1 - levenshtein(a, b) / maxLen;
-}
-
 // Cari cocokkan paling mirip di Master (sinkron, pakai cache)
 function cariPencocok(kata) {
     let exact = null;

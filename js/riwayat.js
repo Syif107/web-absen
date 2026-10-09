@@ -366,10 +366,6 @@ async function loadRiwayatData() {
 // ==========================================
 // FILTER & SORT
 // ==========================================
-function terapkanFilterRiwayat() {
-    jalankanFilterDanSortRiwayat();
-}
-
 function resetFilter() {
     document.getElementById('filterTanggal').value = '';
     document.getElementById('filterBulan').value = '';
