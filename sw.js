@@ -1,4 +1,4 @@
-const CACHE_NAME = "relawansync-v33-master-aksi-cache";
+const CACHE_NAME = "relawansync-v34-ukuran-dinamis-cache";
 const PRECACHE_URLS = [
     "./",
     "index.html",

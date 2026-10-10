@@ -49,7 +49,7 @@ test('service worker hanya mencache GET dari origin aplikasi', () => {
     assert.doesNotMatch(source, /cache\.put\(event\.request/);
 });
 
-test('frontend memakai CSS produksi lokal dan cache aksi Master versi 33', () => {
+test('frontend memakai CSS produksi lokal dan cache ukuran dinamis versi 34', () => {
     const htmlFiles = readdirSync(root).filter(name => name.endsWith('.html'));
     for (const file of htmlFiles) {
         const html = read(file);
@@ -57,7 +57,7 @@ test('frontend memakai CSS produksi lokal dan cache aksi Master versi 33', () =>
         assert.doesNotMatch(html, /cdn\.tailwindcss\.com/, `${file} masih memakai Tailwind CDN`);
         assert.doesNotMatch(html, /tailwind\.config/, `${file} masih membawa konfigurasi runtime`);
     }
-    assert.match(read('sw.js'), /relawansync-v33-master-aksi-cache/);
+    assert.match(read('sw.js'), /relawansync-v34-ukuran-dinamis-cache/);
     assert.match(read('package.json'), /build:css/);
 });
 
@@ -513,7 +513,7 @@ test('fase 19 memulihkan router cepat peringkat tanpa memasukkan personel khusus
     assert.match(source, /NOTIFY pgrst, 'reload schema'/);
     assert.doesNotMatch(peringkat, /Terapkan migrasi Fase 14/);
     assert.match(peringkat, /statement timeout\|57014/);
-    assert.match(sw, /relawansync-v33-master-aksi-cache/);
+    assert.match(sw, /relawansync-v34-ukuran-dinamis-cache/);
 });
 
 test('fase 20 menyeragamkan profil, zona, seragam, sumber frontend, dan export', () => {
@@ -591,4 +591,25 @@ test('fase 21 menyeragamkan pencarian filter urutan batas baris dan export dafta
         assert.match(html, /data-toolbar/, `${file} belum memakai toolbar terpadu`);
         for (const marker of markers) assert.match(html, new RegExp(marker), `${file}: ${marker} belum tersedia`);
     }
+});
+
+test('fase 22 menyediakan master jenis ukuran seragam dinamis di seluruh alur', () => {
+    const sql = read('db/fase22_jenis_ukuran_seragam.sql');
+    const html = read('seragam.html');
+    const seragam = read('js/seragam.js');
+    const master = read('js/master.js');
+
+    assert.match(sql, /CREATE OR REPLACE FUNCTION public\.tambah_jenis_ukuran_seragam/);
+    assert.match(sql, /IF NOT public\.fase17_admin\(\)/);
+    assert.match(sql, /jumlah_tersedia, catatan\)\s*\n\s*VALUES \(v_jenis, v_ukuran, 0/);
+    assert.match(sql, /upper\(regexp_replace\(trim\(ukuran\)/i);
+    assert.match(sql, /REVOKE ALL ON FUNCTION public\.tambah_jenis_ukuran_seragam\(text,text,text\) FROM PUBLIC, anon/);
+    assert.match(html, /id="ukuranBaruJenis"/);
+    assert.match(html, /id="ukuranBaruNama"/);
+    assert.match(html, /onclick="tambahJenisUkuranSeragam\(\)"/);
+    assert.match(seragam, /callSupabaseRpc\('tambah_jenis_ukuran_seragam'/);
+    assert.match(seragam, /function daftarUkuranSeragam/);
+    assert.match(seragam, /segarkanOpsiUkuranSeragam\(\)/);
+    assert.match(master, /stok_item_seragam\?select=jenis,ukuran/);
+    assert.match(master, /function isiOpsiUkuranMaster/);
 });

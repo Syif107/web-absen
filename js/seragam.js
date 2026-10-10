@@ -17,6 +17,8 @@ let seragamTimer = null;
 let stokBatchCounter = 0;
 
 const PROYEK_KHUSUS_SERAGAM = window.RelawanDomain?.PROYEK_KHUSUS || [];
+const UKURAN_ATASAN_BAKU = window.RelawanDomain?.UKURAN_ATASAN || ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'Khusus'];
+const UKURAN_BAWAHAN_BAKU = window.RelawanDomain?.UKURAN_BAWAHAN || ['20', '22', '24', '26', '28', '30', '32', '34', '36', '38', '40', 'Khusus'];
 
 const LABEL_PROSES = window.RelawanDomain?.STATUS_SERAGAM || {
     belum_memenuhi: 'Belum memenuhi', memenuhi_syarat: 'Memenuhi syarat',
@@ -74,6 +76,7 @@ async function loadSeragam(page = seragamPage) {
         dataStokSeragam = stokRes.data || [];
         dataMutasiStokSeragam = mutasiRes.status === 'success' ? (mutasiRes.data || []) : [];
         dataPenerimaTersimpan = dataStatusSeragam.filter(row => row.record_tersimpan);
+        segarkanOpsiUkuranSeragam();
         renderKpiSeragam();
         renderSeragam(true);
         tampilkanNotifikasiSeragam();
@@ -103,6 +106,42 @@ async function muatStokSeragamKompatibel() {
     const lama = await supabaseFetchAll('stok_seragam?select=*&order=ukuran.asc');
     if (lama.status === 'success') lama.data = (lama.data || []).map(row => ({ ...row, jenis: 'atasan' }));
     return lama;
+}
+
+function daftarUkuranSeragam(jenis, tambahan = []) {
+    const baku = jenis === 'bawahan' ? UKURAN_BAWAHAN_BAKU : UKURAN_ATASAN_BAKU;
+    const hasil = [];
+    const sudah = new Set();
+    [...baku, ...dataStokSeragam.filter(row => row.jenis === jenis).map(row => row.ukuran), ...tambahan]
+        .forEach(value => {
+            const label = String(value || '').trim();
+            const key = label.toLocaleUpperCase('id-ID');
+            if (!label || sudah.has(key)) return;
+            sudah.add(key);
+            hasil.push(label);
+        });
+    return hasil;
+}
+
+function isiOpsiUkuranSelect(select, jenis, nilai = '') {
+    if (!select) return;
+    const current = String(nilai || select.value || '').trim();
+    const values = daftarUkuranSeragam(jenis, current ? [current] : []);
+    select.innerHTML = `<option value="">Belum diketahui</option>${values.map(value => `<option value="${escapeAttribute(value)}">${escapeHTML(value)}</option>`).join('')}`;
+    select.value = current;
+}
+
+function segarkanOpsiUkuranSeragam() {
+    isiOpsiUkuranSelect(document.getElementById('seragamUkuranAtasan'), 'atasan');
+    const bawahanList = document.getElementById('daftarUkuranBawahan');
+    if (bawahanList) bawahanList.innerHTML = daftarUkuranSeragam('bawahan').map(value => `<option value="${escapeAttribute(value)}"></option>`).join('');
+    document.querySelectorAll('.stok-batch-row').forEach(row => {
+        const jenis = row.querySelector('[data-field="jenis"]')?.value || 'atasan';
+        const ukuran = row.querySelector('[data-field="ukuran"]');
+        if (!ukuran) return;
+        const current = ukuran.value;
+        ukuran.innerHTML = pilihanUkuranStok(jenis, current);
+    });
 }
 
 function setKpi(id, value) { const el = document.getElementById(id); if (el) el.textContent = Number(value || 0).toLocaleString('id-ID'); }
@@ -281,7 +320,8 @@ async function bukaKelolaSeragam(nip) {
     document.getElementById('seragamNip').value = nip;
     document.getElementById('modalSeragamNama').textContent = `${row.nama || '-'} • ${nip} • ${labelWilayahSeragam(row.zona_asal)}`;
     document.getElementById('seragamStatusProses').value = row.status_proses || 'belum_memenuhi';
-    document.getElementById('seragamUkuranAtasan').value = row.ukuran_atasan || row.ukuran_dibutuhkan || '';
+    const ukuranAtasan = row.ukuran_atasan || row.ukuran_dibutuhkan || '';
+    isiOpsiUkuranSelect(document.getElementById('seragamUkuranAtasan'), 'atasan', ukuranAtasan);
     document.getElementById('seragamUkuranBawahan').value = row.ukuran_bawahan || '';
     document.getElementById('seragamStatusPenguasaan').value = row.status_penguasaan || 'belum_memiliki';
     document.getElementById('seragamKodeAtasan').value = row.kode_atasan || row.kode_seragam || '';
@@ -363,6 +403,7 @@ async function simpanSeragam(event) {
 }
 
 function bukaModalStok() {
+    segarkanOpsiUkuranSeragam();
     renderRingkasanStok();
     renderMutasiStok();
     const tanggal = document.getElementById('stokTanggalEfektif');
@@ -376,6 +417,59 @@ function bukaModalStok() {
     document.getElementById('modalStokSeragam').classList.remove('hidden');
 }
 function tutupModalStok() { document.getElementById('modalStokSeragam')?.classList.add('hidden'); }
+
+async function tambahJenisUkuranSeragam() {
+    const jenis = document.getElementById('ukuranBaruJenis')?.value || '';
+    const inputUkuran = document.getElementById('ukuranBaruNama');
+    const inputCatatan = document.getElementById('ukuranBaruCatatan');
+    const button = document.getElementById('btnTambahJenisUkuran');
+    const ukuran = String(inputUkuran?.value || '').trim();
+    const catatan = String(inputCatatan?.value || '').trim();
+    if (!stokSeragamFase10Aktif) {
+        showToast('Migrasi stok atasan dan bawahan harus tersedia sebelum menambah ukuran.', 'error');
+        return;
+    }
+    if (!['atasan', 'bawahan'].includes(jenis) || !ukuran) {
+        showToast('Pilih jenis dan isi nama ukuran.', 'error');
+        inputUkuran?.focus();
+        return;
+    }
+    if (ukuran.length > 30) {
+        showToast('Nama ukuran maksimal 30 karakter.', 'error');
+        return;
+    }
+
+    button.disabled = true;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i>Menyimpan...';
+    try {
+        const res = await callSupabaseRpc('tambah_jenis_ukuran_seragam', {
+            p_jenis: jenis,
+            p_ukuran: ukuran,
+            p_catatan: catatan || null
+        });
+        if (res.status !== 'success' || res.ok === false) {
+            const detail = `${res.message || ''} ${res.details || ''}`;
+            if (/tambah_jenis_ukuran_seragam|PGRST202|schema cache/i.test(detail)) {
+                throw new Error('Terapkan migrasi Fase 22 agar jenis ukuran baru dapat disimpan.');
+            }
+            throw new Error(res.message || 'Database menolak ukuran baru');
+        }
+        const stokRes = await muatStokSeragamKompatibel();
+        if (stokRes.status !== 'success') throw new Error(stokRes.message || 'Ukuran tersimpan, tetapi daftar stok gagal dimuat ulang');
+        dataStokSeragam = stokRes.data || [];
+        segarkanOpsiUkuranSeragam();
+        renderRingkasanStok();
+        if (inputUkuran) inputUkuran.value = '';
+        if (inputCatatan) inputCatatan.value = '';
+        showToast(res.dibuat === false ? `Ukuran ${res.ukuran || ukuran} sudah tersedia.` : `Ukuran ${res.ukuran || ukuran} berhasil ditambahkan dengan saldo 0.`, res.dibuat === false ? 'warning' : 'success');
+        inputUkuran?.focus();
+    } catch (error) {
+        showToast(error.message || 'Jenis ukuran tidak dapat ditambahkan.', 'error');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fa-solid fa-plus mr-1"></i>Tambah Ukuran';
+    }
+}
 
 function renderRingkasanStok() {
     const box = document.getElementById('ringkasanStokSeragam');
@@ -404,9 +498,7 @@ function renderMutasiStok() {
 }
 
 function pilihanUkuranStok(jenis, selected = '') {
-    const values = jenis === 'bawahan'
-        ? ['20','22','24','26','28','30','32','34','36','38','40','Khusus']
-        : ['S','M','L','XL','XXL','XXXL','Khusus'];
+    const values = daftarUkuranSeragam(jenis, selected ? [selected] : []);
     return values.map(value => `<option value="${escapeAttribute(value)}" ${value === selected ? 'selected' : ''}>${escapeHTML(value)}</option>`).join('');
 }
 

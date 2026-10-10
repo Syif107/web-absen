@@ -100,6 +100,9 @@ const LABEL_ZONA_MASTER = Object.fromEntries(
         zona_4: { label: 'Zona 4 — Sumatera & Kalimantan' }
     }).map(([key, value]) => [key, value.label])
 );
+const UKURAN_ATASAN_MASTER = globalThis.RelawanDomain?.UKURAN_ATASAN || ['S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'Khusus'];
+const UKURAN_BAWAHAN_MASTER = globalThis.RelawanDomain?.UKURAN_BAWAHAN || ['20', '22', '24', '26', '28', '30', '32', '34', '36', '38', '40', 'Khusus'];
+let ukuranStokMaster = [];
 
 function zonaAsalEfektif(row) {
     const zona = String(row?.zona_asal || '').trim().toLowerCase();
@@ -125,7 +128,8 @@ function normalisasiJabatanMaster(value) {
 document.addEventListener("DOMContentLoaded", async () => {
     const akses = await getAksesUser();
     if (akses.role !== 'admin') return;
-    loadMasterData();
+    await muatOpsiUkuranMaster();
+    await loadMasterData();
 });
 
 document.addEventListener('keydown', event => {
@@ -152,6 +156,43 @@ document.addEventListener('keydown', event => {
 });
 
 // 1. Tarik Data Master Sekali di Awal
+function daftarUkuranMaster(jenis, tambahan = []) {
+    const baku = jenis === 'bawahan' ? UKURAN_BAWAHAN_MASTER : UKURAN_ATASAN_MASTER;
+    const hasil = [];
+    const sudah = new Set();
+    [...baku, ...ukuranStokMaster.filter(row => row.jenis === jenis).map(row => row.ukuran), ...tambahan]
+        .forEach(value => {
+            const label = String(value || '').trim();
+            const key = label.toLocaleUpperCase('id-ID');
+            if (!label || sudah.has(key)) return;
+            sudah.add(key);
+            hasil.push(label);
+        });
+    return hasil;
+}
+
+function isiOpsiUkuranMaster(selectId, jenis, nilai = '') {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const current = String(nilai || select.value || '').trim();
+    const values = daftarUkuranMaster(jenis, current ? [current] : []);
+    select.innerHTML = `<option value="">Belum diketahui</option>${values.map(value => `<option value="${escapeAttribute(value)}">${escapeHTML(value)}</option>`).join('')}`;
+    select.value = current;
+}
+
+function segarkanOpsiUkuranMaster() {
+    isiOpsiUkuranMaster('editUkuranSeragam', 'atasan');
+    isiOpsiUkuranMaster('editUkuranBawahan', 'bawahan');
+    isiOpsiUkuranMaster('mergeUkuranSeragam', 'atasan');
+    isiOpsiUkuranMaster('mergeUkuranBawahan', 'bawahan');
+}
+
+async function muatOpsiUkuranMaster() {
+    const res = await supabaseFetchAll('stok_item_seragam?select=jenis,ukuran&order=jenis.asc,ukuran.asc');
+    ukuranStokMaster = res.status === 'success' && Array.isArray(res.data) ? res.data : [];
+    segarkanOpsiUkuranMaster();
+}
+
 async function loadMasterData() {
     try {
         const res = await supabaseFetchAll('v_personel_terpadu_v3?select=*&order=nama.asc');
@@ -967,8 +1008,8 @@ function bukaModalEdit(nip, nama, bidang, org, daerah = '', zonaAsal = '', ukura
     document.getElementById('editOrg').value = org;
     document.getElementById('editDaerah').value = daerah;
     document.getElementById('editZonaAsal').value = zonaAsal || '';
-    document.getElementById('editUkuranSeragam').value = ukuran;
-    document.getElementById('editUkuranBawahan').value = ukuranBawahan;
+    isiOpsiUkuranMaster('editUkuranSeragam', 'atasan', ukuran);
+    isiOpsiUkuranMaster('editUkuranBawahan', 'bawahan', ukuranBawahan);
     document.getElementById('editCatatanSeragam').value = catatanSeragam;
     document.getElementById('editKategoriPersonel').value = kategoriPersonel || 'reguler';
     document.getElementById('editJabatanKhusus').value = jabatanKhusus;
@@ -990,8 +1031,8 @@ function bukaModalTambahPersonel() {
     nipInput.value = '';
     ['editNama','editBidang','editOrg','editDaerah','editJabatanKhusus','editAlasanKhusus','editCatatanSeragam'].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('editZonaAsal').value = '';
-    document.getElementById('editUkuranSeragam').value = '';
-    document.getElementById('editUkuranBawahan').value = '';
+    isiOpsiUkuranMaster('editUkuranSeragam', 'atasan', '');
+    isiOpsiUkuranMaster('editUkuranBawahan', 'bawahan', '');
     document.getElementById('editKategoriPersonel').value = 'reguler';
     ubahKategoriPersonelEdit();
     document.getElementById('modalEdit').classList.remove('hidden');
@@ -1127,8 +1168,8 @@ function isiFormMergeManual(row) {
     document.getElementById('mergeBidang').value = normalisasiJabatanMaster(row.jabatan);
     document.getElementById('mergeDaerah').value = row.kabupaten_normalisasi || row.asal_daerah || '';
     document.getElementById('mergeZonaAsal').value = zonaAsalEfektif(row);
-    document.getElementById('mergeUkuranSeragam').value = row.ukuran_seragam || '';
-    document.getElementById('mergeUkuranBawahan').value = row.ukuran_bawahan_efektif || row.ukuran_bawahan_seragam || '';
+    isiOpsiUkuranMaster('mergeUkuranSeragam', 'atasan', row.ukuran_atasan_efektif || row.ukuran_seragam || '');
+    isiOpsiUkuranMaster('mergeUkuranBawahan', 'bawahan', row.ukuran_bawahan_efektif || row.ukuran_bawahan_seragam || '');
     document.getElementById('mergeCatatanSeragam').value = row.catatan_seragam || '';
 }
 
