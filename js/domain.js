@@ -62,6 +62,48 @@
         return String(row?.kategori_personel || 'reguler').toLowerCase() !== 'khusus';
     }
 
+    function urutkanUkuranSeragam(jenis, values = []) {
+        const unik = new Map();
+        values.forEach(value => {
+            const label = String(value || '').trim();
+            const key = normalisasiKunci(label);
+            if (label && !unik.has(key)) unik.set(key, label);
+        });
+
+        function peringkatAtasan(value) {
+            const key = normalisasiKunci(value).replace(/\s+/g, '');
+            if (key === 'XS') return 10;
+            if (key === 'S') return 20;
+            if (key === 'M') return 30;
+            if (key === 'L') return 40;
+            if (/^X+L$/.test(key)) return 40 + ((key.length - 1) * 10);
+            const angkaXL = key.match(/^(\d+)XL$/);
+            if (angkaXL) return 40 + (Number(angkaXL[1]) * 10);
+            return 500;
+        }
+
+        return Array.from(unik.values()).sort((a, b) => {
+            const keyA = normalisasiKunci(a);
+            const keyB = normalisasiKunci(b);
+            if (keyA === 'KHUSUS') return keyB === 'KHUSUS' ? 0 : 1;
+            if (keyB === 'KHUSUS') return -1;
+
+            if (jenis === 'bawahan') {
+                const angkaA = /^\d+(?:[.,]\d+)?$/.test(keyA) ? Number(keyA.replace(',', '.')) : null;
+                const angkaB = /^\d+(?:[.,]\d+)?$/.test(keyB) ? Number(keyB.replace(',', '.')) : null;
+                if (angkaA !== null && angkaB !== null && angkaA !== angkaB) return angkaA - angkaB;
+                if (angkaA !== null && angkaB === null) return -1;
+                if (angkaA === null && angkaB !== null) return 1;
+            } else {
+                const rankA = peringkatAtasan(a);
+                const rankB = peringkatAtasan(b);
+                if (rankA !== rankB) return rankA - rankB;
+            }
+
+            return String(a).localeCompare(String(b), 'id-ID', { numeric: true, sensitivity: 'base' });
+        });
+    }
+
     global.RelawanDomain = Object.freeze({
         PROYEK_KHUSUS,
         SESI,
@@ -75,6 +117,7 @@
         kategoriProyek,
         labelZona,
         personelReguler,
+        urutkanUkuranSeragam,
         SUMBER_PERSONEL: 'v_personel_terpadu_v3',
         SUMBER_SERAGAM: 'v_status_seragam_set_v2'
     });

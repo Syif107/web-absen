@@ -168,7 +168,9 @@ function daftarUkuranMaster(jenis, tambahan = []) {
             sudah.add(key);
             hasil.push(label);
         });
-    return hasil;
+    return globalThis.RelawanDomain?.urutkanUkuranSeragam
+        ? globalThis.RelawanDomain.urutkanUkuranSeragam(jenis, hasil)
+        : hasil;
 }
 
 function isiOpsiUkuranMaster(selectId, jenis, nilai = '') {

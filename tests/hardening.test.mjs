@@ -49,7 +49,7 @@ test('service worker hanya mencache GET dari origin aplikasi', () => {
     assert.doesNotMatch(source, /cache\.put\(event\.request/);
 });
 
-test('frontend memakai CSS produksi lokal dan cache ukuran dinamis versi 34', () => {
+test('frontend memakai CSS produksi lokal dan cache ukuran seragam terurut versi 35', () => {
     const htmlFiles = readdirSync(root).filter(name => name.endsWith('.html'));
     for (const file of htmlFiles) {
         const html = read(file);
@@ -57,7 +57,7 @@ test('frontend memakai CSS produksi lokal dan cache ukuran dinamis versi 34', ()
         assert.doesNotMatch(html, /cdn\.tailwindcss\.com/, `${file} masih memakai Tailwind CDN`);
         assert.doesNotMatch(html, /tailwind\.config/, `${file} masih membawa konfigurasi runtime`);
     }
-    assert.match(read('sw.js'), /relawansync-v34-ukuran-dinamis-cache/);
+    assert.match(read('sw.js'), /relawansync-v35-ukuran-seragam-terurut-cache/);
     assert.match(read('package.json'), /build:css/);
 });
 
@@ -513,7 +513,7 @@ test('fase 19 memulihkan router cepat peringkat tanpa memasukkan personel khusus
     assert.match(source, /NOTIFY pgrst, 'reload schema'/);
     assert.doesNotMatch(peringkat, /Terapkan migrasi Fase 14/);
     assert.match(peringkat, /statement timeout\|57014/);
-    assert.match(sw, /relawansync-v34-ukuran-dinamis-cache/);
+    assert.match(sw, /relawansync-v35-ukuran-seragam-terurut-cache/);
 });
 
 test('fase 20 menyeragamkan profil, zona, seragam, sumber frontend, dan export', () => {
@@ -598,6 +598,7 @@ test('fase 22 menyediakan master jenis ukuran seragam dinamis di seluruh alur', 
     const html = read('seragam.html');
     const seragam = read('js/seragam.js');
     const master = read('js/master.js');
+    const domain = read('js/domain.js');
 
     assert.match(sql, /CREATE OR REPLACE FUNCTION public\.tambah_jenis_ukuran_seragam/);
     assert.match(sql, /IF NOT public\.fase17_admin\(\)/);
@@ -610,6 +611,22 @@ test('fase 22 menyediakan master jenis ukuran seragam dinamis di seluruh alur', 
     assert.match(seragam, /callSupabaseRpc\('tambah_jenis_ukuran_seragam'/);
     assert.match(seragam, /function daftarUkuranSeragam/);
     assert.match(seragam, /segarkanOpsiUkuranSeragam\(\)/);
+    assert.match(seragam, /isiOpsiUkuranSelect\(document\.getElementById\('seragamUkuranBawahan'\), 'bawahan'/);
+    assert.match(html, /<select id="seragamUkuranBawahan"/);
+    assert.doesNotMatch(html, /id="daftarUkuranBawahan"/);
     assert.match(master, /stok_item_seragam\?select=jenis,ukuran/);
     assert.match(master, /function isiOpsiUkuranMaster/);
+    assert.match(master, /RelawanDomain\?\.urutkanUkuranSeragam/);
+
+    const context = { window: {} };
+    vm.runInNewContext(domain, context);
+    const urutkan = context.window.RelawanDomain.urutkanUkuranSeragam;
+    assert.deepEqual(
+        Array.from(urutkan('bawahan', ['30', '20', '29', 'Khusus', '31', '28', '29'])),
+        ['20', '28', '29', '30', '31', 'Khusus']
+    );
+    assert.deepEqual(
+        Array.from(urutkan('atasan', ['XXL', 'M', '4XL', 'S', 'XL', 'Khusus', 'L'])),
+        ['S', 'M', 'L', 'XL', 'XXL', '4XL', 'Khusus']
+    );
 });

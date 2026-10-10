@@ -120,7 +120,9 @@ function daftarUkuranSeragam(jenis, tambahan = []) {
             sudah.add(key);
             hasil.push(label);
         });
-    return hasil;
+    return window.RelawanDomain?.urutkanUkuranSeragam
+        ? window.RelawanDomain.urutkanUkuranSeragam(jenis, hasil)
+        : hasil;
 }
 
 function isiOpsiUkuranSelect(select, jenis, nilai = '') {
@@ -133,8 +135,7 @@ function isiOpsiUkuranSelect(select, jenis, nilai = '') {
 
 function segarkanOpsiUkuranSeragam() {
     isiOpsiUkuranSelect(document.getElementById('seragamUkuranAtasan'), 'atasan');
-    const bawahanList = document.getElementById('daftarUkuranBawahan');
-    if (bawahanList) bawahanList.innerHTML = daftarUkuranSeragam('bawahan').map(value => `<option value="${escapeAttribute(value)}"></option>`).join('');
+    isiOpsiUkuranSelect(document.getElementById('seragamUkuranBawahan'), 'bawahan');
     document.querySelectorAll('.stok-batch-row').forEach(row => {
         const jenis = row.querySelector('[data-field="jenis"]')?.value || 'atasan';
         const ukuran = row.querySelector('[data-field="ukuran"]');
@@ -322,7 +323,7 @@ async function bukaKelolaSeragam(nip) {
     document.getElementById('seragamStatusProses').value = row.status_proses || 'belum_memenuhi';
     const ukuranAtasan = row.ukuran_atasan || row.ukuran_dibutuhkan || '';
     isiOpsiUkuranSelect(document.getElementById('seragamUkuranAtasan'), 'atasan', ukuranAtasan);
-    document.getElementById('seragamUkuranBawahan').value = row.ukuran_bawahan || '';
+    isiOpsiUkuranSelect(document.getElementById('seragamUkuranBawahan'), 'bawahan', row.ukuran_bawahan || '');
     document.getElementById('seragamStatusPenguasaan').value = row.status_penguasaan || 'belum_memiliki';
     document.getElementById('seragamKodeAtasan').value = row.kode_atasan || row.kode_seragam || '';
     document.getElementById('seragamKodeBawahan').value = row.kode_bawahan || '';
