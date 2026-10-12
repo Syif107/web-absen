@@ -1,0 +1,33 @@
+function cariPencocok(kata) {
+    const target = normalisasiNamaCocok(kata);
+    let exact = null;
+    let mirip = null;
+    let bestScore = 0;
+    const kandidat = [];
+
+    for (const r of masterDataCache) {
+        const n = normalisasiNamaCocok(r.nama);
+        if (!n) continue;
+
+        if (n === target) {
+            exact = { nama: r.nama, nip: r.nip, jabatan: r.jabatan, org: r.asal_organisasi, score: 1 };
+            mirip = exact;
+            bestScore = 1;
+            break;
+        }
+
+        const sc = skorKemiripanNama(kata, r.nama);
+        // Kandidat untuk dropdown manual memakai ambang lebih longgar,
+        // sedangkan status "Mirip Master" tetap memakai ambang AMBANG_MIRIP_NAMA.
+        if (sc >= AMBANG_KANDIDAT_NAMA) {
+            kandidat.push({ nama: r.nama, nip: r.nip, jabatan: r.jabatan, org: r.asal_organisasi, score: sc });
+        }
+        if (sc >= AMBANG_MIRIP_NAMA && sc > bestScore) {
+            bestScore = sc;
+            mirip = { nama: r.nama, nip: r.nip, jabatan: r.jabatan, org: r.asal_organisasi, score: sc };
+        }
+    }
+
+    kandidat.sort((a, b) => b.score - a.score);
+    return { exact: exact, mirip: mirip, bestScore: bestScore, kandidat: kandidat.slice(0, 8) };
+}

@@ -1,4 +1,4 @@
-const CACHE_NAME = "relawansync-v35-ukuran-seragam-terurut-cache";
+const CACHE_NAME = "relawansync-v36-pencocokan-nama-master-cache";
 const PRECACHE_URLS = [
     "./",
     "index.html",

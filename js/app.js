@@ -479,3 +479,93 @@ function similarityRasio(a, b) {
     const maxLen = Math.max(a.length, b.length);
     return maxLen === 0 ? 1 : 1 - levenshtein(a, b) / maxLen;
 }
+
+// ==========================================
+// 13b. PENCOCOKAN NAMA ANTI-SALAH "RELAWAN BARU"
+//      Personel yang sudah ada di Master kerap tertulis di lapangan dengan
+//      gelar/titel, singkatan berkelip, atau tergabung bersama jabatan/asal
+//      (mis. "MATSARI S.Pd", "PAK MATSARI", "MATSARI PJ PUSAT"). Helper ini
+//      menyiapkan bentuk kanonik untuk dicocokkan tanpa menyentuh normalizeNama
+//      yang dipakai halaman lain.
+// ==========================================
+
+// Titel kekerabatan/sapaan yang tidak pernah menjadi bagian identitas.
+const TITEL_NON_NAMA = new Set([
+    'BAPAK', 'PAK', 'IBU', 'BU', 'SDR', 'SDRI', 'SAUDARA', 'SAUDARI',
+    'H', 'HJ', 'NY', 'NYI', 'MAS', 'MBH', 'KH', 'UST', 'USTADZ', 'USTADZAH'
+]);
+
+// Gelar/akademik beserta pecahan huruf dari bentuk bertitik (S.Pd.I -> S PD I).
+const GELAR_NON_NAMA = new Set([
+    'DR', 'DRS', 'DRA', 'IR', 'PROF',
+    'SE', 'SH', 'ST', 'SP', 'SS', 'SI', 'PD', 'SPD', 'SPDI', 'SHI', 'SIKOM', 'SKOM',
+    'SKED', 'SKEP', 'SIP', 'SFARM', 'SAKT', 'SPI', 'SAG', 'SPSI', 'SSOS', 'SKOM',
+    'MM', 'MP', 'MSI', 'MPD', 'MA', 'MT', 'MH', 'MKM', 'MARS', 'MBA', 'MSC',
+    'MENG', 'MENG', 'MKOM', 'MSOS', 'MAG', 'MHK', 'MKN', 'MPDI',
+    'AK', 'AMD', 'AMK', 'AMd'
+]);
+
+/**
+ * Bentuk kanonik nama untuk pencocokan: huruf besar, tanpa tanda baca,
+ * tanpa titel/gelar maupun inisial satu huruf. Contoh:
+ *   "MATSARI, S.Pd.I" -> "MATSARI"
+ *   "PAK MATSARI"     -> "MATSARI"
+ *   "A. Gunawan"      -> "GUNAWAN"
+ */
+function normalisasiNamaCocok(s) {
+    const dasar = String(s || '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (!dasar) return '';
+    const token = dasar.split(' ').filter(t => {
+        if (!t) return false;
+        if (t.length === 1) return false;              // inisial
+        if (TITEL_NON_NAMA.has(t)) return false;
+        if (GELAR_NON_NAMA.has(t)) return false;
+        return true;
+    });
+    // Bila seluruh token tersaring (mis. nama hanya inisial), kembalikan dasar.
+    return token.length ? token.join(' ') : dasar;
+}
+
+/** Token nama kanonik sebagai array. */
+function tokenNama(s) {
+    const kanon = normalisasiNamaCocok(s);
+    return kanon ? kanon.split(' ') : [];
+}
+
+/**
+ * Skor kemiripan 0..1 antara dua nama mentah.
+ * Menggabungkan rasio Levenshtein, kemiripan himpunan token (jaccard),
+ * dan deteksi "salah satu nama utuh terkandung di nama lain" supaya variasi
+ * urutan kata atau kata jabatan yang ikut terparsing tidak menurunkan status.
+ */
+function skorKemiripanNama(a, b) {
+    const ka = normalisasiNamaCocok(a);
+    const kb = normalisasiNamaCocok(b);
+    if (!ka || !kb) return 0;
+    if (ka === kb) return 1;
+
+    const lev = similarityRasio(ka, kb);
+
+    const ta = ka.split(' ');
+    const tb = kb.split(' ');
+    const setA = new Set(ta);
+    const setB = new Set(tb);
+    let irisan = 0;
+    setA.forEach(t => { if (setB.has(t)) irisan += 1; });
+    const gabungan = new Set([...setA, ...setB]).size;
+    const jaccard = gabungan ? irisan / gabungan : 0;
+
+    // Salah satu himpunan token terkandung penuh di himpunan lainnya.
+    const aDidalamB = ta.every(t => setB.has(t));
+    const bDidalamA = tb.every(t => setA.has(t));
+    let terkandung = 0;
+    if ((aDidalamB || bDidalamA) && Math.min(setA.size, setB.size) >= 1) {
+        terkandung = 0.9;
+    }
+
+    return Math.max(lev, jaccard, terkandung);
+}

@@ -173,27 +173,75 @@ function populateDatalists() {
     });
 }
 
-// Cari cocokkan paling mirip di Master (sinkron, pakai cache)
+// Jabatan umum yang kerap ikut terparsing bersama nama pada satu kolom.
+const JABATAN_UMUM = new Set([
+    'PJ', 'ADMIN', 'KOORDINATOR', 'KORODINATOR', 'KORDINATOR', 'HELPER',
+    'KETUA', 'SEKRETARIS', 'SEKERTARIS', 'BENDAHARA', 'ANGGOTA', 'PENGURUS',
+    'PENANGGUNGJAWAB', 'MANDOR', 'PENGAWAS', 'SUPERVISOR'
+]);
+
+const AMBANG_MIRIP_NAMA = 0.85;
+const AMBANG_SARAN_OTOMATIS = 0.95;
+const AMBANG_KANDIDAT_NAMA = 0.45;
+
+// Cari cocokkan paling mirip di Master (sinkron, pakai cache).
+// Memakai normalisasi tahan-gelar + skor gabungan (leksikal, token, containment)
+// agar personel yang sudah terdaftar tidak salah ditandai "Relawan Baru".
 function cariPencocok(kata) {
+    const target = normalisasiNamaCocok(kata);
     let exact = null;
     let mirip = null;
     let bestScore = 0;
+    const kandidat = [];
+
     for (const r of masterDataCache) {
-        const n = normalizeNama(r.nama);
+        const n = normalisasiNamaCocok(r.nama);
         if (!n) continue;
-        if (n === kata) {
+
+        if (n === target) {
             exact = { nama: r.nama, nip: r.nip, jabatan: r.jabatan, org: r.asal_organisasi, score: 1 };
             mirip = exact;
             bestScore = 1;
             break;
         }
-        const sc = similarityRasio(kata, n);
-        if (sc > bestScore && sc >= 0.6) {
+
+        const sc = skorKemiripanNama(kata, r.nama);
+        // Kandidat untuk dropdown manual memakai ambang lebih longgar,
+        // sedangkan status "Mirip Master" tetap memakai ambang AMBANG_MIRIP_NAMA.
+        if (sc >= AMBANG_KANDIDAT_NAMA) {
+            kandidat.push({ nama: r.nama, nip: r.nip, jabatan: r.jabatan, org: r.asal_organisasi, score: sc });
+        }
+        if (sc >= AMBANG_MIRIP_NAMA && sc > bestScore) {
             bestScore = sc;
             mirip = { nama: r.nama, nip: r.nip, jabatan: r.jabatan, org: r.asal_organisasi, score: sc };
         }
     }
-    return { exact: exact, mirip: mirip, bestScore: bestScore };
+
+    kandidat.sort((a, b) => b.score - a.score);
+    return { exact: exact, mirip: mirip, bestScore: bestScore, kandidat: kandidat.slice(0, 8) };
+}
+
+// Pisahkan jabatan/organisasi yang menempel di ujung nama pada baris satu kolom.
+function pisahJabatanOrganisasi(namaAwal) {
+    const tokens = String(namaAwal || '').trim().split(/\s+/).filter(Boolean);
+    let bidang = '';
+    let org = '';
+    while (tokens.length > 1) {
+        const terakhir = tokens[tokens.length - 1];
+        const norm = normalizeNama(terakhir);
+        if (!org && norm && knownOrgs.has(norm)) {
+            org = terakhir;
+            tokens.pop();
+            continue;
+        }
+        if (!bidang && norm && (knownBidangs.has(norm) || JABATAN_UMUM.has(norm))) {
+            bidang = terakhir;
+            tokens.pop();
+            continue;
+        }
+        break;
+    }
+    return { nama: tokens.join(' '), bidang: bidang, org: org };
 }
 
 function buatNipSementara(nama) {
@@ -258,7 +306,11 @@ function ekstrakBaris(line) {
             if (knownOrgs.has(normalizeNama(cols[1]))) org = cols[1];
             else bidang = cols[1];
         } else {
-            nama = cols[0];
+            // Satu kolom: mungkin masih menempel jabatan/organisasi di ujungnya.
+            const pisah = pisahJabatanOrganisasi(cols[0]);
+            nama = pisah.nama;
+            bidang = pisah.bidang;
+            org = pisah.org;
         }
     }
 
@@ -332,6 +384,17 @@ async function generateStagingGrid() {
         return;
     }
 
+    // Pastikan Master Data benar-benar termuat. Tanpa ini, seluruh baris bisa
+    // salah ditandai "Relawan Baru" saat cache belum siap atau gagal dimuat.
+    if (masterDataCache.length === 0) {
+        showToast("Memuat data Master terlebih dahulu...", "info");
+        await loadMasterDataUntukStaging();
+    }
+    if (masterDataCache.length === 0) {
+        showToast("Data Master belum termuat. Periksa koneksi/login lalu coba lagi agar status 'Terdaftar' dapat dikenali.", "error");
+        return;
+    }
+
     const tanggal = document.getElementById('inputTanggal').value;
     const sesi = document.getElementById('inputSesi').value;
     const lokasi = getLokasiTerpilih();
@@ -394,7 +457,7 @@ async function generateStagingGrid() {
                     <input list="listOrgData" id="org-${idx}" value="${escapeHTML(orgFinal)}" placeholder="Ketik/Pilih Organisasi..."
                         class="w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm">
                 </td>
-                <td class="px-4 py-2">${statusCellHtml(statusMode, dupDb, dupInput, match.mirip)}</td>
+                <td class="px-4 py-2">${statusCellHtml(statusMode, dupDb, dupInput, match.mirip, match.kandidat)}</td>
                 <td class="px-4 py-2 text-center">
                     <button type="button" onclick="hapusBarisStaging(this)" title="Hapus baris"
                         class="text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 w-8 h-8 rounded-lg transition-colors flex items-center justify-center mx-auto">
@@ -412,27 +475,81 @@ async function generateStagingGrid() {
     simpanDraft();
 }
 
-function statusCellHtml(statusMode, dupDb, dupInput, mirip) {
+function statusCellHtml(statusMode, dupDb, dupInput, mirip, kandidat) {
     const pill = (txt, colorCls) =>
-        `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg border whitespace-nowrap ${colorCls}">${txt}</span>`;
+        `<span class=\"inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg border whitespace-nowrap ${colorCls}\">${txt}</span>`;
 
     let list = '';
-    if (dupDb) list += pill('<i class="fa-solid fa-triangle-exclamation"></i> Sudah Absen', 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20');
-    else if (dupInput) list += pill('<i class="fa-solid fa-triangle-exclamation"></i> Duplikat Input', 'bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400 border-orange-200 dark:border-orange-500/20');
+    if (dupDb) list += pill('<i class=\"fa-solid fa-triangle-exclamation\"></i> Sudah Absen', 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-400 border-red-200 dark:border-red-500/20');
+    else if (dupInput) list += pill('<i class=\"fa-solid fa-triangle-exclamation\"></i> Duplikat Input', 'bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400 border-orange-200 dark:border-orange-500/20');
 
     if (statusMode === 'exact') {
-        list += pill('<i class="fa-solid fa-user-check"></i> Terdaftar', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20');
+        list += pill('<i class=\"fa-solid fa-user-check\"></i> Terdaftar', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20');
     } else if (statusMode === 'typo') {
-        list += pill('<i class="fa-solid fa-circle-question"></i> Mirip Master', 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20');
-        list += `<button type="button" onclick="terapkanSaranNama(this)"
-            data-saran="${escapeHTML(mirip.nama)}" data-nip="${escapeHTML(mirip.nip)}"
-            data-bidang="${escapeHTML(mirip.jabatan || 'Helper')}" data-org="${escapeHTML(mirip.org || '')}"
-            class="mt-1 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg border bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 border-indigo-200 dark:border-indigo-500/20 whitespace-nowrap transition-colors">
-            <i class="fa-solid fa-wand-magic-sparkles"></i> Perbaiki</button>`;
+        list += pill('<i class=\"fa-solid fa-circle-question\"></i> Mirip Master', 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 border-amber-200 dark:border-amber-500/20');
+        if (mirip) {
+            const miripScore = typeof mirip.score === 'number' ? mirip.score : 0;
+            if (miripScore >= AMBANG_SARAN_OTOMATIS) {
+                list += `<button type=\"button\" onclick=\"terapkanSaranNama(this)\"
+                    data-saran=\"${escapeAttribute(mirip.nama)}\" data-nip=\"${escapeAttribute(mirip.nip)}\"
+                    data-bidang=\"${escapeAttribute(mirip.jabatan || 'Helper')}\" data-org=\"${escapeAttribute(mirip.org || '')}\"
+                    class=\"mt-1 inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg border bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:hover:bg-indigo-500/20 border-indigo-200 dark:border-indigo-500/20 whitespace-nowrap transition-colors\">
+                    <i class=\"fa-solid fa-wand-magic-sparkles\"></i> Perbaiki</button>`;
+            }
+        }
+        list += daftarKandidatHtml(kandidat || (mirip ? [mirip] : []));
     } else {
-        list += pill('<i class="fa-solid fa-user-plus"></i> Relawan Baru', 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border-blue-200 dark:border-blue-500/20');
+        list += pill('<i class=\"fa-solid fa-user-plus\"></i> Relawan Baru', 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border-blue-200 dark:border-blue-500/20');
+        list += daftarKandidatHtml(kandidat || []);
     }
     return list;
+}
+
+// Dropdown kecil agar admin bisa menautkan baris ke personel Master secara manual
+// ketika pencocokan otomatis tetap meleset.
+function daftarKandidatHtml(kandidat) {
+    if (!kandidat || kandidat.length === 0) return '';
+    const opsi = kandidat.map(k => `
+        <option value="${escapeAttribute(k.nip)}"
+            data-nama="${escapeAttribute(k.nama)}"
+            data-bidang="${escapeAttribute(k.jabatan || '')}"
+            data-org="${escapeAttribute(k.org || '')}">${escapeHTML(k.nama)} — ${escapeHTML(k.nip)}</option>`).join('');
+    return `
+        <select onchange="pilihKandidatMaster(this)" title="Tautkan ke personel Master"
+            class="mt-1 block w-full max-w-[240px] text-[10px] font-bold rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 px-2 py-1 outline-none cursor-pointer">
+            <option value="">Pilih dari Master…</option>
+            ${opsi}
+        </select>`;
+}
+
+// Menautkan baris ke NIP Master yang dipilih dari dropdown kandidat.
+function pilihKandidatMaster(sel) {
+    const nip = sel.value;
+    if (!nip) return;
+    const opt = sel.options[sel.selectedIndex];
+    const tr = sel.closest('tr');
+    if (!tr) return;
+    const idx = tr.getAttribute('data-idx');
+
+    const namaInput = document.getElementById('nama-' + idx);
+    if (namaInput && opt.dataset.nama) namaInput.value = opt.dataset.nama;
+    if (opt.dataset.bidang) {
+        const bid = document.getElementById('bidang-' + idx);
+        if (bid && !triadImplicit(bid.value)) bid.value = opt.dataset.bidang;
+    }
+    if (opt.dataset.org) {
+        const org = document.getElementById('org-' + idx);
+        if (org && !org.value) org.value = opt.dataset.org;
+    }
+
+    tr.setAttribute('data-nip', nip);
+    tr.setAttribute('data-isnew', 'false');
+    tr.setAttribute('data-status', 'exact');
+
+    const statusTd = tr.querySelectorAll('td')[4];
+    if (statusTd) statusTd.innerHTML = statusCellHtml('exact', false, false, null);
+    hitungRingkasan();
+    showToast(`Baris ditautkan ke Master: ${opt.dataset.nama || nip}`, "success");
 }
 
 // ==========================================
@@ -510,7 +627,7 @@ function revalBaris(idx) {
     tr.setAttribute('data-flag', dupDb ? 'dupdb' : 'none');
 
     const statusTd = tr.querySelectorAll('td')[4];
-    if (statusTd) statusTd.innerHTML = statusCellHtml(statusMode, dupDb, false, match.mirip);
+    if (statusTd) statusTd.innerHTML = statusCellHtml(statusMode, dupDb, false, match.mirip, match.kandidat);
     hitungRingkasan();
 }
 
