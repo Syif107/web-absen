@@ -49,7 +49,7 @@ test('service worker hanya mencache GET dari origin aplikasi', () => {
     assert.doesNotMatch(source, /cache\.put\(event\.request/);
 });
 
-test('frontend memakai CSS produksi lokal dan cache ukuran seragam terurut versi 35', () => {
+test('frontend memakai CSS produksi lokal dan cache pencocokan nama versi 36', () => {
     const htmlFiles = readdirSync(root).filter(name => name.endsWith('.html'));
     for (const file of htmlFiles) {
         const html = read(file);
@@ -57,7 +57,7 @@ test('frontend memakai CSS produksi lokal dan cache ukuran seragam terurut versi
         assert.doesNotMatch(html, /cdn\.tailwindcss\.com/, `${file} masih memakai Tailwind CDN`);
         assert.doesNotMatch(html, /tailwind\.config/, `${file} masih membawa konfigurasi runtime`);
     }
-    assert.match(read('sw.js'), /relawansync-v35-ukuran-seragam-terurut-cache/);
+    assert.match(read('sw.js'), /relawansync-v36-pencocokan-nama-master-cache/);
     assert.match(read('package.json'), /build:css/);
 });
 
@@ -411,6 +411,54 @@ test('normalisasi Master hanya memetakan PUSAT dan menyatukan PJ dengan Admin', 
     assert.equal(ringkasan.terbesar, 3);
 });
 
+test('pencocokan nama Input mengenali personel terdaftar meski bertitel/gelar', () => {
+    const context = {
+        console,
+        navigator: {},
+        window: { location: { pathname: '/login.html' } },
+        document: { getElementById: () => null, addEventListener() {}, querySelectorAll: () => [] },
+        sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+        localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+        fetch: () => Promise.reject(new Error('offline')),
+        setTimeout,
+        clearTimeout,
+        isSessionAlive: () => true,
+        supabaseLogout() {}
+    };
+    vm.createContext(context);
+    vm.runInContext(read('js/app.js'), context);
+    vm.runInContext(read('js/input.js'), context);
+
+    const cocok = context.normalisasiNamaCocok;
+    assert.equal(cocok('MATSARI, S.Pd.I'), 'MATSARI');
+    assert.equal(cocok('PAK MATSARI'), 'MATSARI');
+    assert.equal(cocok('A. Gunawan'), 'GUNAWAN');
+
+    const skor = context.skorKemiripanNama;
+    assert.equal(skor('MATSARI S.Pd.I', 'MATSARI'), 1);
+    assert.ok(skor('MATSARI PJ PUSAT', 'MATSARI') >= 0.6, 'nama tergabung jabatan/org harus dianggap mirip');
+    assert.ok(skor('MOHAMMAD MATSARI', 'MATSARI') >= 0.6, 'nama panjang harus dianggap mirip');
+    assert.ok(skor('MATSARI', 'GUNAWAN') < 0.6, 'nama berbeda harus tetap dianggap baru');
+
+    vm.runInContext(`masterDataCache = [
+        { nip: 'A1', nama: 'MATSARI', jabatan: 'PJ / ADMIN', asal_organisasi: 'PUSAT' },
+        { nip: 'B2', nama: 'GUNAWAN', jabatan: 'Helper', asal_organisasi: 'DPC PLOSO' }
+    ];`, context);
+
+    const exact = context.cariPencocok('MATSARI S.Pd.I');
+    assert.ok(exact.exact, 'gelar tidak boleh membuat personel terdaftar menjadi baru');
+    assert.equal(exact.exact.nip, 'A1');
+
+    const mirip = context.cariPencocok('MATSARI PJ PUSAT');
+    assert.equal(mirip.exact, null);
+    assert.ok(mirip.mirip, 'jabatan/organisasi yang menempel harus menghasilkan kandidat');
+    assert.equal(mirip.mirip.nip, 'A1');
+
+    const baru = context.cariPencocok('SUKIRMAN');
+    assert.equal(baru.exact, null);
+    assert.equal(baru.mirip, null);
+});
+
 test('fase 10 menyediakan koreksi kehadiran, peringkat umum, dan stok seragam set', () => {
     const source = read('db/fase10_koreksi_stok_dan_deduplikasi.sql');
     const riwayat = read('js/riwayat.js');
@@ -513,7 +561,7 @@ test('fase 19 memulihkan router cepat peringkat tanpa memasukkan personel khusus
     assert.match(source, /NOTIFY pgrst, 'reload schema'/);
     assert.doesNotMatch(peringkat, /Terapkan migrasi Fase 14/);
     assert.match(peringkat, /statement timeout\|57014/);
-    assert.match(sw, /relawansync-v35-ukuran-seragam-terurut-cache/);
+    assert.match(sw, /relawansync-v36-pencocokan-nama-master-cache/);
 });
 
 test('fase 20 menyeragamkan profil, zona, seragam, sumber frontend, dan export', () => {
