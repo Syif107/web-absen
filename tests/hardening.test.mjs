@@ -678,3 +678,82 @@ test('fase 22 menyediakan master jenis ukuran seragam dinamis di seluruh alur', 
         ['S', 'M', 'L', 'XL', 'XXL', '4XL', 'Khusus']
     );
 });
+
+test('laporan periode custom memakai rentang tanggal, log kanonis, dan agregasi yang teruji', () => {
+    const html = read('laporan.html');
+    const source = read('js/laporan.js');
+    const app = read('js/app.js');
+    const sw = read('sw.js');
+
+    assert.match(html, /Laporan Periode/);
+    assert.match(html, /id="lapTanggalAwal"/);
+    assert.match(html, /id="lapTanggalAkhir"/);
+    assert.match(html, /id="lapLokasi"/);
+    assert.match(html, /id="lapTabPersonel"/);
+    assert.match(html, /id="lapTabHarian"/);
+    assert.match(html, /id="lapTabLokasi"/);
+    assert.match(html, /id="lapTabInstansi"/);
+    assert.match(html, /id="lapChartTrend"/);
+    assert.match(html, /id="modalDetailLaporan"/);
+    assert.match(source, /v_log_absensi_operasional/);
+    assert.match(source, /tanggal=gte\.\$\{encodeURIComponent\(awal\)\}/);
+    assert.match(source, /tanggal=lte\.\$\{encodeURIComponent\(akhir\)\}/);
+    assert.match(source, /function bangunLaporan/);
+    assert.match(source, /function buatSeriTrenLaporan/);
+    assert.match(source, /function exportLaporanExcel/);
+    assert.match(source, /function exportLaporanCSV/);
+    assert.match(source, /function cetakLaporan/);
+    assert.match(app, /laporan\.html/);
+    assert.match(sw, /laporan\.html/);
+    assert.match(sw, /js\/laporan\.js/);
+
+    const context = {
+        console,
+        window: {},
+        document: { addEventListener() {} },
+        Chart: undefined
+    };
+    vm.createContext(context);
+    vm.runInContext(source, context);
+
+    assert.equal(context.normalisasiTanggalLaporan('2026-02-29'), '');
+    assert.equal(context.normalisasiTanggalLaporan('2028-02-29'), '2028-02-29');
+    assert.equal(context.selisihHariLaporan('2026-12-31', '2027-01-01'), 1);
+    assert.deepEqual(
+        Array.from(context.daftarTanggalRentangLaporan('2026-12-31', '2027-01-02')),
+        ['2026-12-31', '2027-01-01', '2027-01-02']
+    );
+
+    const masters = [
+        { nip: 'A1', nama: 'Ani', asal_organisasi: 'DPC A', zona_label: 'Zona 1', jenis_personel_label: 'Reguler' },
+        { nip: 'B2', nama: 'Budi', asal_organisasi: 'DPC B', zona_label: 'Zona 2', jenis_personel_label: 'Reguler' }
+    ];
+    const logs = [
+        { nip: 'A1', nama: 'Ani', tanggal: '2026-11-01', sesi: 'Pagi', lokasi: 'Lokasi A', organisasi: 'DPC A', bidang: 'Helper' },
+        { nip: 'A1', nama: 'Ani', tanggal: '2026-11-01', sesi: 'Siang', lokasi: 'Lokasi A', organisasi: 'DPC A', bidang: 'Helper' },
+        { nip: 'A1', nama: 'Ani', tanggal: '2026-11-02', sesi: 'Malam', lokasi: 'Lokasi A', organisasi: 'DPC A', bidang: 'Helper' },
+        { nip: 'B2', nama: 'Budi', tanggal: '2026-11-02', sesi: 'Pagi', lokasi: 'Lokasi B', organisasi: 'DPC B', bidang: 'Helper' },
+        { nip: 'X9', nama: 'Luar', tanggal: '2026-11-02', sesi: 'Pagi', lokasi: 'Lokasi B', organisasi: 'Luar', bidang: 'Helper' }
+    ];
+    const hasil = context.bangunLaporan(logs, masters, '2026-11-01', '2026-11-03', 'Semua');
+
+    assert.equal(hasil.totalSesi, 3);
+    assert.equal(hasil.totalPagi, 2);
+    assert.equal(hasil.totalMalam, 1);
+    assert.equal(hasil.hariAktif, 2);
+    assert.equal(hasil.personelHadir, 2);
+    assert.equal(hasil.duplikat, 1);
+    assert.equal(hasil.diabaikan, 1);
+    assert.equal(hasil.rows[0].nama, 'Ani');
+    assert.equal(hasil.rows[0].total, 2);
+    assert.equal(hasil.rows[0].hariHadir, 2);
+    assert.equal(hasil.rows[0].rasio, 100);
+    assert.equal(hasil.rowsHarian.length, 2);
+    assert.equal(hasil.rowsLokasi.length, 2);
+    assert.equal(hasil.rowsInstansi.length, 2);
+    assert.deepEqual(Array.from(hasil.tren.data), [1, 2, 0]);
+
+    const hasilLokasi = context.bangunLaporan(logs, masters, '2026-11-01', '2026-11-03', 'Lokasi B');
+    assert.equal(hasilLokasi.totalSesi, 1);
+    assert.equal(hasilLokasi.personelHadir, 1);
+});

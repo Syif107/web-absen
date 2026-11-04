@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Periode - RelawanSync V2</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4F46E5">
+    <link rel="apple-touch-icon" href="assets/icon.png">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <link rel="stylesheet" href="css/tailwind.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans antialiased flex h-[100dvh] overflow-hidden">
+
+    <div id="mobileOverlay" class="no-print fixed inset-0 bg-slate-900/60 z-40 hidden md:hidden transition-opacity backdrop-blur-sm" onclick="toggleSidebar()"></div>
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="no-print w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700/50 fixed md:relative inset-y-0 left-0 transform -translate-x-full md:translate-x-0 z-50 flex flex-col shadow-xl md:shadow-sm shrink-0 transition-all duration-300">
+        <div class="h-16 flex items-center px-6 border-b border-slate-100 dark:border-slate-700/50 justify-between">
+            <div class="flex items-center gap-2 text-primary font-bold text-xl tracking-tight whitespace-nowrap">
+                <i class="fa-solid fa-fingerprint nav-icon"></i><span class="sidebar-text">RelawanSync V2</span>
+            </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-red-500 text-xl"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scroll">
+            <a href="index.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-chart-pie w-6 text-center nav-icon"></i><span class="sidebar-text">Executive Dashboard</span>
+            </a>
+            <a href="input.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-users-viewfinder w-6 text-center nav-icon"></i><span class="sidebar-text">Validasi Absensi</span>
+            </a>
+            <a href="riwayat.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-clipboard-list w-6 text-center nav-icon"></i><span class="sidebar-text">Riwayat Absen</span>
+            </a>
+            <a href="kalender.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-calendar-days w-6 text-center nav-icon"></i><span class="sidebar-text">Kalender Absen</span>
+            </a>
+            <a href="laporan.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 text-primary rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-file-lines w-6 text-center nav-icon"></i><span class="sidebar-text">Laporan Periode</span>
+            </a>
+            <a href="statistik.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-chart-column w-6 text-center nav-icon"></i><span class="sidebar-text">Statistik</span>
+            </a>
+            <a href="master.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-database w-6 text-center nav-icon"></i><span class="sidebar-text">Master Data</span>
+            </a>
+            <a href="panduan.html" class="nav-btn w-full flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl font-medium transition-colors text-left">
+                <i class="fa-solid fa-book-open w-6 text-center nav-icon"></i><span class="sidebar-text">Panduan</span>
+            </a>
+        </nav>
+        <div class="p-4 bg-slate-50 dark:bg-slate-800/50 m-2 rounded-xl border border-slate-100 dark:border-slate-700/50 flex flex-col gap-2">
+            <button onclick="toggleDarkMode()" class="w-full flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 py-2 rounded-lg transition-colors border border-slate-200 dark:border-slate-600 shadow-sm">
+                <i class="fa-solid fa-circle-half-stroke"></i><span class="sidebar-text" id="darkModeLabel">Mode Gelap</span>
+            </button>
+            <button onclick="backupEverything()" class="w-full flex items-center justify-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-sm hover:bg-indigo-50 dark:hover:bg-indigo-500/10 py-2 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-500/20 shadow-sm">
+                <i class="fa-solid fa-cloud-arrow-down"></i><span class="sidebar-text">Backup Data</span>
+            </button>
+            <button onclick="logoutSystem()" class="w-full flex items-center justify-center gap-2 text-red-600 dark:text-red-400 font-bold text-sm hover:bg-red-50 dark:hover:bg-red-500/10 py-2 rounded-lg transition-colors">
+                <i class="fa-solid fa-power-off"></i><span class="sidebar-text">Keluar (Lock)</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- KONTEN UTAMA LAPORAN -->
+    <main class="flex-1 flex flex-col h-[100dvh] overflow-hidden relative bg-slate-100/50 dark:bg-slate-900">
+        <div class="no-print bg-indigo-900/5 dark:bg-indigo-500/5 border-b border-indigo-100/60 dark:border-indigo-500/10 py-1 px-4 text-center shrink-0">
+            <span class="text-[9px] font-black text-indigo-700 dark:text-indigo-400 tracking-[0.25em] uppercase">Atas Berkat Rochmat Alloh Yang Maha Kuasa</span>
+        </div>
+        <header class="no-print h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700/50 flex items-center justify-between px-4 lg:px-6 shadow-sm shrink-0 z-10">
+            <div class="flex items-center gap-4">
+                <button id="btnToggleSidebar" onclick="toggleSidebar()" class="text-slate-500 dark:text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-slate-800 w-10 h-10 rounded-lg transition-colors flex items-center justify-center">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+                <div>
+                    <h1 class="text-lg font-extrabold text-slate-800 dark:text-slate-100 hidden sm:block leading-none mt-1">Laporan Periode</h1>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:block">Rekap aktivitas kehadiran sesuai rentang tanggal</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="btnLapExcel" onclick="exportLaporanExcel()" disabled class="text-sm bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-file-excel"></i> <span class="hidden sm:inline">Excel</span>
+                </button>
+                <button id="btnLapCSV" onclick="exportLaporanCSV()" disabled class="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-file-csv"></i> <span class="hidden sm:inline">CSV</span>
+                </button>
+                <button id="btnLapCetak" onclick="cetakLaporan()" disabled class="text-sm bg-white dark:bg-slate-800 text-primary hover:bg-indigo-50 dark:hover:bg-indigo-500/10 px-3 py-2 rounded-lg font-bold transition-colors border border-indigo-100 dark:border-indigo-500/20 flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-print"></i> <span class="hidden sm:inline">Cetak</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 lg:p-6 custom-scroll relative">
+            <div class="max-w-[1400px] mx-auto space-y-6">
+
+                <!-- FILTER PERIODE -->
+                <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in no-print">
+                    <div class="flex flex-col xl:flex-row xl:items-end gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 flex-1">
+                            <div>
+                                <label for="lapTanggalAwal" class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1.5">Tanggal Awal</label>
+                                <input type="date" id="lapTanggalAwal" onchange="perbaruiInfoFilterLaporan()" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-3 py-2.5 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary">
+                            </div>
+                            <div>
+                                <label for="lapTanggalAkhir" class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1.5">Tanggal Akhir</label>
+                                <input type="date" id="lapTanggalAkhir" onchange="perbaruiInfoFilterLaporan()" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-3 py-2.5 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary">
+                            </div>
+                            <div>
+                                <label for="lapLokasi" class="text-[10px] font-bold text-slate-400 uppercase tracking-wide block mb-1.5">Lokasi Proyek</label>
+                                <select id="lapLokasi" onchange="perbaruiInfoFilterLaporan()" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-sm rounded-xl px-3 py-2.5 outline-none font-semibold text-slate-800 dark:text-slate-100 focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer">
+                                    <option value="Semua">Semua Lokasi</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end">
+                                <button id="btnLapTampilkan" onclick="muatLaporan()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-5 py-3 rounded-xl transition-colors shadow-sm flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-magnifying-glass"></i> Tampilkan Laporan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 mt-4">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mr-1">Cepat:</span>
+                        <button type="button" onclick="terapkanPresetLaporan('hari_ini')" class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-primary transition-colors">Hari Ini</button>
+                        <button type="button" onclick="terapkanPresetLaporan('7')" class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-primary transition-colors">7 Hari</button>
+                        <button type="button" onclick="terapkanPresetLaporan('30')" class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-primary transition-colors">30 Hari</button>
+                        <button type="button" onclick="terapkanPresetLaporan('bulan_ini')" class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-primary transition-colors">Bulan Ini</button>
+                        <button type="button" onclick="terapkanPresetLaporan('bulan_lalu')" class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 hover:text-primary transition-colors">Bulan Lalu</button>
+                        <button type="button" onclick="resetLaporan()" class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"><i class="fa-solid fa-rotate-left mr-1"></i>Reset</button>
+
+                        <label class="ml-auto flex items-center gap-2 text-[11px] font-bold text-slate-500 dark:text-slate-400 cursor-pointer">
+                            <input type="checkbox" id="lapSertakanDetail" class="w-4 h-4 accent-indigo-600">
+                            Sertakan detail log di Excel
+                        </label>
+                    </div>
+
+                    <div class="mt-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                        <p id="lapFilterInfo" class="text-xs font-bold text-slate-500 dark:text-slate-400"></p>
+                        <p class="text-[10px] font-semibold text-slate-400">
+                            <i class="fa-solid fa-circle-info mr-1 text-blue-400"></i>
+                            Ini laporan aktivitas kehadiran, bukan kewajiban harian. Tidak ada status alfa/izin/sakit.
+                        </p>
+                    </div>
+                </div>
+
+                <div id="lapKosong" class="hidden bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-300 rounded-2xl p-4 text-sm font-bold flex items-start gap-3">
+                    <i class="fa-solid fa-circle-exclamation mt-0.5"></i>
+                    <span id="lapKosongText">Tidak ada catatan kehadiran pada periode dan lokasi yang dipilih.</span>
+                </div>
+
+                <!-- RINGKASAN -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 fade-in">
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden stat-card-gradient-blue">
+                        <div class="absolute right-0 top-0 w-16 h-16 bg-blue-50 dark:bg-blue-500/10 rounded-bl-full -z-0"></div>
+                        <i class="fa-solid fa-clipboard-check text-blue-500 absolute right-4 top-4 text-xl z-10"></i>
+                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative">Total Sesi</p>
+                        <h3 class="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight z-10 relative" id="lap-total-sesi">-</h3>
+                        <p class="text-[10px] text-slate-400 font-semibold mt-1">Pagi + Malam dalam periode</p>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden stat-card-gradient-green">
+                        <div class="absolute right-0 top-0 w-16 h-16 bg-emerald-50 dark:bg-emerald-500/10 rounded-bl-full -z-0"></div>
+                        <i class="fa-solid fa-users text-emerald-500 absolute right-4 top-4 text-xl z-10"></i>
+                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative">Personel Hadir</p>
+                        <h3 class="text-3xl font-black text-emerald-600 tracking-tight z-10 relative" id="lap-personel-hadir">-</h3>
+                        <p class="text-[10px] text-slate-400 font-semibold mt-1">NIP unik yang memiliki catatan</p>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden stat-card-gradient-purple">
+                        <div class="absolute right-0 top-0 w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 rounded-bl-full -z-0"></div>
+                        <i class="fa-solid fa-calendar-check text-indigo-500 absolute right-4 top-4 text-xl z-10"></i>
+                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative">Hari Aktif</p>
+                        <h3 class="text-3xl font-black text-primary tracking-tight z-10 relative" id="lap-hari-aktif">-</h3>
+                        <p class="text-[10px] text-slate-400 font-semibold mt-1">Tanggal yang memiliki catatan</p>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 relative overflow-hidden stat-card-gradient-orange">
+                        <div class="absolute right-0 top-0 w-16 h-16 bg-orange-50 dark:bg-orange-500/10 rounded-bl-full -z-0"></div>
+                        <i class="fa-solid fa-chart-line text-orange-500 absolute right-4 top-4 text-xl z-10"></i>
+                        <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1 z-10 relative">Rata-Rata / Hari</p>
+                        <h3 class="text-3xl font-black text-orange-500 tracking-tight z-10 relative" id="lap-rata-rata">-</h3>
+                        <p class="text-[10px] text-slate-400 font-semibold mt-1">Sesi per hari aktif</p>
+                    </div>
+                </div>
+
+                <!-- GRAFIK -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 fade-in">
+                    <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 md:col-span-2">
+                        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-4">
+                            <div>
+                                <h3 class="font-extrabold text-slate-800 dark:text-slate-100 text-lg"><i class="fa-solid fa-chart-area text-primary mr-2"></i>Tren Kehadiran</h3>
+                                <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">Pergerakan jumlah sesi pada periode terpilih.</p>
+                            </div>
+                            <span id="lapTrenGranularitas" class="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 dark:bg-slate-700/50 px-2.5 py-1 rounded-lg">Harian</span>
+                        </div>
+                        <div class="w-full h-72"><canvas id="lapChartTrend"></canvas></div>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-1"><i class="fa-solid fa-sun text-orange-500 mr-2"></i><i class="fa-solid fa-moon text-indigo-500 mr-2"></i>Komposisi Sesi</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Proporsi sesi Pagi dan Malam pada periode terpilih.</p>
+                        <div class="w-full h-64 max-w-[280px] mx-auto"><canvas id="lapChartSesi"></canvas></div>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-1"><i class="fa-solid fa-ranking-star text-amber-400 mr-2"></i>Top 10 Instansi</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Instansi dengan jumlah sesi terbanyak.</p>
+                        <div class="w-full h-64"><canvas id="lapChartOrg"></canvas></div>
+                    </div>
+
+                    <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 md:col-span-2">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 mb-1"><i class="fa-solid fa-map-location-dot text-emerald-500 mr-2"></i>Sebaran Lokasi</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Konsentrasi sesi pada setiap lokasi proyek.</p>
+                        <div class="w-full h-64 max-w-[320px] mx-auto"><canvas id="lapChartLokasi"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- TABEL -->
+                <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700/50 fade-in">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+                        <div>
+                            <h3 class="font-extrabold text-slate-800 dark:text-slate-100 text-lg"><i class="fa-solid fa-table-list text-primary mr-2"></i>Tabel Laporan</h3>
+                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">Pilih tabel rincian sesuai kebutuhan analisis.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 no-print" id="lapTabButtons">
+                            <button type="button" id="lapTabPersonel" onclick="gantiTabLaporan('personel')" class="rounded-lg px-4 py-2 text-xs font-bold transition-colors bg-indigo-600 text-white shadow-sm">Per Personel <span id="lapCountPersonel" class="opacity-80">0</span></button>
+                            <button type="button" id="lapTabHarian" onclick="gantiTabLaporan('harian')" class="rounded-lg px-4 py-2 text-xs font-bold transition-colors bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Per Hari <span id="lapCountHarian" class="opacity-80">0</span></button>
+                            <button type="button" id="lapTabLokasi" onclick="gantiTabLaporan('lokasi')" class="rounded-lg px-4 py-2 text-xs font-bold transition-colors bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Per Lokasi <span id="lapCountLokasi" class="opacity-80">0</span></button>
+                            <button type="button" id="lapTabInstansi" onclick="gantiTabLaporan('instansi')" class="rounded-lg px-4 py-2 text-xs font-bold transition-colors bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Per Instansi <span id="lapCountInstansi" class="opacity-80">0</span></button>
+                        </div>
+                    </div>
+
+                    <div id="lapPanelPersonel">
+                        <div class="data-toolbar rounded-xl border border-slate-200 dark:border-slate-700 mb-4 no-print">
+                            <div class="data-toolbar__search"><i class="fa-solid fa-search"></i><input type="search" id="lapCariPersonel" oninput="filterPersonelLaporan()" placeholder="Cari nama, NIP, organisasi, atau zona..." autocomplete="off" aria-label="Cari personel laporan"></div>
+                            <select id="lapUrutPersonel" onchange="ubahUrutanPersonelLaporan()" class="data-control" aria-label="Urutkan personel laporan">
+                                <option value="total_desc">Total sesi terbanyak</option>
+                                <option value="total_asc">Total sesi tersedikit</option>
+                                <option value="hari_desc">Hari hadir terbanyak</option>
+                                <option value="hari_asc">Hari hadir tersedikit</option>
+                                <option value="nama_asc">Nama A–Z</option>
+                                <option value="nama_desc">Nama Z–A</option>
+                                <option value="organisasi_asc">Organisasi A–Z</option>
+                                <option value="organisasi_desc">Organisasi Z–A</option>
+                                <option value="zona_asc">Zona A–Z</option>
+                                <option value="zona_desc">Zona Z–A</option>
+                                <option value="terakhir_desc">Terakhir hadir terbaru</option>
+                                <option value="terakhir_asc">Terakhir hadir terlama</option>
+                            </select>
+                            <select id="lapLimitPersonel" onchange="ubahBatasPersonelLaporan()" class="data-control data-control--compact" aria-label="Jumlah baris per halaman"><option value="25">25 Baris</option><option value="50" selected>50 Baris</option><option value="100">100 Baris</option><option value="200">200 Baris</option></select>
+                            <button type="button" onclick="resetKontrolPersonelLaporan()" class="data-reset-button"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+                        </div>
+
+                        <div class="overflow-auto custom-scroll max-h-[55vh] w-full border border-slate-100 dark:border-slate-700/50 rounded-xl print-table-container">
+                            <table class="w-full text-left text-sm whitespace-nowrap min-w-max">
+                                <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold sticky top-0 z-10 shadow-sm border-b border-slate-200 dark:border-slate-600">
+                                    <tr>
+                                        <th class="px-4 py-3 text-center w-12 text-xs uppercase tracking-wide">No</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide">Nama Personel</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide">NIP / ID</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide">Organisasi</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide">Zona</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Pagi</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Malam</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Total Sesi</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Hari Hadir</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Rasio Hari Aktif</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide">Terakhir Hadir</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lapPersonelBody" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                    <tr><td colspan="11" class="text-center p-8 text-slate-400 font-medium"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Memuat laporan...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="p-4 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-700/30 rounded-b-xl flex flex-col md:flex-row justify-between items-center gap-3">
+                            <span class="text-xs font-bold text-slate-500 dark:text-slate-400" id="lapPersonelInfo">Menampilkan 0 data</span>
+                            <div class="flex gap-2 no-print">
+                                <button id="btnLapPersonelPrev" onclick="ubahHalamanPersonelLaporan(-1)" class="px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors"><i class="fa-solid fa-chevron-left mr-1"></i> Prev</button>
+                                <button id="btnLapPersonelNext" onclick="ubahHalamanPersonelLaporan(1)" class="px-4 py-2.5 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next <i class="fa-solid fa-chevron-right ml-1"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="lapPanelHarian" class="hidden">
+                        <div class="overflow-auto custom-scroll max-h-[55vh] w-full border border-slate-100 dark:border-slate-700/50 rounded-xl print-table-container">
+                            <table class="w-full text-left text-sm whitespace-nowrap min-w-max">
+                                <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold sticky top-0 z-10 shadow-sm border-b border-slate-200 dark:border-slate-600">
+                                    <tr>
+                                        <th class="px-4 py-3 text-center w-12 text-xs uppercase tracking-wide">No</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide">Tanggal</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide">Hari</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Pagi</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Malam</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Total Sesi</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Personel Unik</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide">Lokasi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lapHarianBody" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                    <tr><td colspan="8" class="text-center p-8 text-slate-400 font-medium">Belum ada data.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="lapPanelLokasi" class="hidden">
+                        <div class="overflow-auto custom-scroll max-h-[55vh] w-full border border-slate-100 dark:border-slate-700/50 rounded-xl print-table-container">
+                            <table class="w-full text-left text-sm whitespace-nowrap min-w-max">
+                                <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold sticky top-0 z-10 shadow-sm border-b border-slate-200 dark:border-slate-600">
+                                    <tr>
+                                        <th class="px-4 py-3 text-center w-12 text-xs uppercase tracking-wide">No</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide">Lokasi Proyek</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Total Sesi</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Personel Unik</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Hari Aktif</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lapLokasiBody" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                    <tr><td colspan="5" class="text-center p-8 text-slate-400 font-medium">Belum ada data.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="lapPanelInstansi" class="hidden">
+                        <div class="overflow-auto custom-scroll max-h-[55vh] w-full border border-slate-100 dark:border-slate-700/50 rounded-xl print-table-container">
+                            <table class="w-full text-left text-sm whitespace-nowrap min-w-max">
+                                <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold sticky top-0 z-10 shadow-sm border-b border-slate-200 dark:border-slate-600">
+                                    <tr>
+                                        <th class="px-4 py-3 text-center w-12 text-xs uppercase tracking-wide">No</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide">Instansi / Organisasi</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Personel Unik</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Total Sesi</th>
+                                        <th class="px-4 py-3 text-xs uppercase tracking-wide text-center">Hari Aktif</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lapInstansiBody" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                                    <tr><td colspan="5" class="text-center p-8 text-slate-400 font-medium">Belum ada data.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="toastContainer" class="fixed top-20 right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+        <!-- MODAL DETAIL HARIAN -->
+        <div id="modalDetailLaporan" class="no-print fixed inset-0 bg-slate-900/60 z-50 hidden flex-col items-center justify-center backdrop-blur-sm p-4 sm:p-8 transition-opacity">
+            <div class="bg-white dark:bg-slate-800 w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col h-[82vh] modal-scale-in border border-slate-200 dark:border-slate-700/50">
+                <div class="p-5 border-b border-slate-100 dark:border-slate-700/50 flex justify-between items-center bg-slate-50 dark:bg-slate-700/30 rounded-t-2xl shrink-0">
+                    <div>
+                        <h3 class="font-black text-xl text-slate-800 dark:text-slate-100" id="lapDetailJudul">Detail Harian</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1" id="lapDetailSub">Rincian catatan kehadiran.</p>
+                    </div>
+                    <button onclick="tutupDetailLaporan()" class="w-10 h-10 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-red-500 hover:border-red-200 shadow-sm transition-all flex items-center justify-center">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-auto custom-scroll">
+                    <table class="w-full text-left text-sm whitespace-nowrap min-w-max">
+                        <thead class="bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 font-bold sticky top-0 z-10 shadow-sm border-b border-slate-200 dark:border-slate-600">
+                            <tr>
+                                <th class="px-4 py-3 w-12 text-center text-xs uppercase tracking-wide">No</th>
+                                <th class="px-4 py-3 text-xs uppercase tracking-wide">Sesi</th>
+                                <th class="px-4 py-3 text-xs uppercase tracking-wide">Nama</th>
+                                <th class="px-4 py-3 text-xs uppercase tracking-wide">Organisasi</th>
+                                <th class="px-4 py-3 text-xs uppercase tracking-wide">Bidang</th>
+                                <th class="px-4 py-3 text-xs uppercase tracking-wide">Lokasi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lapDetailBody" class="divide-y divide-slate-100 dark:divide-slate-700/50"></tbody>
+                    </table>
+                </div>
+                <div class="p-4 border-t border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-700/30 rounded-b-2xl flex justify-between items-center gap-3 shrink-0">
+                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400" id="lapDetailTotal">Total: 0 baris</span>
+                    <button onclick="tutupDetailLaporan()" class="text-sm bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 font-bold px-5 py-2.5 rounded-xl transition-colors shadow-sm">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MOBILE BOTTOM NAV -->
+    <nav class="mobile-bottom-nav no-print">
+        <a href="index.html" class="mobile-nav-item"><i class="fa-solid fa-chart-pie"></i><span>Dashboard</span></a>
+        <a href="input.html" class="mobile-nav-item"><i class="fa-solid fa-users-viewfinder"></i><span>Input</span></a>
+        <a href="riwayat.html" class="mobile-nav-item"><i class="fa-solid fa-clipboard-list"></i><span>Riwayat</span></a>
+        <a href="kalender.html" class="mobile-nav-item"><i class="fa-solid fa-calendar-days"></i><span>Kalender</span></a>
+        <a href="laporan.html" class="mobile-nav-item active"><i class="fa-solid fa-file-lines"></i><span>Laporan</span></a>
+        <a href="statistik.html" class="mobile-nav-item"><i class="fa-solid fa-chart-column"></i><span>Stats</span></a>
+        <a href="master.html" class="mobile-nav-item"><i class="fa-solid fa-database"></i><span>Master</span></a>
+        <a href="panduan.html" class="mobile-nav-item"><i class="fa-solid fa-book-open"></i><span>Panduan</span></a>
+    </nav>
+
+    <script src="js/supabase-config.js"></script>
+    <script src="js/domain.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/laporan.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</body>
+</html>

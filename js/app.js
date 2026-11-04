@@ -93,9 +93,11 @@ function injectFeatureNavigation() {
     const current = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
     const desktopNav = document.querySelector('#sidebar nav');
     const panduanLink = desktopNav?.querySelector('a[href="panduan.html"]');
+    const statistikLink = desktopNav?.querySelector('a[href="statistik.html"]');
     const links = [
-        { href: 'peringkat.html', icon: 'fa-ranking-star', label: 'Peringkat & Reward' },
-        { href: 'seragam.html', icon: 'fa-shirt', label: 'Kontrol Seragam', adminOnly: true }
+        { href: 'laporan.html', icon: 'fa-file-lines', label: 'Laporan Periode', mobileLabel: 'Laporan' },
+        { href: 'peringkat.html', icon: 'fa-ranking-star', label: 'Peringkat & Reward', mobileLabel: 'Ranking' },
+        { href: 'seragam.html', icon: 'fa-shirt', label: 'Kontrol Seragam', mobileLabel: 'Seragam', adminOnly: true }
     ];
 
     if (desktopNav && panduanLink) {
@@ -106,20 +108,21 @@ function injectFeatureNavigation() {
             anchor.href = item.href;
             anchor.className = `nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors text-left ${active ? 'bg-indigo-50 dark:bg-indigo-500/10 text-primary' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}${item.adminOnly ? ' admin-only' : ''}`;
             anchor.innerHTML = `<i class="fa-solid ${item.icon} w-6 text-center nav-icon"></i><span class="sidebar-text">${item.label}</span>`;
-            desktopNav.insertBefore(anchor, panduanLink);
+            desktopNav.insertBefore(anchor, item.href === 'laporan.html' && statistikLink ? statistikLink : panduanLink);
         });
     }
 
     const mobileNav = document.querySelector('.mobile-bottom-nav');
     const mobilePanduan = mobileNav?.querySelector('a[href="panduan.html"]');
+    const mobileStatistik = mobileNav?.querySelector('a[href="statistik.html"]');
     if (mobileNav && mobilePanduan) {
         links.forEach(item => {
             if (mobileNav.querySelector(`a[href="${item.href}"]`)) return;
             const anchor = document.createElement('a');
             anchor.href = item.href;
             anchor.className = `mobile-nav-item${current === item.href ? ' active' : ''}${item.adminOnly ? ' admin-only' : ''}`;
-            anchor.innerHTML = `<i class="fa-solid ${item.icon}"></i><span>${item.href === 'peringkat.html' ? 'Ranking' : 'Seragam'}</span>`;
-            mobileNav.insertBefore(anchor, mobilePanduan);
+            anchor.innerHTML = `<i class="fa-solid ${item.icon}"></i><span>${item.mobileLabel || item.label}</span>`;
+            mobileNav.insertBefore(anchor, item.href === 'laporan.html' && mobileStatistik ? mobileStatistik : mobilePanduan);
         });
     }
 }
