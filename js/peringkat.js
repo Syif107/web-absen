@@ -46,7 +46,7 @@ async function muatPeringkat(page = peringkatPage) {
     const tbody = document.getElementById('tabelPeringkat');
     const errorBox = document.getElementById('peringkatError');
     peringkatPage = Math.max(1, Number(page) || 1);
-    if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Memuat peringkat...</td></tr>';
+    if (tbody) tbody.innerHTML = RelawanTable.loadingRow(9, 'Memuat peringkat...');
     if (errorBox) errorBox.classList.add('hidden');
 
     const proyek = document.getElementById('filterProyekPeringkat')?.value || 'semua';
@@ -80,7 +80,7 @@ async function muatPeringkat(page = peringkatPage) {
                 : 'Peringkat gagal dimuat. Periksa koneksi dan migrasi database terbaru, lalu segarkan halaman.';
             errorBox.classList.remove('hidden');
         }
-        if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center text-red-500 font-bold">Data peringkat belum tersedia.</td></tr>';
+        if (tbody) tbody.innerHTML = RelawanTable.errorRow(9, 'Data peringkat belum tersedia.');
         return;
     }
 
@@ -133,7 +133,7 @@ function gambarTabelPeringkat(proyekFilter) {
     const tbody = document.getElementById('tabelPeringkat');
     if (!tbody) return;
     if (!peringkatRows.length) {
-        tbody.innerHTML = '<tr><td colspan="9" class="p-10 text-center text-slate-400 font-bold">Tidak ada data sesuai filter.</td></tr>';
+        tbody.innerHTML = RelawanTable.emptyRow(9, 'Tidak ada data sesuai filter.');
         return;
     }
 
@@ -163,16 +163,16 @@ function gambarTabelPeringkat(proyekFilter) {
 function gambarPaginationPeringkat(proyekFilter) {
     const pages = Math.max(1, Math.ceil(peringkatTotal / peringkatPageSize));
     if (peringkatPage > pages) return muatPeringkat(pages);
-    const start = peringkatTotal ? (peringkatPage - 1) * peringkatPageSize + 1 : 0;
-    const end = Math.min(peringkatPage * peringkatPageSize, peringkatTotal);
-    const info = document.getElementById('infoPeringkat');
-    if (info) info.textContent = `${start}-${end} dari ${peringkatTotal.toLocaleString('id-ID')} personel • ${labelFilterProyekPeringkat(proyekFilter)}`;
-    const pageInfo = document.getElementById('peringkatPageInfo');
-    if (pageInfo) pageInfo.textContent = `Halaman ${peringkatPage} / ${pages}`;
-    const prev = document.getElementById('btnPeringkatPrev');
-    const next = document.getElementById('btnPeringkatNext');
-    if (prev) prev.disabled = peringkatPage <= 1;
-    if (next) next.disabled = peringkatPage >= pages;
+    RelawanTable.updatePagination({
+        info: 'infoPeringkat',
+        pageInfo: 'peringkatPageInfo',
+        prev: 'btnPeringkatPrev',
+        next: 'btnPeringkatNext',
+        total: peringkatTotal,
+        page: peringkatPage,
+        pageSize: peringkatPageSize,
+        formatInfo: state => `${state.startLabel}-${state.end} dari ${state.total.toLocaleString('id-ID')} personel • ${labelFilterProyekPeringkat(proyekFilter)}`
+    });
 }
 
 function gantiHalamanPeringkat(delta) {

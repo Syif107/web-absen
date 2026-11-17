@@ -252,82 +252,20 @@ document.addEventListener("DOMContentLoaded", () => {
 // ==========================================
 
 function bukaExcelFilter(columnKey, event) {
-    event.stopPropagation();
-    const popup = document.getElementById('excelFilterPopup');
-    if (!popup) return;
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    popup.style.top = `${rect.bottom + window.scrollY + 5}px`;
-    popup.style.left = `${rect.left + window.scrollX - 180}px`;
-    popup.style.width = '280px';
-
-    const uniqueValues = [...new Set(riwayatData.map(item => item[columnKey] || '-'))].sort();
-    const currentSelected = activeExcelFilters[columnKey] || [];
-
-    let html = `
-        <div class="font-bold text-slate-700 dark:text-slate-200 mb-2 pb-1 border-b border-slate-100 dark:border-slate-600 flex justify-between items-center text-xs">
-            <span>Filter & Urutkan</span>
-            <span class="text-primary cursor-pointer underline hover:text-indigo-700" onclick="resetFilterKolom('${columnKey}')">Reset</span>
-        </div>
-        
-        <div class="space-y-1 mb-2 text-xs">
-            <button onclick="sortDataKolom('${columnKey}', 'asc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2"><i class="fa-solid fa-arrow-down-a-z text-primary"></i> Urutkan A ke Z</button>
-            <button onclick="sortDataKolom('${columnKey}', 'desc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2"><i class="fa-solid fa-arrow-up-z-a text-primary"></i> Urutkan Z ke A</button>
-        </div>
-
-        <div class="mb-2 relative">
-            <i class="fa-solid fa-search absolute left-2.5 top-2 text-slate-400 text-[10px]"></i>
-            <input type="text" id="searchPopupInput" onkeyup="filterListPopup(this)" placeholder="Cari nama/data..." class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg pl-7 pr-3 py-1.5 text-xs outline-none text-slate-800 dark:text-slate-100 focus:border-primary">
-        </div>
-
-        <div class="flex justify-between items-center mb-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 px-1">
-            <span class="cursor-pointer hover:underline" onclick="toggleAllPopupCheckbox(true, 'riwayat')">Pilih Semua</span>
-            <span class="text-slate-300 dark:text-slate-600">|</span>
-            <span class="cursor-pointer hover:underline text-red-500" onclick="toggleAllPopupCheckbox(false, 'riwayat')">Hapus Semua</span>
-        </div>
-
-        <div class="max-h-44 overflow-y-auto space-y-1 pr-1 custom-scroll border border-slate-100 dark:border-slate-600 p-1 rounded-lg bg-slate-50/50 dark:bg-slate-700/50" id="excelCheckboxList">
-    `;
-
-    uniqueValues.forEach(val => {
-        const isChecked = currentSelected.length === 0 || currentSelected.includes(val) ? 'checked' : '';
-        const valueAttr = escapeAttribute(val);
-        const valueText = escapeHTML(val);
-        html += `
-            <label class="popup-item-label flex items-center gap-2 p-1 hover:bg-white dark:hover:bg-slate-600 rounded cursor-pointer text-xs">
-                <input type="checkbox" value="${valueAttr}" data-col="${columnKey}" class="excel-filter-chk w-3.5 h-3.5 accent-primary rounded shrink-0" ${isChecked} onchange="terapkanExcelFilter()">
-                <span class="truncate text-slate-700 dark:text-slate-200 font-medium">${valueText}</span>
-            </label>
-        `;
+    event?.stopPropagation();
+    RelawanTable.openColumnFilter({
+        event,
+        columnKey,
+        rows: riwayatData,
+        selected: activeExcelFilters[columnKey] || [],
+        placeholder: 'Cari nama/data...',
+        onApply: (selected, key) => {
+            activeExcelFilters[key] = selected;
+            jalankanFilterDanSortRiwayat();
+        },
+        onSort: (key, direction) => sortDataKolom(key, direction),
+        onReset: key => resetFilterKolom(key)
     });
-
-    html += `</div>`;
-    popup.innerHTML = html;
-    popup.classList.remove('hidden');
-}
-
-function filterListPopup(input) {
-    const keyword = input.value.toLowerCase();
-    document.querySelectorAll('.popup-item-label').forEach(lbl => {
-        lbl.style.display = lbl.innerText.toLowerCase().includes(keyword) ? "flex" : "none";
-    });
-}
-
-function toggleAllPopupCheckbox(status) {
-    document.querySelectorAll('.excel-filter-chk').forEach(chk => {
-        if (chk.closest('label').style.display !== 'none') chk.checked = status;
-    });
-    terapkanExcelFilter();
-}
-
-function terapkanExcelFilter() {
-    const checkboxes = document.querySelectorAll('.excel-filter-chk');
-    if (checkboxes.length === 0) return;
-    const colKey = checkboxes[0].dataset.col;
-    let selectedVals = [];
-    checkboxes.forEach(chk => { if (chk.checked) selectedVals.push(chk.value); });
-    activeExcelFilters[colKey] = selectedVals;
-    jalankanFilterDanSortRiwayat();
 }
 
 function sortDataKolom(columnKey, direction) {

@@ -21,6 +21,7 @@ const PRECACHE_URLS = [
     "js/supabase-config.js",
     "js/domain.js",
     "js/app.js",
+    "js/table-core.js",
     "js/dashboard.js",
     "js/input.js",
     "js/riwayat.js",

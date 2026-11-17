@@ -219,28 +219,26 @@ function bukaModalLeaderboardSemua() {
     const tbody = document.getElementById('tbodyLeaderboardSemua');
     document.getElementById('totalRelawanLeaderboard').innerText = `Total: ${cachedTopRelawanList.length} Personel`;
 
-    if (cachedTopRelawanList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-400 font-medium">Belum ada data peringkat untuk ditampilkan.</td></tr>`;
-    } else {
-        let html = '';
-        cachedTopRelawanList.forEach((item, index) => {
-            const rank = index + 1;
-            let rankBadge = `<span class="font-bold text-slate-600">#${rank}</span>`;
-            if (rank === 1) rankBadge = `<span class="bg-yellow-100 text-yellow-700 font-black px-2.5 py-1 rounded-lg text-xs"><i class="fa-solid fa-medal mr-1"></i> #1 Emas</span>`;
-            else if (rank === 2) rankBadge = `<span class="bg-slate-100 text-slate-700 font-black px-2.5 py-1 rounded-lg text-xs"><i class="fa-solid fa-medal mr-1"></i> #2 Perak</span>`;
-            else if (rank === 3) rankBadge = `<span class="bg-amber-50 text-amber-700 font-black px-2.5 py-1 rounded-lg text-xs"><i class="fa-solid fa-medal mr-1"></i> #3 Perunggu</span>`;
-
-            html += `
-                <tr class="hover:bg-slate-50 transition-colors">
-                    <td class="px-4 py-3 text-center">${rankBadge}</td>
-                    <td class="px-4 py-3 font-bold text-slate-800">${escapeHTML(item.nama)}</td>
-                    <td class="px-4 py-3 text-slate-600 uppercase text-xs font-semibold">${escapeHTML(item.org || '-')}</td>
-                    <td class="px-4 py-3 text-center"><span class="bg-indigo-50 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-100">${item.total} Hadir</span></td>
-                </tr>
-            `;
-        });
-        tbody.innerHTML = html;
-    }
+    tbody.innerHTML = RelawanTable.renderRows(cachedTopRelawanList, {
+        colspan: 4,
+        emptyMessage: 'Belum ada data peringkat untuk ditampilkan.',
+        rowClass: 'hover:bg-slate-50 transition-colors',
+        columns: [
+            {
+                className: 'px-4 py-3 text-center',
+                render: (item, index) => {
+                    const rank = index + 1;
+                    if (rank === 1) return '<span class="bg-yellow-100 text-yellow-700 font-black px-2.5 py-1 rounded-lg text-xs"><i class="fa-solid fa-medal mr-1"></i> #1 Emas</span>';
+                    if (rank === 2) return '<span class="bg-slate-100 text-slate-700 font-black px-2.5 py-1 rounded-lg text-xs"><i class="fa-solid fa-medal mr-1"></i> #2 Perak</span>';
+                    if (rank === 3) return '<span class="bg-amber-50 text-amber-700 font-black px-2.5 py-1 rounded-lg text-xs"><i class="fa-solid fa-medal mr-1"></i> #3 Perunggu</span>';
+                    return `<span class="font-bold text-slate-600">#${rank}</span>`;
+                }
+            },
+            { className: 'px-4 py-3 font-bold text-slate-800', render: item => escapeHTML(item.nama) },
+            { className: 'px-4 py-3 text-slate-600 uppercase text-xs font-semibold', render: item => escapeHTML(item.org || '-') },
+            { className: 'px-4 py-3 text-center', render: item => `<span class="bg-indigo-50 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-100">${item.total} Hadir</span>` }
+        ]
+    });
 
     document.getElementById('modalLeaderboardSemua').classList.remove('hidden');
 }
@@ -395,7 +393,8 @@ function bukaModalRincian(tipe, judul, sub, parameter = null) {
     
     const thead = document.getElementById('modalThead');
     const tbody = document.getElementById('modalTbody');
-    let htmlHead = ''; let htmlBody = '';
+    let htmlHead = '';
+    let columns = [];
     let dataSumber = [];
     
     const filterPrefix = `${selectedYear}-${selectedMonth}`;
@@ -403,9 +402,13 @@ function bukaModalRincian(tipe, judul, sub, parameter = null) {
     if (tipe === 'master') {
         dataSumber = globalMasterData;
         htmlHead = `<tr><th class="px-4 py-3 w-12 text-center">No</th><th class="px-4 py-3">NIP / ID</th><th class="px-4 py-3">Nama Personel</th><th class="px-4 py-3">Organisasi Terdaftar</th><th class="px-4 py-3">Bidang Utama</th></tr>`;
-        dataSumber.forEach((r, i) => {
-            htmlBody += `<tr class="hover:bg-slate-50"><td class="px-4 py-2 text-center text-slate-500">${i+1}</td><td class="px-4 py-2 font-mono text-xs text-slate-400">${escapeHTML(r.nip)}</td><td class="px-4 py-2 font-bold">${escapeHTML(r.nama)}</td><td class="px-4 py-2 text-slate-600">${escapeHTML(r.asal_organisasi)}</td><td class="px-4 py-2 text-slate-600">${escapeHTML(r.jabatan)}</td></tr>`;
-        });
+        columns = [
+            { className: 'px-4 py-2 text-center text-slate-500', render: (row, index) => index + 1 },
+            { className: 'px-4 py-2 font-mono text-xs text-slate-400', render: row => escapeHTML(row.nip) },
+            { className: 'px-4 py-2 font-bold', render: row => escapeHTML(row.nama) },
+            { className: 'px-4 py-2 text-slate-600', render: row => escapeHTML(row.asal_organisasi) },
+            { className: 'px-4 py-2 text-slate-600', render: row => escapeHTML(row.jabatan) }
+        ];
     } else {
         if (tipe === 'hari_ini') {
             dataSumber = globalLogData.filter(r => r.tanggal === currentTodayStr);
@@ -420,20 +423,26 @@ function bukaModalRincian(tipe, judul, sub, parameter = null) {
         }
 
         htmlHead = `<tr><th class="px-4 py-3 w-12 text-center">No</th><th class="px-4 py-3">Tanggal & Sesi</th><th class="px-4 py-3">Nama Personel</th><th class="px-4 py-3">Organisasi</th><th class="px-4 py-3">Bidang</th><th class="px-4 py-3">Lokasi</th></tr>`;
-        dataSumber.forEach((r, i) => {
-            htmlBody += `<tr class="hover:bg-slate-50">
-                <td class="px-4 py-2 text-center text-slate-500">${i+1}</td>
-                <td class="px-4 py-2 text-sm"><span class="font-bold text-slate-700">${escapeHTML(r.tanggal)}</span> <span class="text-xs bg-slate-100 border border-slate-200 px-1 rounded ml-1">${escapeHTML(r.sesi === 'Siang' ? 'Pagi' : r.sesi)}</span></td>
-                <td class="px-4 py-2 font-bold text-primary">${escapeHTML(r.nama)}</td>
-                <td class="px-4 py-2 text-slate-600">${escapeHTML(r.organisasi)}</td>
-                <td class="px-4 py-2 text-slate-600">${escapeHTML(r.bidang)}</td>
-                <td class="px-4 py-2 text-slate-600">${escapeHTML(r.lokasi)}</td>
-            </tr>`;
-        });
+        columns = [
+            { className: 'px-4 py-2 text-center text-slate-500', render: (row, index) => index + 1 },
+            {
+                className: 'px-4 py-2 text-sm',
+                render: row => `<span class="font-bold text-slate-700">${escapeHTML(row.tanggal)}</span> <span class="text-xs bg-slate-100 border border-slate-200 px-1 rounded ml-1">${escapeHTML(row.sesi === 'Siang' ? 'Pagi' : row.sesi)}</span>`
+            },
+            { className: 'px-4 py-2 font-bold text-primary', render: row => escapeHTML(row.nama) },
+            { className: 'px-4 py-2 text-slate-600', render: row => escapeHTML(row.organisasi) },
+            { className: 'px-4 py-2 text-slate-600', render: row => escapeHTML(row.bidang) },
+            { className: 'px-4 py-2 text-slate-600', render: row => escapeHTML(row.lokasi) }
+        ];
     }
 
     thead.innerHTML = htmlHead;
-    tbody.innerHTML = htmlBody || '<tr><td colspan="6" class="p-8 text-center text-slate-400">Tidak ada rincian data ditemukan.</td></tr>';
+    tbody.innerHTML = RelawanTable.renderRows(dataSumber, {
+        columns,
+        colspan: 6,
+        rowClass: 'hover:bg-slate-50',
+        emptyMessage: 'Tidak ada rincian data ditemukan.'
+    });
     document.getElementById('modalTotalBaris').innerText = `Total: ${dataSumber.length.toLocaleString('id-ID')} Baris Data`;
     
     document.getElementById('modalRincian').classList.remove('hidden');

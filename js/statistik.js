@@ -163,23 +163,7 @@ function computeVolunteerStats() {
 }
 
 function sortVolunteerStats() {
-    filteredStats.sort((a, b) => {
-        let valA = a[volSortKey];
-        let valB = b[volSortKey];
-
-        if (volSortKey === 'totalHadir' || volSortKey === 'hariAktif') {
-            valA = Number(valA) || 0;
-            valB = Number(valB) || 0;
-        } else {
-            valA = String(valA || '').toLowerCase();
-            valB = String(valB || '').toLowerCase();
-        }
-
-        if (valA < valB) return volSortDir === 'asc' ? -1 : 1;
-        if (valA > valB) return volSortDir === 'asc' ? 1 : -1;
-        return 0;
-    });
-
+    filteredStats = RelawanTable.sortRows(filteredStats, volSortKey, volSortDir);
     updateSortIcons();
 }
 
@@ -214,17 +198,11 @@ function sortVolunteerTable(key) {
 }
 
 function filterVolunteerTable() {
-    const keyword = (document.getElementById('searchVolunteer').value || '').toLowerCase().trim();
-    if (!keyword) {
-        filteredStats = [...volunteerStats];
-    } else {
-        filteredStats = volunteerStats.filter(v =>
-            v.nama.toLowerCase().includes(keyword) ||
-            String(v.nip || '').toLowerCase().includes(keyword) ||
-            v.organisasi.toLowerCase().includes(keyword) ||
-            v.zona.toLowerCase().includes(keyword)
-        );
-    }
+    const keyword = document.getElementById('searchVolunteer').value || '';
+    filteredStats = RelawanTable.filterRows(volunteerStats, {
+        keyword,
+        fields: ['nama', 'nip', 'organisasi', 'zona']
+    });
     sortVolunteerStats();
     volCurrentPage = 1;
     renderVolunteerTable();
@@ -232,44 +210,33 @@ function filterVolunteerTable() {
 
 function renderVolunteerTable() {
     const tbody = document.getElementById('volunteerTableBody');
-    const totalItems = filteredStats.length;
-    const totalPages = Math.max(1, Math.ceil(totalItems / volPerPage));
+    const pageState = RelawanTable.paginate(filteredStats, volCurrentPage, volPerPage);
+    volCurrentPage = pageState.page;
 
-    if (volCurrentPage > totalPages) volCurrentPage = totalPages;
+    const offset = pageState.start;
+    tbody.innerHTML = RelawanTable.renderRows(pageState.rows, {
+        colspan: 7,
+        emptyMessage: 'Tidak ada data ditemukan.',
+        columns: [
+            { className: 'px-4 py-3 text-center text-slate-500 text-xs', render: (row, index) => offset + index + 1 },
+            { className: 'px-4 py-3 font-bold text-slate-800 dark:text-slate-100', render: row => escapeHTML(row.nama) },
+            { className: 'px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase', render: row => escapeHTML(row.organisasi) },
+            { className: 'px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold', render: row => escapeHTML(row.zona) },
+            { className: 'px-4 py-3 text-center', render: row => `<span class="bg-indigo-100 dark:bg-indigo-500/10 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-200 dark:border-indigo-500/20">${row.totalHadir}</span>` },
+            { className: 'px-4 py-3 text-center', render: row => `<span class="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-black px-3 py-1 rounded-lg text-xs border border-emerald-200 dark:border-emerald-500/20">${row.hariAktif}</span>` },
+            { className: 'px-4 py-3 text-slate-500 dark:text-slate-400 text-xs font-semibold', render: row => escapeHTML(row.sesiTerakhir) }
+        ]
+    });
 
-    const startIdx = (volCurrentPage - 1) * volPerPage;
-    const endIdx = Math.min(startIdx + volPerPage, totalItems);
-    const pageData = filteredStats.slice(startIdx, endIdx);
-
-    let html = '';
-    if (pageData.length === 0) {
-        html = '<tr><td colspan="7" class="text-center p-8 text-slate-400 font-medium">Tidak ada data ditemukan.</td></tr>';
-    } else {
-        pageData.forEach((v, i) => {
-            const no = startIdx + i + 1;
-            html += `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                    <td class="px-4 py-3 text-center text-slate-500 text-xs">${no}</td>
-                    <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">${escapeHTML(v.nama)}</td>
-                    <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase">${escapeHTML(v.organisasi)}</td>
-                    <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold">${escapeHTML(v.zona)}</td>
-                    <td class="px-4 py-3 text-center"><span class="bg-indigo-100 dark:bg-indigo-500/10 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-200 dark:border-indigo-500/20">${v.totalHadir}</span></td>
-                    <td class="px-4 py-3 text-center"><span class="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-black px-3 py-1 rounded-lg text-xs border border-emerald-200 dark:border-emerald-500/20">${v.hariAktif}</span></td>
-                    <td class="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs font-semibold">${escapeHTML(v.sesiTerakhir)}</td>
-                </tr>
-            `;
-        });
-    }
-
-    tbody.innerHTML = html;
-
-    const startLabel = totalItems ? startIdx + 1 : 0;
-    document.getElementById('volunteerPaginationInfo').innerText = `Baris ${startLabel}-${endIdx} dari ${totalItems.toLocaleString('id-ID')} data • Halaman ${volCurrentPage}/${totalPages}`;
-
-    const btnPrev = document.getElementById('btnVolPrev');
-    const btnNext = document.getElementById('btnVolNext');
-    btnPrev.disabled = volCurrentPage <= 1;
-    btnNext.disabled = volCurrentPage >= totalPages;
+    RelawanTable.updatePagination({
+        info: 'volunteerPaginationInfo',
+        prev: 'btnVolPrev',
+        next: 'btnVolNext',
+        total: pageState.total,
+        page: pageState.page,
+        pageSize: pageState.pageSize,
+        formatInfo: state => `Baris ${state.startLabel}-${state.end} dari ${state.total.toLocaleString('id-ID')} data • Halaman ${state.page}/${state.totalPages}`
+    });
 }
 
 function changeVolunteerPage(delta) {
@@ -498,33 +465,17 @@ function exportTableCSV() {
 
     const rows = filteredStats.map((v, i) => [
         i + 1,
-        `"${(v.nama || '').replace(/"/g, '""')}"`,
-        `"${(v.organisasi || '').replace(/"/g, '""')}"`,
-        `"${(v.zona || '').replace(/"/g, '""')}"`,
+        v.nama || '',
+        v.organisasi || '',
+        v.zona || '',
         v.totalHadir,
         v.hariAktif,
         v.sesiTerakhir
     ]);
 
-    let csv = '\uFEFF' + headers.join(',') + '\n';
-    rows.forEach(r => { csv += r.join(',') + '\n'; });
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    a.download = `Statistik_Relawan_${dateStr}.csv`;
-    document.body.appendChild(a);
-    a.click();
-
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 0);
-
+    RelawanTable.downloadCsv(`Statistik_Relawan_${dateStr}.csv`, headers, rows);
     showToast("File CSV berhasil diunduh!", "success");
 }
 
@@ -539,40 +490,32 @@ function exportTableXLSX() {
         return;
     }
 
-    const aoa = [[
-        { t: 's', v: 'No' },
-        { t: 's', v: 'Nama' },
-        { t: 's', v: 'Organisasi' },
-        { t: 's', v: 'Zona' },
-        { t: 's', v: 'Total Hadir' },
-        { t: 's', v: 'Hari Aktif' },
-        { t: 's', v: 'Sesi Terakhir' }
-    ]];
-
+    const aoa = [['No', 'Nama', 'Organisasi', 'Zona', 'Total Hadir', 'Hari Aktif', 'Sesi Terakhir']];
     filteredStats.forEach((v, i) => {
         aoa.push([
-            { t: 'n', v: i + 1 },
-            { t: 's', v: String(v.nama || '') },
-            { t: 's', v: String(v.organisasi || '') },
-            { t: 's', v: String(v.zona || '') },
-            { t: 'n', v: Number(v.totalHadir) || 0 },
-            { t: 'n', v: Number(v.hariAktif) || 0 },
-            { t: 's', v: String(v.sesiTerakhir || '-') }
+            i + 1,
+            String(v.nama || ''),
+            String(v.organisasi || ''),
+            String(v.zona || ''),
+            Number(v.totalHadir) || 0,
+            Number(v.hariAktif) || 0,
+            String(v.sesiTerakhir || '-')
         ]);
     });
-
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [
-        { wch: 5 }, { wch: 30 }, { wch: 25 }, { wch: 32 }, { wch: 11 }, { wch: 10 }, { wch: 14 }
-    ];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Relawan');
 
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const label = rekapBulan || dateStr;
-    XLSX.writeFile(wb, `Rekap_Relawan_${label}.xlsx`);
+    const exported = RelawanTable.downloadXlsx(`Rekap_Relawan_${label}.xlsx`, [{
+        name: 'Rekap Relawan',
+        rows: aoa,
+        widths: [5, 30, 25, 32, 11, 10, 14]
+    }]);
+    if (!exported) {
+        showToast("Lib Excel belum dimuat, beralih ke CSV.", "info");
+        setTimeout(exportTableCSV, 50);
+        return;
+    }
     showToast("Export Excel berhasil.", "success");
 }
 

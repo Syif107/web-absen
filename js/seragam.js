@@ -41,7 +41,7 @@ async function loadSeragam(page = seragamPage) {
     const tbody = document.getElementById('tabelSeragam');
     const errorBox = document.getElementById('seragamError');
     seragamPage = Math.max(1, Number(page) || 1);
-    if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="p-10 text-center text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Memuat kontrol seragam...</td></tr>';
+    if (tbody) tbody.innerHTML = RelawanTable.loadingRow(8, 'Memuat kontrol seragam...');
     if (errorBox) errorBox.classList.add('hidden');
 
     try {
@@ -87,7 +87,7 @@ async function loadSeragam(page = seragamPage) {
             errorBox.textContent = 'Fitur seragam belum dapat dibaca. Pastikan migrasi Fase 17 sudah diterapkan lalu muat ulang halaman.';
             errorBox.classList.remove('hidden');
         }
-        if (tbody) tbody.innerHTML = '<tr><td colspan="8" class="p-10 text-center text-red-500 font-bold">Data seragam belum tersedia.</td></tr>';
+        if (tbody) tbody.innerHTML = RelawanTable.errorRow(8, 'Data seragam belum tersedia.');
     }
 }
 
@@ -223,7 +223,7 @@ function renderSeragam(hanyaGambar = false) {
     let rows = [...dataStatusSeragam];
 
     if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="p-10 text-center text-slate-400 font-bold">Tidak ada data sesuai filter.</td></tr>';
+        tbody.innerHTML = RelawanTable.emptyRow(8, 'Tidak ada data sesuai filter.');
         renderPaginationSeragam(proyekFilter);
         return;
     }
@@ -264,16 +264,16 @@ function labelWilayahSeragam(value) {
 function renderPaginationSeragam(proyekFilter) {
     const pages = Math.max(1, Math.ceil(seragamTotal / seragamPageSize));
     if (seragamPage > pages) return loadSeragam(pages);
-    const start = seragamTotal ? (seragamPage - 1) * seragamPageSize + 1 : 0;
-    const end = Math.min(seragamPage * seragamPageSize, seragamTotal);
-    const info = document.getElementById('infoSeragam');
-    if (info) info.textContent = `${start}-${end} dari ${seragamTotal.toLocaleString('id-ID')} personel • ${labelFilterProyekSeragam(proyekFilter)}`;
-    const pageInfo = document.getElementById('seragamPageInfo');
-    if (pageInfo) pageInfo.textContent = `Halaman ${seragamPage} / ${pages}`;
-    const prev = document.getElementById('btnSeragamPrev');
-    const next = document.getElementById('btnSeragamNext');
-    if (prev) prev.disabled = seragamPage <= 1;
-    if (next) next.disabled = seragamPage >= pages;
+    RelawanTable.updatePagination({
+        info: 'infoSeragam',
+        pageInfo: 'seragamPageInfo',
+        prev: 'btnSeragamPrev',
+        next: 'btnSeragamNext',
+        total: seragamTotal,
+        page: seragamPage,
+        pageSize: seragamPageSize,
+        formatInfo: state => `${state.startLabel}-${state.end} dari ${state.total.toLocaleString('id-ID')} personel • ${labelFilterProyekSeragam(proyekFilter)}`
+    });
 }
 
 function gantiHalamanSeragam(delta) {
@@ -495,7 +495,7 @@ function renderMutasiStok() {
         const status = row.status_transaksi || 'diterapkan';
         const statusClass = status === 'diterapkan' ? 'text-emerald-600' : status === 'terjadwal' ? 'text-blue-600' : 'text-rose-600';
         return `<tr class="border-t border-slate-100 dark:border-slate-700"><td class="p-2 whitespace-nowrap">${new Date(row.tanggal_efektif || row.dibuat_pada).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</td><td class="p-2 font-bold">${row.jenis === 'bawahan' ? 'Bawahan' : 'Atasan'} ${escapeHTML(row.ukuran)}</td><td class="p-2">${escapeHTML(labelTipeMutasi(row.tipe))}</td><td class="p-2 text-right font-black ${Number(row.perubahan) >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${Number(row.perubahan) >= 0 ? '+' : ''}${Number(row.perubahan || 0)}</td><td class="p-2 text-right font-black">${Number(row.saldo_setelah || 0)}</td><td class="p-2 font-black ${statusClass}">${escapeHTML(status)}</td><td class="p-2 text-slate-500">${escapeHTML(row.catatan || '-')}</td><td class="p-2"><div class="flex justify-center gap-1"><button type="button" onclick="editTanggalMutasiStok(${Number(row.id)})" class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700" title="Edit tanggal"><i class="fa-solid fa-pen-to-square"></i></button><button type="button" onclick="hapusMutasiStok(${Number(row.id)})" class="w-8 h-8 rounded-lg bg-red-100 text-red-700" title="Hapus permanen"><i class="fa-solid fa-trash"></i></button></div></td></tr>`;
-    }).join('') : '<tr><td colspan="8" class="p-5 text-center text-slate-400">Belum ada riwayat mutasi.</td></tr>';
+    }).join('') : RelawanTable.emptyRow(8, 'Belum ada riwayat mutasi.');
 }
 
 function pilihanUkuranStok(jenis, selected = '') {
@@ -687,10 +687,12 @@ async function exportSeragamExcel() {
 }
 
 function cetakSeragamHtml(judul, subjudul, isi) {
-    const popup = window.open('', '_blank', 'width=1100,height=800');
-    if (!popup) { showToast('Izinkan pop-up untuk membuat PDF.', 'error'); return; }
-    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHTML(judul)}</title><style>body{font-family:Arial,sans-serif;color:#172033;margin:28px}h1{font-size:20px;margin:0}.meta{font-size:11px;color:#64748b;margin:6px 0 18px}table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #cbd5e1;padding:6px;text-align:left}th{background:#fff7ed}@page{size:A4 landscape;margin:10mm}</style></head><body><h1>${escapeHTML(judul)}</h1><p class="meta">${escapeHTML(subjudul)} • Dibuat ${new Date().toLocaleString('id-ID')}</p>${isi}<script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);
-    popup.document.close();
+    const dibuka = RelawanTable.openPrintWindow(judul, isi, {
+        subtitle: `${subjudul} • Dibuat ${new Date().toLocaleString('id-ID')}`,
+        landscape: true,
+        styles: 'th{background:#fff7ed}'
+    });
+    if (!dibuka) showToast('Izinkan pop-up untuk membuat PDF.', 'error');
 }
 
 async function exportSeragamPdf() {

@@ -748,47 +748,34 @@ function renderSemuaLaporan() {
 }
 
 function bandingkanNilaiLaporan(a, b, arah) {
-    if (a < b) return arah === 'asc' ? -1 : 1;
-    if (a > b) return arah === 'asc' ? 1 : -1;
-    return 0;
+    const hasil = RelawanTable.compareValues(a, b);
+    return arah === 'asc' ? hasil : -hasil;
 }
 
 function urutkanPersonelLaporan(rows) {
     const [kunci, arah] = String(lapState.personelUrutan || 'total_desc').split('_');
-    const hasil = [...rows];
+    const namaAsc = RelawanTable.sortRows(rows, 'nama', 'asc');
 
-    hasil.sort((a, b) => {
-        if (kunci === 'nama' || kunci === 'organisasi' || kunci === 'zona') {
-            return bandingkanNilaiLaporan(String(a[kunci] || '').toLowerCase(), String(b[kunci] || '').toLowerCase(), arah) ||
-                a.nama.localeCompare(b.nama, 'id');
-        }
-        if (kunci === 'terakhir') {
-            return bandingkanNilaiLaporan(String(a.terakhir || ''), String(b.terakhir || ''), arah) ||
-                a.nama.localeCompare(b.nama, 'id');
-        }
-        const properti = kunci === 'hari' ? 'hariHadir' : 'total';
-        return bandingkanNilaiLaporan(Number(a[properti]) || 0, Number(b[properti]) || 0, arah) ||
-            (b.total - a.total) ||
-            a.nama.localeCompare(b.nama, 'id');
-    });
+    if (kunci === 'hari') {
+        return RelawanTable.sortRows(
+            RelawanTable.sortRows(namaAsc, 'total', 'desc'),
+            'hariHadir',
+            arah
+        );
+    }
 
-    return hasil;
+    const properti = ['nama', 'organisasi', 'zona', 'terakhir'].includes(kunci) ? kunci : 'total';
+    return RelawanTable.sortRows(namaAsc, properti, arah);
 }
 
 function terapkanKontrolPersonelLaporan() {
     if (!lapHasil) return;
 
-    const kataKunci = String(document.getElementById('lapCariPersonel')?.value || '').toLowerCase().trim();
-    let rows = [...lapHasil.rows];
-
-    if (kataKunci) {
-        rows = rows.filter(row => {
-            return String(row.nama || '').toLowerCase().includes(kataKunci) ||
-                String(row.nip || '').toLowerCase().includes(kataKunci) ||
-                String(row.organisasi || '').toLowerCase().includes(kataKunci) ||
-                String(row.zona || '').toLowerCase().includes(kataKunci);
-        });
-    }
+    const kataKunci = document.getElementById('lapCariPersonel')?.value || '';
+    const rows = RelawanTable.filterRows(lapHasil.rows, {
+        keyword: kataKunci,
+        fields: ['nama', 'nip', 'organisasi', 'zona']
+    });
 
     lapFilteredPersonel = urutkanPersonelLaporan(rows);
     renderTabelPersonelLaporan();
@@ -798,50 +785,39 @@ function renderTabelPersonelLaporan() {
     const tbody = document.getElementById('lapPersonelBody');
     if (!tbody) return;
 
-    const total = lapFilteredPersonel.length;
     const perHalaman = Math.max(25, Number(lapState.personelPerPage) || 50);
-    const totalHalaman = Math.max(1, Math.ceil(total / perHalaman));
+    const pageState = RelawanTable.paginate(lapFilteredPersonel, lapState.personelPage, perHalaman);
+    lapState.personelPage = pageState.page;
+    const dataHalaman = pageState.rows;
 
-    if (lapState.personelPage > totalHalaman) lapState.personelPage = totalHalaman;
-    if (lapState.personelPage < 1) lapState.personelPage = 1;
+    const offset = pageState.start;
+    tbody.innerHTML = RelawanTable.renderRows(dataHalaman, {
+        colspan: 11,
+        emptyMessage: 'Tidak ada personel yang sesuai filter.',
+        columns: [
+            { className: 'px-4 py-3 text-center text-slate-500 text-xs', render: (row, indeks) => offset + indeks + 1 },
+            { className: 'px-4 py-3 font-bold text-slate-800 dark:text-slate-100', render: row => escapeHTML(row.nama) },
+            { className: 'px-4 py-3 font-mono text-xs text-slate-500', render: row => escapeHTML(row.nip || '-') },
+            { className: 'px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase', render: row => escapeHTML(row.organisasi) },
+            { className: 'px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold', render: row => escapeHTML(row.zona) },
+            { className: 'px-4 py-3 text-center text-xs font-bold text-orange-600 dark:text-orange-400', render: row => row.pagi },
+            { className: 'px-4 py-3 text-center text-xs font-bold text-indigo-600 dark:text-indigo-400', render: row => row.malam },
+            { className: 'px-4 py-3 text-center', render: row => `<span class="bg-indigo-100 dark:bg-indigo-500/10 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-200 dark:border-indigo-500/20">${row.total}</span>` },
+            { className: 'px-4 py-3 text-center', render: row => `<span class="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-black px-3 py-1 rounded-lg text-xs border border-emerald-200 dark:border-emerald-500/20">${row.hariHadir}</span>` },
+            { className: 'px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300', render: row => `<span title="Rasio hari hadir terhadap hari aktif pada periode ini">${row.rasio.toFixed(1)}%</span>` },
+            { className: 'px-4 py-3 text-slate-500 dark:text-slate-400 text-xs font-semibold', render: row => escapeHTML(row.terakhir ? formatTanggalLaporan(row.terakhir) : '-') }
+        ]
+    });
 
-    const mulai = (lapState.personelPage - 1) * perHalaman;
-    const selesai = Math.min(mulai + perHalaman, total);
-    const dataHalaman = lapFilteredPersonel.slice(mulai, selesai);
-
-    if (!dataHalaman.length) {
-        tbody.innerHTML = '<tr><td colspan="11" class="text-center p-8 text-slate-400 font-medium">Tidak ada personel yang sesuai filter.</td></tr>';
-    } else {
-        tbody.innerHTML = dataHalaman.map((row, indeks) => {
-            const nomor = mulai + indeks + 1;
-            return `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                    <td class="px-4 py-3 text-center text-slate-500 text-xs">${nomor}</td>
-                    <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">${escapeHTML(row.nama)}</td>
-                    <td class="px-4 py-3 font-mono text-xs text-slate-500">${escapeHTML(row.nip || '-')}</td>
-                    <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase">${escapeHTML(row.organisasi)}</td>
-                    <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold">${escapeHTML(row.zona)}</td>
-                    <td class="px-4 py-3 text-center text-xs font-bold text-orange-600 dark:text-orange-400">${row.pagi}</td>
-                    <td class="px-4 py-3 text-center text-xs font-bold text-indigo-600 dark:text-indigo-400">${row.malam}</td>
-                    <td class="px-4 py-3 text-center"><span class="bg-indigo-100 dark:bg-indigo-500/10 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-200 dark:border-indigo-500/20">${row.total}</span></td>
-                    <td class="px-4 py-3 text-center"><span class="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-black px-3 py-1 rounded-lg text-xs border border-emerald-200 dark:border-emerald-500/20">${row.hariHadir}</span></td>
-                    <td class="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300" title="Rasio hari hadir terhadap hari aktif pada periode ini">${row.rasio.toFixed(1)}%</td>
-                    <td class="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs font-semibold">${escapeHTML(row.terakhir ? formatTanggalLaporan(row.terakhir) : '-')}</td>
-                </tr>
-            `;
-        }).join('');
-    }
-
-    const labelAwal = total ? mulai + 1 : 0;
-    const info = document.getElementById('lapPersonelInfo');
-    if (info) {
-        info.textContent = `Baris ${labelAwal}-${selesai} dari ${total.toLocaleString('id-ID')} data • Halaman ${lapState.personelPage}/${totalHalaman}`;
-    }
-
-    const prev = document.getElementById('btnLapPersonelPrev');
-    const next = document.getElementById('btnLapPersonelNext');
-    if (prev) prev.disabled = lapState.personelPage <= 1;
-    if (next) next.disabled = lapState.personelPage >= totalHalaman;
+    RelawanTable.updatePagination({
+        info: 'lapPersonelInfo',
+        prev: 'btnLapPersonelPrev',
+        next: 'btnLapPersonelNext',
+        total: pageState.total,
+        page: pageState.page,
+        pageSize: pageState.pageSize,
+        formatInfo: state => `Baris ${state.startLabel}-${state.end} dari ${state.total.toLocaleString('id-ID')} data • Halaman ${state.page}/${state.totalPages}`
+    });
 }
 
 function renderTabelHarianLaporan() {
@@ -849,22 +825,25 @@ function renderTabelHarianLaporan() {
     if (!tbody || !lapHasil) return;
 
     if (!lapHasil.rowsHarian.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-slate-400 font-medium">Belum ada data harian pada periode ini.</td></tr>';
+        tbody.innerHTML = RelawanTable.emptyRow(8, 'Belum ada data harian pada periode ini.');
         return;
     }
 
-    tbody.innerHTML = lapHasil.rowsHarian.map((row, indeks) => `
-        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer" onclick="bukaDetailTanggalLaporan('${row.tanggal}')">
-            <td class="px-4 py-3 text-center text-slate-500 text-xs">${indeks + 1}</td>
-            <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">${escapeHTML(formatTanggalLaporan(row.tanggal))}</td>
-            <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold">${escapeHTML(row.hari)}</td>
-            <td class="px-4 py-3 text-center text-xs font-bold text-orange-600 dark:text-orange-400">${row.pagi}</td>
-            <td class="px-4 py-3 text-center text-xs font-bold text-indigo-600 dark:text-indigo-400">${row.malam}</td>
-            <td class="px-4 py-3 text-center"><span class="bg-indigo-100 dark:bg-indigo-500/10 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-200 dark:border-indigo-500/20">${row.total}</span></td>
-            <td class="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300">${row.personelUnik}</td>
-            <td class="px-4 py-3 text-slate-500 dark:text-slate-400 text-xs font-semibold">${escapeHTML(row.lokasi)}</td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = RelawanTable.renderRows(lapHasil.rowsHarian, {
+        colspan: 8,
+        rowClass: 'hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer',
+        rowAttributes: row => `onclick="bukaDetailTanggalLaporan('${escapeAttribute(row.tanggal)}')"`,
+        columns: [
+            { className: 'px-4 py-3 text-center text-slate-500 text-xs', render: (row, indeks) => indeks + 1 },
+            { className: 'px-4 py-3 font-bold text-slate-800 dark:text-slate-100', render: row => escapeHTML(formatTanggalLaporan(row.tanggal)) },
+            { className: 'px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold', render: row => escapeHTML(row.hari) },
+            { className: 'px-4 py-3 text-center text-xs font-bold text-orange-600 dark:text-orange-400', render: row => row.pagi },
+            { className: 'px-4 py-3 text-center text-xs font-bold text-indigo-600 dark:text-indigo-400', render: row => row.malam },
+            { className: 'px-4 py-3 text-center', render: row => `<span class="bg-indigo-100 dark:bg-indigo-500/10 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-200 dark:border-indigo-500/20">${row.total}</span>` },
+            { className: 'px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300', render: row => row.personelUnik },
+            { className: 'px-4 py-3 text-slate-500 dark:text-slate-400 text-xs font-semibold', render: row => escapeHTML(row.lokasi) }
+        ]
+    });
 }
 
 function renderTabelLokasiLaporan() {
@@ -872,19 +851,20 @@ function renderTabelLokasiLaporan() {
     if (!tbody || !lapHasil) return;
 
     if (!lapHasil.rowsLokasi.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-slate-400 font-medium">Belum ada data lokasi pada periode ini.</td></tr>';
+        tbody.innerHTML = RelawanTable.emptyRow(5, 'Belum ada data lokasi pada periode ini.');
         return;
     }
 
-    tbody.innerHTML = lapHasil.rowsLokasi.map((row, indeks) => `
-        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-            <td class="px-4 py-3 text-center text-slate-500 text-xs">${indeks + 1}</td>
-            <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">${escapeHTML(row.lokasi)}</td>
-            <td class="px-4 py-3 text-center"><span class="bg-indigo-100 dark:bg-indigo-500/10 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-200 dark:border-indigo-500/20">${row.total}</span></td>
-            <td class="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300">${row.personelUnik}</td>
-            <td class="px-4 py-3 text-center text-xs font-bold text-emerald-600 dark:text-emerald-400">${row.hariAktif}</td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = RelawanTable.renderRows(lapHasil.rowsLokasi, {
+        colspan: 5,
+        columns: [
+            { className: 'px-4 py-3 text-center text-slate-500 text-xs', render: (row, indeks) => indeks + 1 },
+            { className: 'px-4 py-3 font-bold text-slate-800 dark:text-slate-100', render: row => escapeHTML(row.lokasi) },
+            { className: 'px-4 py-3 text-center', render: row => `<span class="bg-indigo-100 dark:bg-indigo-500/10 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-200 dark:border-indigo-500/20">${row.total}</span>` },
+            { className: 'px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300', render: row => row.personelUnik },
+            { className: 'px-4 py-3 text-center text-xs font-bold text-emerald-600 dark:text-emerald-400', render: row => row.hariAktif }
+        ]
+    });
 }
 
 function renderTabelInstansiLaporan() {
@@ -892,19 +872,20 @@ function renderTabelInstansiLaporan() {
     if (!tbody || !lapHasil) return;
 
     if (!lapHasil.rowsInstansi.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-slate-400 font-medium">Belum ada data instansi pada periode ini.</td></tr>';
+        tbody.innerHTML = RelawanTable.emptyRow(5, 'Belum ada data instansi pada periode ini.');
         return;
     }
 
-    tbody.innerHTML = lapHasil.rowsInstansi.map((row, indeks) => `
-        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-            <td class="px-4 py-3 text-center text-slate-500 text-xs">${indeks + 1}</td>
-            <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">${escapeHTML(row.organisasi)}</td>
-            <td class="px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300">${row.personelUnik}</td>
-            <td class="px-4 py-3 text-center"><span class="bg-indigo-100 dark:bg-indigo-500/10 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-200 dark:border-indigo-500/20">${row.total}</span></td>
-            <td class="px-4 py-3 text-center text-xs font-bold text-emerald-600 dark:text-emerald-400">${row.hariAktif}</td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = RelawanTable.renderRows(lapHasil.rowsInstansi, {
+        colspan: 5,
+        columns: [
+            { className: 'px-4 py-3 text-center text-slate-500 text-xs', render: (row, indeks) => indeks + 1 },
+            { className: 'px-4 py-3 font-bold text-slate-800 dark:text-slate-100', render: row => escapeHTML(row.organisasi) },
+            { className: 'px-4 py-3 text-center text-xs font-bold text-slate-600 dark:text-slate-300', render: row => row.personelUnik },
+            { className: 'px-4 py-3 text-center', render: row => `<span class="bg-indigo-100 dark:bg-indigo-500/10 text-primary font-black px-3 py-1 rounded-lg text-xs border border-indigo-200 dark:border-indigo-500/20">${row.total}</span>` },
+            { className: 'px-4 py-3 text-center text-xs font-bold text-emerald-600 dark:text-emerald-400', render: row => row.hariAktif }
+        ]
+    });
 }
 
 function filterPersonelLaporan() {
@@ -1001,18 +982,21 @@ function bukaDetailTanggalLaporan(tanggal) {
     if (totalEl) totalEl.textContent = `Total: ${daftar.length.toLocaleString('id-ID')} baris`;
 
     if (body) {
-        body.innerHTML = daftar.length
-            ? daftar.map((row, indeks) => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                    <td class="px-4 py-3 text-center text-slate-500 text-xs">${indeks + 1}</td>
-                    <td class="px-4 py-3"><span class="text-xs font-bold px-2 py-1 rounded ${row.sesi === 'Pagi' ? 'bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400'}">${escapeHTML(row.sesi)}</span></td>
-                    <td class="px-4 py-3 font-bold text-primary">${escapeHTML(row.nama)}</td>
-                    <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase">${escapeHTML(row.organisasi)}</td>
-                    <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">${escapeHTML(row.bidang)}</td>
-                    <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">${escapeHTML(row.lokasi)}</td>
-                </tr>
-            `).join('')
-            : '<tr><td colspan="6" class="p-8 text-center text-slate-400 font-medium">Tidak ada catatan pada tanggal ini.</td></tr>';
+        body.innerHTML = RelawanTable.renderRows(daftar, {
+            colspan: 6,
+            emptyMessage: 'Tidak ada catatan pada tanggal ini.',
+            columns: [
+                { className: 'px-4 py-3 text-center text-slate-500 text-xs', render: (row, indeks) => indeks + 1 },
+                {
+                    className: 'px-4 py-3',
+                    render: row => `<span class="text-xs font-bold px-2 py-1 rounded ${row.sesi === 'Pagi' ? 'bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-400'}">${escapeHTML(row.sesi)}</span>`
+                },
+                { className: 'px-4 py-3 font-bold text-primary', render: row => escapeHTML(row.nama) },
+                { className: 'px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold uppercase', render: row => escapeHTML(row.organisasi) },
+                { className: 'px-4 py-3 text-slate-600 dark:text-slate-400 text-xs', render: row => escapeHTML(row.bidang) },
+                { className: 'px-4 py-3 text-slate-600 dark:text-slate-400 text-xs', render: row => escapeHTML(row.lokasi) }
+            ]
+        });
     }
 
     const modal = document.getElementById('modalDetailLaporan');
@@ -1366,7 +1350,7 @@ function exportLaporanExcel() {
 }
 
 function selCsvLaporan(nilai) {
-    return `"${String(nilai ?? '').replace(/"/g, '""')}"`;
+    return RelawanTable.csvCell(nilai);
 }
 
 function exportLaporanCSV() {
@@ -1379,32 +1363,19 @@ function exportLaporanCSV() {
     const headers = ['No', 'Nama', 'NIP', 'Organisasi', 'Zona', 'Pagi', 'Malam', 'Total Sesi', 'Hari Hadir', 'Rasio Hari Aktif (%)', 'Terakhir Hadir'];
     const rows = lapFilteredPersonel.map((row, indeks) => [
         indeks + 1,
-        selCsvLaporan(row.nama),
-        selCsvLaporan(row.nip || '-'),
-        selCsvLaporan(row.organisasi),
-        selCsvLaporan(row.zona),
+        row.nama,
+        row.nip || '-',
+        row.organisasi,
+        row.zona,
         row.pagi,
         row.malam,
         row.total,
         row.hariHadir,
         row.rasio,
-        selCsvLaporan(row.terakhir ? formatTanggalLaporan(row.terakhir) : '-')
+        row.terakhir ? formatTanggalLaporan(row.terakhir) : '-'
     ]);
 
-    const csv = '\uFEFF' + headers.join(',') + '\n' + rows.map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = namaFileLaporan('csv');
-    document.body.appendChild(anchor);
-    anchor.click();
-
-    setTimeout(() => {
-        document.body.removeChild(anchor);
-        URL.revokeObjectURL(url);
-    }, 0);
-
+    RelawanTable.downloadCsv(namaFileLaporan('csv'), headers, rows);
     showToast('Rekap personel berhasil diunduh sebagai CSV.', 'success');
 }
 

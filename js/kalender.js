@@ -222,26 +222,23 @@ function bukaModalDetail(day) {
 
     const tbody = document.getElementById('modalDetailTbody');
 
-    if (filteredLogs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-slate-400 font-medium">Tidak ada data kehadiran pada tanggal ini.</td></tr>`;
-    } else {
-        let html = '';
-        filteredLogs.forEach((r, idx) => {
-            const sesiColor = (r.sesi === 'Pagi' || r.sesi === 'Siang') ? 'text-orange-500 bg-orange-50 dark:bg-orange-500/10' : 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10';
-            html += `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
-                    <td class="px-4 py-3 text-center font-bold text-slate-400">${idx + 1}</td>
-                    <td class="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">${escapeHTML(r.nama)}</td>
-                    <td class="px-4 py-3">
-                        <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${sesiColor}">${escapeHTML(r.sesi === 'Siang' ? 'Pagi' : r.sesi)}</span>
-                    </td>
-                    <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">${escapeHTML(r.lokasi)}</td>
-                    <td class="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold">${escapeHTML(r.organisasi)}</td>
-                </tr>
-            `;
-        });
-        tbody.innerHTML = html;
-    }
+    tbody.innerHTML = RelawanTable.renderRows(filteredLogs, {
+        colspan: 5,
+        emptyMessage: 'Tidak ada data kehadiran pada tanggal ini.',
+        columns: [
+            { className: 'px-4 py-3 text-center font-bold text-slate-400', render: (row, idx) => idx + 1 },
+            { className: 'px-4 py-3 font-bold text-slate-800 dark:text-slate-100', render: row => escapeHTML(row.nama) },
+            {
+                className: 'px-4 py-3',
+                render: row => {
+                    const sesiColor = (row.sesi === 'Pagi' || row.sesi === 'Siang') ? 'text-orange-500 bg-orange-50 dark:bg-orange-500/10' : 'text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10';
+                    return `<span class="px-2.5 py-1 rounded-lg text-xs font-bold ${sesiColor}">${escapeHTML(row.sesi === 'Siang' ? 'Pagi' : row.sesi)}</span>`;
+                }
+            },
+            { className: 'px-4 py-3 text-slate-600 dark:text-slate-400 text-xs', render: row => escapeHTML(row.lokasi) },
+            { className: 'px-4 py-3 text-slate-600 dark:text-slate-400 text-xs font-semibold', render: row => escapeHTML(row.organisasi) }
+        ]
+    });
 
     document.getElementById('modalDetailTotal').textContent = `Total: ${filteredLogs.length} Data`;
     document.getElementById('modalDetailHari').classList.remove('hidden');

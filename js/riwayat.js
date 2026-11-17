@@ -436,25 +436,14 @@ function jalankanFilterDanSortRiwayat() {
 
     // Sorting dari filter kolom atau dropdown terpadu.
     if (activeSortColumn) {
-        filtered.sort((a, b) => {
-            let valA = (a[activeSortColumn] || '').toString().toLowerCase();
-            let valB = (b[activeSortColumn] || '').toString().toLowerCase();
-            if (valA < valB) return activeSortDirection === 'asc' ? -1 : 1;
-            if (valA > valB) return activeSortDirection === 'asc' ? 1 : -1;
-            return 0;
-        });
+        filtered = RelawanTable.sortRows(filtered, activeSortColumn, activeSortDirection);
     } else {
         const sortMode = document.getElementById('sortRiwayat')?.value || riwayatSortMode || 'tanggal_desc';
         riwayatSortMode = sortMode;
         const splitAt = sortMode.lastIndexOf('_');
         const key = splitAt > 0 ? sortMode.slice(0, splitAt) : 'tanggal';
         const direction = sortMode.endsWith('_asc') ? 'asc' : 'desc';
-        filtered.sort((a, b) => {
-            const valA = String(a[key] || '').toLowerCase();
-            const valB = String(b[key] || '').toLowerCase();
-            const result = valA.localeCompare(valB, 'id', { numeric: true });
-            return direction === 'asc' ? result : -result;
-        });
+        filtered = RelawanTable.sortRows(filtered, key, direction, { numeric: true });
     }
 
     riwayatFilteredData = filtered;
@@ -526,26 +515,34 @@ function updateSummaryCards(data) {
 // ==========================================
 function renderTabelRiwayat(data, tampilkanSemua = false) {
     const tbody = document.getElementById('riwayatBody');
-    const totalItems = data.length;
-    const totalPages = Math.max(1, Math.ceil(totalItems / riwayatRowsPerPage));
-    riwayatCurrentPage = Math.min(totalPages, Math.max(1, riwayatCurrentPage));
-    const startIndex = tampilkanSemua ? 0 : (riwayatCurrentPage - 1) * riwayatRowsPerPage;
-    const endIndex = tampilkanSemua ? totalItems : Math.min(startIndex + riwayatRowsPerPage, totalItems);
-    const rows = tampilkanSemua ? data : data.slice(startIndex, endIndex);
-    const startLabel = totalItems ? startIndex + 1 : 0;
-    document.getElementById('totalDataInfo').innerText = `Baris ${startLabel}-${endIndex} dari ${totalItems.toLocaleString('id-ID')} riwayat`;
-    document.getElementById('pageInfo').innerText = tampilkanSemua ? 'Semua hasil terfilter' : `Halaman ${riwayatCurrentPage} / ${totalPages}`;
-    const prev = document.getElementById('btnRiwayatPrev');
-    const next = document.getElementById('btnRiwayatNext');
-    if (prev) prev.disabled = tampilkanSemua || riwayatCurrentPage <= 1;
-    if (next) next.disabled = tampilkanSemua || riwayatCurrentPage >= totalPages;
+    const pageState = tampilkanSemua
+        ? RelawanTable.paginate(data, 1, Math.max(1, data.length))
+        : RelawanTable.paginate(data, riwayatCurrentPage, riwayatRowsPerPage);
+    if (!tampilkanSemua) riwayatCurrentPage = pageState.page;
+
+    const totalItems = pageState.total;
+    const startIndex = pageState.start;
+    const endIndex = pageState.end;
+    const rows = pageState.rows;
+
+    RelawanTable.updatePagination({
+        info: 'totalDataInfo',
+        pageInfo: 'pageInfo',
+        prev: 'btnRiwayatPrev',
+        next: 'btnRiwayatNext',
+        total: totalItems,
+        page: pageState.page,
+        pageSize: pageState.pageSize,
+        showAll: tampilkanSemua,
+        formatInfo: state => `Baris ${state.startLabel}-${state.end} dari ${state.total.toLocaleString('id-ID')} riwayat`
+    });
 
     const checkAllBtn = document.getElementById('checkAll');
     if (checkAllBtn) checkAllBtn.checked = false;
     toggleBulkActionBanner();
 
     if (totalItems === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center p-8 text-slate-400 font-medium">Tidak ada data absensi yang sesuai filter.</td></tr>';
+        tbody.innerHTML = RelawanTable.emptyRow(8, 'Tidak ada data absensi yang sesuai filter.');
         return;
     }
 
@@ -770,7 +767,6 @@ function exportToCSV() {
         showToast("Tidak ada data untuk diekspor!", "error");
         return;
     }
-    const csvCell = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
     const rows = riwayatFilteredData.map((row, index) => [
         index + 1,
         row.tanggal || '',
@@ -779,20 +775,12 @@ function exportToCSV() {
         row.lokasi || '',
         row.organisasi || ''
     ]);
-    const csvContent = '\uFEFF' + [
-        ['No', 'Tanggal', 'Nama Personel', 'Sesi', 'Lokasi Proyek', 'Organisasi'],
-        ...rows
-    ].map(row => row.map(csvCell).join(',')).join('\n');
     const filterTgl = document.getElementById('filterTanggal').value || 'SemuaTanggal';
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", objectUrl);
-    link.setAttribute("download", `Laporan_Absen_${filterTgl}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(objectUrl);
+    RelawanTable.downloadCsv(
+        `Laporan_Absen_${filterTgl}.csv`,
+        ['No', 'Tanggal', 'Nama Personel', 'Sesi', 'Lokasi Proyek', 'Organisasi'],
+        rows
+    );
     showToast(`${rows.length.toLocaleString('id-ID')} riwayat terfilter diekspor ke CSV.`, "success");
 }
 
@@ -808,36 +796,24 @@ function exportToXLSX() {
         return;
     }
 
-    const aoa = [[
-        { t: 's', v: 'No' },
-        { t: 's', v: 'Tanggal' },
-        { t: 's', v: 'Nama Personel' },
-        { t: 's', v: 'Sesi' },
-        { t: 's', v: 'Lokasi Proyek' },
-        { t: 's', v: 'Organisasi' }
-    ]];
-
+    const aoa = [['No', 'Tanggal', 'Nama Personel', 'Sesi', 'Lokasi Proyek', 'Organisasi']];
     riwayatFilteredData.forEach((row, index) => {
         aoa.push([
-            { t: 'n', v: index + 1 },
-            { t: 's', v: row.tanggal || '' },
-            { t: 's', v: row.nama || '' },
-            { t: 's', v: row.sesi === 'Siang' ? 'Pagi' : (row.sesi || '') },
-            { t: 's', v: row.lokasi || '' },
-            { t: 's', v: row.organisasi || '' }
+            index + 1,
+            row.tanggal || '',
+            row.nama || '',
+            row.sesi === 'Siang' ? 'Pagi' : (row.sesi || ''),
+            row.lokasi || '',
+            row.organisasi || ''
         ]);
     });
 
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [
-        { wch: 5 }, { wch: 14 }, { wch: 30 }, { wch: 9 }, { wch: 30 }, { wch: 25 }
-    ];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Absensi');
-
     const filterTgl = document.getElementById('filterTanggal').value || 'SemuaTanggal';
-    XLSX.writeFile(wb, `Laporan_Absen_${filterTgl}.xlsx`);
+    RelawanTable.downloadXlsx(`Laporan_Absen_${filterTgl}.xlsx`, [{
+        name: 'Absensi',
+        rows: aoa,
+        widths: [5, 14, 30, 9, 30, 25]
+    }]);
     showToast(`${riwayatFilteredData.length.toLocaleString('id-ID')} riwayat terfilter diekspor ke Excel.`, "success");
 }
 

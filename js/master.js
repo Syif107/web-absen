@@ -251,26 +251,11 @@ function terapkanFilterDanPaginasi() {
     });
 
     // Filter berdasarkan pop-up Excel (Checkbox kolom aktif)
-    Object.keys(activeExcelFilters).forEach(col => {
-        const allowedVals = activeExcelFilters[col];
-        if (allowedVals && allowedVals.length > 0) {
-            filteredData = filteredData.filter(item => {
-                const itemValue = item[col];
-                const val = (itemValue !== null && itemValue !== undefined && itemValue !== "") ? String(itemValue) : '-';
-                return allowedVals.includes(val);
-            });
-        }
-    });
+    filteredData = RelawanTable.filterRows(filteredData, { columnFilters: activeExcelFilters });
 
     // Sorting Kolom (A-Z / Z-A) atau Default Nama
     if (activeSortColumn) {
-        filteredData.sort((a, b) => {
-            let valA = (a[activeSortColumn] !== null && a[activeSortColumn] !== undefined) ? String(a[activeSortColumn]).toLowerCase() : '';
-            let valB = (b[activeSortColumn] !== null && b[activeSortColumn] !== undefined) ? String(b[activeSortColumn]).toLowerCase() : '';
-            if (valA < valB) return activeSortDirection === 'asc' ? -1 : 1;
-            if (valA > valB) return activeSortDirection === 'asc' ? 1 : -1;
-            return 0;
-        });
+        filteredData = RelawanTable.sortRows(filteredData, activeSortColumn, activeSortDirection);
     } else {
         filteredData.sort((a, b) => {
             if (masterSortMode === 'nama_desc') return String(b.nama || '').localeCompare(String(a.nama || ''), 'id');
@@ -295,26 +280,26 @@ function ubahHalaman(arah) {
 // 6. Mesin Render HTML & Kalkulasi Baris
 function renderTabelMaster(data) {
     const tbody = document.getElementById('tabelMasterBody');
-    const info = document.getElementById('infoPaginasi');
-    const btnPrev = document.getElementById('btnPrev');
-    const btnNext = document.getElementById('btnNext');
+    const pageState = RelawanTable.paginate(data, currentPage, rowsPerPage);
+    currentPage = pageState.page;
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="text-center p-8 text-slate-400 font-medium">Data tidak ditemukan.</td></tr>';
-        info.innerText = "Menampilkan 0 data";
-        btnPrev.disabled = true;
-        btnNext.disabled = true;
+        tbody.innerHTML = RelawanTable.emptyRow(11, 'Data tidak ditemukan.');
+        RelawanTable.updatePagination({
+            info: 'infoPaginasi',
+            prev: 'btnPrev',
+            next: 'btnNext',
+            total: 0,
+            page: 1,
+            pageSize: rowsPerPage,
+            formatInfo: () => 'Menampilkan 0 data'
+        });
         toggleMasterBulkAction();
         return;
     }
 
-    const totalPages = Math.ceil(data.length / rowsPerPage);
-    if (currentPage < 1) currentPage = 1;
-    if (currentPage > totalPages) currentPage = totalPages;
-
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const endIndex = Math.min(startIndex + rowsPerPage, data.length);
-    const dataPaginated = data.slice(startIndex, endIndex);
+    const startIndex = pageState.start;
+    const dataPaginated = pageState.rows;
 
     let html = '';
     dataPaginated.forEach((r, idx) => {
@@ -349,9 +334,15 @@ function renderTabelMaster(data) {
     });
     tbody.innerHTML = html;
 
-    info.innerText = `Baris ${startIndex + 1}-${endIndex} dari ${data.length.toLocaleString('id-ID')} Data (Hal ${currentPage}/${totalPages})`;
-    btnPrev.disabled = currentPage === 1;
-    btnNext.disabled = currentPage === totalPages;
+    RelawanTable.updatePagination({
+        info: 'infoPaginasi',
+        prev: 'btnPrev',
+        next: 'btnNext',
+        total: pageState.total,
+        page: pageState.page,
+        pageSize: pageState.pageSize,
+        formatInfo: state => `Baris ${state.startLabel}-${state.end} dari ${state.total.toLocaleString('id-ID')} Data (Hal ${state.page}/${state.totalPages})`
+    });
     toggleMasterBulkAction();
 }
 
@@ -660,106 +651,20 @@ async function gabungkanSemuaKandidatMirip() {
 // ==========================================
 
 function bukaExcelFilterMaster(columnKey, event) {
-    event.stopPropagation();
-    const popup = document.getElementById('excelFilterPopup');
-    if (!popup) return;
-    
-    const rect = event.currentTarget.getBoundingClientRect();
-    popup.style.top = `${rect.bottom + window.scrollY + 5}px`;
-    popup.style.left = `${rect.left + window.scrollX - 180}px`;
-    popup.style.width = '280px';
-
-    // Ambil nilai unik dari seluruh masterData berdasarkan key kolom
-    const uniqueValues = [...new Set(masterData.map(item => {
-        let val = item[columnKey];
-        return (val !== null && val !== undefined && val !== "") ? String(val) : '-';
-    }))].sort();
-
-    const currentSelected = activeExcelFilters[columnKey] || [];
-
-    let html = `
-        <div class="font-bold text-slate-700 dark:text-slate-200 mb-2 pb-1 border-b border-slate-100 dark:border-slate-600 flex justify-between items-center text-xs">
-            <span>Filter & Urutkan</span>
-            <span class="text-primary cursor-pointer underline hover:text-indigo-700" onclick="resetFilterKolomMaster('${columnKey}')">Reset</span>
-        </div>
-        
-        <div class="space-y-1 mb-2 text-xs">
-            <button onclick="sortDataKolomMaster('${columnKey}', 'asc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2"><i class="fa-solid fa-arrow-down-a-z text-primary"></i> Urutkan A ke Z</button>
-            <button onclick="sortDataKolomMaster('${columnKey}', 'desc')" class="w-full text-left px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-700 rounded font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2"><i class="fa-solid fa-arrow-up-z-a text-primary"></i> Urutkan Z ke A</button>
-        </div>
-
-        <!-- KOTAK PENCARIAN DI DALAM FILTER MASTER -->
-        <div class="mb-2 relative">
-            <i class="fa-solid fa-search absolute left-2.5 top-2 text-slate-400 text-[10px]"></i>
-            <input type="text" id="searchPopupInput" onkeyup="filterListPopupMaster(this)" placeholder="Cari data..." class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg pl-7 pr-3 py-1.5 text-xs outline-none text-slate-800 dark:text-slate-100 focus:border-primary dark:placeholder-slate-400">
-        </div>
-
-        <!-- TOMBOL PILIH SEMUA / HAPUS SEMUA MASTER -->
-        <div class="flex justify-between items-center mb-1 text-[11px] font-bold text-indigo-600 px-1">
-            <span class="cursor-pointer hover:underline" onclick="toggleAllPopupCheckboxMaster(true)">Pilih Semua</span>
-            <span class="text-slate-300 dark:text-slate-500">|</span>
-            <span class="cursor-pointer hover:underline text-red-500" onclick="toggleAllPopupCheckboxMaster(false)">Hapus Semua</span>
-        </div>
-
-        <div class="max-h-44 overflow-y-auto space-y-1 pr-1 custom-scroll border border-slate-100 dark:border-slate-600 p-1 rounded-lg bg-slate-50/50 dark:bg-slate-700/50" id="excelCheckboxList">
-    `;
-
-    uniqueValues.forEach(val => {
-        const isChecked = currentSelected.length === 0 || currentSelected.includes(val) ? 'checked' : '';
-        const valueAttr = escapeAttribute(val);
-        const valueText = escapeHTML(val);
-        html += `
-            <label class="popup-item-label-master flex items-center gap-2 p-1 hover:bg-white dark:hover:bg-slate-600 rounded cursor-pointer text-xs">
-                <input type="checkbox" value="${valueAttr}" data-col="${columnKey}" class="excel-filter-chk-master w-3.5 h-3.5 accent-primary rounded shrink-0" ${isChecked} onchange="terapkanExcelFilterMaster()">
-                <span class="truncate text-slate-700 dark:text-slate-200 font-medium">${valueText}</span>
-            </label>
-        `;
+    event?.stopPropagation();
+    RelawanTable.openColumnFilter({
+        event,
+        columnKey,
+        rows: masterData,
+        selected: activeExcelFilters[columnKey] || [],
+        onApply: (selected, key) => {
+            activeExcelFilters[key] = selected;
+            currentPage = 1;
+            terapkanFilterDanPaginasi();
+        },
+        onSort: (key, direction) => sortDataKolomMaster(key, direction),
+        onReset: key => resetFilterKolomMaster(key)
     });
-
-    html += `</div>`;
-    popup.innerHTML = html;
-    popup.classList.remove('hidden');
-}
-
-// FUNGSI PENDUKUNG PENCARIAN DI POP-UP MASTER
-function filterListPopupMaster(input) {
-    const keyword = input.value.toLowerCase();
-    const labels = document.querySelectorAll('.popup-item-label-master');
-    
-    labels.forEach(lbl => {
-        const text = lbl.innerText.toLowerCase();
-        if (text.includes(keyword)) {
-            lbl.style.display = "flex";
-        } else {
-            lbl.style.display = "none";
-        }
-    });
-}
-
-// FUNGSI PENDUKUNG PILIH/HAPUS SEMUA DI POP-UP MASTER
-function toggleAllPopupCheckboxMaster(status) {
-    const checkboxes = document.querySelectorAll('.excel-filter-chk-master');
-    checkboxes.forEach(chk => {
-        if (chk.closest('label').style.display !== 'none') {
-            chk.checked = status;
-        }
-    });
-    terapkanExcelFilterMaster();
-}
-
-function terapkanExcelFilterMaster() {
-    const checkboxes = document.querySelectorAll('.excel-filter-chk-master');
-    if (checkboxes.length === 0) return;
-    const colKey = checkboxes[0].dataset.col;
-
-    let selectedVals = [];
-    checkboxes.forEach(chk => {
-        if (chk.checked) selectedVals.push(chk.value);
-    });
-
-    activeExcelFilters[colKey] = selectedVals;
-    currentPage = 1;
-    terapkanFilterDanPaginasi();
 }
 
 function sortDataKolomMaster(columnKey, direction) {
@@ -1735,9 +1640,41 @@ function renderDetailPersonel() {
     const attendance = Array.isArray(data.attendance) ? data.attendance : [];
     const uniform = Array.isArray(data.uniform_history) ? data.uniform_history : [];
     document.getElementById('detailPersonelJudul').textContent = `${p.nama || '-'} • ${p.nip || '-'}`;
-    const projectRows = projects.length ? projects.map(row => `<tr><td class="px-3 py-2 font-bold">${escapeHTML(row.nama_proyek || '-')}</td><td class="px-3 py-2">${escapeHTML(row.kategori === 'khususul_khusus' ? '5 Proyek Khususul Khusus' : 'Proyek Lainnya')}</td><td class="px-3 py-2 text-center font-black">${Number(row.total_hari_proyek || 0)}</td><td class="px-3 py-2 text-center">${Number(row.total_sesi_proyek || 0)}</td><td class="px-3 py-2">${formatTanggalMaster(row.hadir_pertama_proyek)}</td><td class="px-3 py-2">${formatTanggalMaster(row.hadir_terakhir_proyek)}</td></tr>`).join('') : '<tr><td colspan="6" class="p-5 text-center text-slate-400">Belum ada kehadiran proyek.</td></tr>';
-    const attendanceRows = attendance.length ? attendance.map(row => `<tr><td class="px-3 py-2">${formatTanggalMaster(row.tanggal)}</td><td class="px-3 py-2 font-bold">${escapeHTML(row.sesi || '-')}</td><td class="px-3 py-2">${escapeHTML(row.lokasi || '-')}</td></tr>`).join('') : '<tr><td colspan="3" class="p-5 text-center text-slate-400">Belum ada riwayat absensi.</td></tr>';
-    const uniformRows = uniform.length ? uniform.slice(0, 20).map(row => `<tr><td class="px-3 py-2">${new Date(row.dibuat_pada).toLocaleString('id-ID')}</td><td class="px-3 py-2">${escapeHTML(row.status_proses || '-')}</td><td class="px-3 py-2">${escapeHTML(row.status_penguasaan || '-')}</td><td class="px-3 py-2">${escapeHTML(`${row.ukuran_atasan || row.ukuran || '-'} / ${row.ukuran_bawahan || '-'}`)}</td><td class="px-3 py-2">${escapeHTML(row.catatan || '-')}</td></tr>`).join('') : '<tr><td colspan="5" class="p-5 text-center text-slate-400">Belum ada riwayat seragam.</td></tr>';
+    const projectRows = RelawanTable.renderRows(projects, {
+        colspan: 6,
+        rowClass: '',
+        emptyMessage: 'Belum ada kehadiran proyek.',
+        columns: [
+            { className: 'px-3 py-2 font-bold', render: row => escapeHTML(row.nama_proyek || '-') },
+            { className: 'px-3 py-2', render: row => escapeHTML(row.kategori === 'khususul_khusus' ? '5 Proyek Khususul Khusus' : 'Proyek Lainnya') },
+            { className: 'px-3 py-2 text-center font-black', render: row => Number(row.total_hari_proyek || 0) },
+            { className: 'px-3 py-2 text-center', render: row => Number(row.total_sesi_proyek || 0) },
+            { className: 'px-3 py-2', render: row => formatTanggalMaster(row.hadir_pertama_proyek) },
+            { className: 'px-3 py-2', render: row => formatTanggalMaster(row.hadir_terakhir_proyek) }
+        ]
+    });
+    const attendanceRows = RelawanTable.renderRows(attendance, {
+        colspan: 3,
+        rowClass: '',
+        emptyMessage: 'Belum ada riwayat absensi.',
+        columns: [
+            { className: 'px-3 py-2', render: row => formatTanggalMaster(row.tanggal) },
+            { className: 'px-3 py-2 font-bold', render: row => escapeHTML(row.sesi || '-') },
+            { className: 'px-3 py-2', render: row => escapeHTML(row.lokasi || '-') }
+        ]
+    });
+    const uniformRows = RelawanTable.renderRows(uniform.slice(0, 20), {
+        colspan: 5,
+        rowClass: '',
+        emptyMessage: 'Belum ada riwayat seragam.',
+        columns: [
+            { className: 'px-3 py-2', render: row => new Date(row.dibuat_pada).toLocaleString('id-ID') },
+            { className: 'px-3 py-2', render: row => escapeHTML(row.status_proses || '-') },
+            { className: 'px-3 py-2', render: row => escapeHTML(row.status_penguasaan || '-') },
+            { className: 'px-3 py-2', render: row => escapeHTML(`${row.ukuran_atasan || row.ukuran || '-'} / ${row.ukuran_bawahan || '-'}`) },
+            { className: 'px-3 py-2', render: row => escapeHTML(row.catatan || '-') }
+        ]
+    });
     document.getElementById('detailPersonelIsi').innerHTML = `
         <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
             <div class="rounded-xl bg-slate-50 dark:bg-slate-700/50 p-3"><p class="text-[10px] uppercase font-black text-slate-400">Jenis</p><p class="font-black mt-1">${p.kategori_personel === 'khusus' ? 'Personel Khusus' : 'Reguler'}</p></div>
@@ -1772,19 +1709,24 @@ function exportMasterExcel() {
     if (!window.XLSX) { showToast('Pustaka Excel belum termuat. Periksa koneksi lalu muat ulang.', 'error'); return; }
     const rows = dataExportMaster();
     if (!rows.length) { showToast('Tidak ada data sesuai filter untuk diekspor.', 'error'); return; }
-    const book = XLSX.utils.book_new();
-    const sheet = XLSX.utils.json_to_sheet(rows);
-    sheet['!cols'] = Object.keys(rows[0]).map(key => ({ wch: Math.min(42, Math.max(12, key.length + 3)) }));
-    XLSX.utils.book_append_sheet(book, sheet, 'Master Personel');
-    XLSX.writeFile(book, `master-personel-${new Date().toISOString().slice(0,10)}.xlsx`);
+    const headers = Object.keys(rows[0]);
+    const aoa = [headers, ...rows.map(row => headers.map(key => row[key]))];
+    const widths = headers.map(key => Math.min(42, Math.max(12, key.length + 3)));
+    RelawanTable.downloadXlsx(`master-personel-${new Date().toISOString().slice(0,10)}.xlsx`, [{
+        name: 'Master Personel',
+        rows: aoa,
+        widths
+    }]);
     showToast(`${rows.length} personel diekspor ke Excel.`, 'success');
 }
 
 function cetakLaporanHtml(judul, subjudul, isi) {
-    const popup = window.open('', '_blank', 'width=1100,height=800');
-    if (!popup) { showToast('Izinkan pop-up untuk membuat PDF.', 'error'); return; }
-    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHTML(judul)}</title><style>body{font-family:Arial,sans-serif;color:#172033;margin:28px}h1{font-size:20px;margin:0}p.meta{font-size:11px;color:#64748b;margin:6px 0 18px}table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #cbd5e1;padding:6px;text-align:left;vertical-align:top}th{background:#eef2ff}h2{font-size:14px;margin-top:22px}@page{size:A4 landscape;margin:10mm}</style></head><body><h1>${escapeHTML(judul)}</h1><p class="meta">${escapeHTML(subjudul)} • Dibuat ${new Date().toLocaleString('id-ID')}</p>${isi}<script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script></body></html>`);
-    popup.document.close();
+    const dibuka = RelawanTable.openPrintWindow(judul, isi, {
+        subtitle: `${subjudul} • Dibuat ${new Date().toLocaleString('id-ID')}`,
+        landscape: true,
+        styles: 'th,td{vertical-align:top}th{background:#eef2ff}h2{font-size:14px;margin-top:22px}'
+    });
+    if (!dibuka) showToast('Izinkan pop-up untuk membuat PDF.', 'error');
 }
 
 function exportMasterPdf() {
