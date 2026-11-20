@@ -64,7 +64,8 @@ async function loadDashboardData() {
         ]);
 
         if (masterRes.status === "success" && logRes.status === "success") {
-            globalMasterData = masterRes.data;
+            const akses = await getAksesUser();
+            globalMasterData = batasiPersonelKeLogTerlihat(masterRes.data, logRes.data, akses);
             const nipReguler = new Set(globalMasterData.map(row => row.nip).filter(Boolean));
             globalLogData = (logRes.data || []).filter(row => nipReguler.has(row.nip));
             pilihPeriodeTerbaruJikaKosong();

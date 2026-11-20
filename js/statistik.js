@@ -70,7 +70,8 @@ async function loadStatistikData() {
         ]);
 
         if (masterRes.status === "success" && logRes.status === "success") {
-            allMasterData = masterRes.data;
+            const akses = await getAksesUser();
+            allMasterData = batasiPersonelKeLogTerlihat(masterRes.data, logRes.data, akses);
             const nipReguler = new Set(allMasterData.map(row => row.nip).filter(Boolean));
             allLogData = (logRes.data || []).filter(row => nipReguler.has(row.nip));
             computeAll();

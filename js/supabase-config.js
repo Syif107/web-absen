@@ -2,10 +2,10 @@
 // KONFIGURASI DATABASE SUPABASE (V4 - FASE 0)
 // ==========================================
 
-const SUPABASE_URL = "https://tyqgudaesaiygpsxzdiv.supabase.co";
+const SUPABASE_URL = "https://absen.kaseban.my.id";
 
 // ⚠️ AMBIL DARI DASBOR SUPABASE: Settings > API Keys (anon public)
-const SUPABASE_ANON_KEY = "sb_publishable_jwfUHJyloK5J3pnNKoco2w_xCG6reke"; 
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJlbGF3YW5zeW5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ5ODMzMDMsImV4cCI6MjExMDM0MzMwM30.4WAHtu7YDddVJ0_J2OAvbgvbID6nxcT3cFsBQJo411E";
 
 // Nama kunci penyimpanan sesi (jangan diubah tanpa menyesuaikan seluruh halaman)
 const RELAWAN_TOKEN_KEY = 'relawan_token';
@@ -267,4 +267,17 @@ async function terapkanFilterLokasi(url) {
     if (akses.role !== 'koordinator' || !akses.lokasi) return url;
     const separator = url.includes('?') ? '&' : '?';
     return `${url}${separator}lokasi=eq.${encodeURIComponent(akses.lokasi)}`;
+}
+
+/**
+ * Dashboard dan Statistik koordinator hanya menghitung personel yang benar-benar
+ * muncul pada log lokasi proyeknya. Admin tetap melihat seluruh Master Data.
+ */
+function batasiPersonelKeLogTerlihat(masterRows, logRows, akses) {
+    const master = Array.isArray(masterRows) ? masterRows : [];
+    if (!akses || akses.role !== 'koordinator') return master;
+    const nipTerlihat = new Set((Array.isArray(logRows) ? logRows : [])
+        .map(row => String(row?.nip || '').trim())
+        .filter(Boolean));
+    return master.filter(row => nipTerlihat.has(String(row?.nip || '').trim()));
 }

@@ -240,6 +240,25 @@ hasil terfilter, meskipun tabel sedang menampilkan satu halaman saja.
 - POST/PATCH/DELETE menampilkan hasil yang sesuai kondisi database.
 - Logout tidak menampilkan data API dari cache saat perangkat offline.
 
+## Migrasi database ke PC server Linux kantor
+
+Selain Supabase cloud, database dapat dijalankan mandiri di PC Linux kantor
+dengan Tailscale HTTPS. Web absen tetap di GitHub Pages; hanya `SUPABASE_URL`
+dan `SUPABASE_ANON_KEY` yang diarahkan ulang saat cutover.
+
+Seluruh berkas, runbook, skrip dump/restore, verifikasi, backup, dan rollback
+ada di `deploy/`:
+
+- `deploy/README.md` — panduan lengkap;
+- `deploy/docker-compose.yml` — PostgreSQL, GoTrue, PostgREST, Caddy;
+- `deploy/scripts/dump-supabase.sh` — dump `public` + `auth.users`;
+- `deploy/scripts/restore-server.sh` — restore berurutan + grant;
+- `deploy/scripts/verifikasi.sql` — cek RLS, policy, view, RPC, akun;
+- `deploy/scripts/set-frontend-endpoint.mjs` — ubah URL/anon key + cache SW.
+
+Jangan menghapus project Supabase lama sebelum sistem baru stabil dan backup
+serta rollback sudah diuji.
+
 ## Batas verifikasi lokal
 
 `npm test` memeriksa sintaks JavaScript, kontrak frontend/RPC, sumber absensi

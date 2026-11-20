@@ -24,7 +24,10 @@ test('handler inline setiap halaman mempunyai implementasi', () => {
     const htmlFiles = readdirSync(root).filter(name => name.endsWith('.html'));
     for (const htmlFile of htmlFiles) {
         const html = read(htmlFile);
-        const localScripts = Array.from(html.matchAll(/<script[^>]+src=["'](js\/[^"']+)["']/g), match => match[1]);
+        const localScripts = Array.from(
+            html.matchAll(/<script[^>]+src=["'](js\/[^"']+)["']/g),
+            match => match[1].split('?')[0]
+        );
         const implementation = [html, ...localScripts.map(read)].join('\n');
         const handlers = Array.from(
             html.matchAll(/on(?:click|submit|change|input|keyup)=["']\s*([A-Za-z_$][\w$]*)\s*\(/g),
@@ -57,7 +60,7 @@ test('frontend memakai CSS produksi lokal dan cache pencocokan nama versi 36', (
         assert.doesNotMatch(html, /cdn\.tailwindcss\.com/, `${file} masih memakai Tailwind CDN`);
         assert.doesNotMatch(html, /tailwind\.config/, `${file} masih membawa konfigurasi runtime`);
     }
-    assert.match(read('sw.js'), /relawansync-v36-pencocokan-nama-master-cache/);
+    assert.match(read('sw.js'), /relawansync-v41-self-host-cache/);
     assert.match(read('package.json'), /build:css/);
 });
 
@@ -92,6 +95,26 @@ test('fase 15 bootstrap aman dan tidak menimpa fungsi bisnis Fase 14', () => {
     assert.match(config, /const FASE4_ENABLED = true/);
     assert.doesNotMatch(source, /CREATE OR REPLACE FUNCTION public\.insert_absensi_batch/);
     assert.doesNotMatch(source, /GANTI_EMAIL_ADMIN/);
+});
+
+test('fase 23 membatasi PJ ke proyeknya pada UI dan database', () => {
+    const sql = read('db/fase23_pj_proyek_terbatas.sql');
+    const app = read('js/app.js');
+    const config = read('js/supabase-config.js');
+    const dashboard = read('js/dashboard.js');
+    const statistik = read('js/statistik.js');
+
+    for (const page of ['index.html', 'input.html', 'riwayat.html', 'kalender.html', 'statistik.html']) {
+        assert.match(app, new RegExp(page.replace('.', '\\.')));
+    }
+    assert.match(app, /halamanDiizinkan/);
+    assert.match(config, /function batasiPersonelKeLogTerlihat/);
+    assert.match(dashboard, /batasiPersonelKeLogTerlihat/);
+    assert.match(statistik, /batasiPersonelKeLogTerlihat/);
+    assert.match(sql, /akun_boleh_melihat_personel/);
+    assert.match(sql, /l\.lokasi = public\.akun_lokasi\(\)/);
+    assert.match(sql, /lokasi = public\.akun_lokasi\(\)/);
+    assert.match(sql, /public\.akun_role\(\) = 'admin'/);
 });
 
 test('fase 16 mempercepat RPC admin tanpa melewati pembatasan koordinator', () => {
@@ -561,7 +584,7 @@ test('fase 19 memulihkan router cepat peringkat tanpa memasukkan personel khusus
     assert.match(source, /NOTIFY pgrst, 'reload schema'/);
     assert.doesNotMatch(peringkat, /Terapkan migrasi Fase 14/);
     assert.match(peringkat, /statement timeout\|57014/);
-    assert.match(sw, /relawansync-v36-pencocokan-nama-master-cache/);
+    assert.match(sw, /relawansync-v41-self-host-cache/);
 });
 
 test('fase 20 menyeragamkan profil, zona, seragam, sumber frontend, dan export', () => {

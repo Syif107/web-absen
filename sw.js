@@ -1,4 +1,4 @@
-const CACHE_NAME = "relawansync-v36-pencocokan-nama-master-cache";
+const CACHE_NAME = "relawansync-v41-self-host-cache";
 const PRECACHE_URLS = [
     "./",
     "index.html",

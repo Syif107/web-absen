@@ -1,0 +1,16 @@
+[Unit]
+Description=Backup harian database RelawanSync
+Documentation=file:///opt/web-absen/deploy/README.md
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/web-absen/deploy
+ExecStart=/usr/bin/env bash /opt/web-absen/deploy/scripts/backup-harian.sh
+Nice=10
+IOSchedulingClass=idle
+
+# Opsional: salin backup ke disk/NAS lain.
+# Environment=BACKUP_SALINAN=/mnt/nas/relawansync
