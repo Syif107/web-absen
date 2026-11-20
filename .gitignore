@@ -1,1 +1,5 @@
 node_modules/
+
+# Rahasia dan hasil backup server database kantor
+deploy/.env
+deploy/backup/

@@ -1,0 +1,58 @@
+{
+	admin off
+	auto_https off
+}
+
+# Caddy hanya mendengarkan di localhost. TLS dipasang oleh Tailscale
+# (`tailscale serve`) di depan port ini, sehingga sertifikatnya tepercaya
+# dan tidak perlu domain publik.
+:8080 {
+	encode zstd gzip
+
+	# CORS_ORIGIN tetap dibatasi meskipun frontend produksi disajikan dari
+	# origin Tailscale yang sama.
+	header {
+		Access-Control-Allow-Origin "{env.CORS_ORIGIN}"
+		Access-Control-Allow-Methods "GET, POST, PATCH, PUT, DELETE, OPTIONS"
+		Access-Control-Allow-Headers "authorization, apikey, content-type, prefer, accept, accept-profile, content-profile, x-client-info"
+		Access-Control-Expose-Headers "Content-Range, Content-Location"
+		Access-Control-Max-Age "86400"
+		+Vary "Origin"
+		-Server
+	}
+
+	# Preflight harus dijawab sebelum diteruskan ke PostgREST/GoTrue.
+	@options method OPTIONS
+
+	route {
+		respond @options 204
+
+		# Jangan biarkan fallback SPA membuat jalur internal terlihat seolah
+		# tersedia. Direktori ini tidak dipasang ke container, dan tetap ditolak
+		# eksplisit sebagai lapisan pertahanan tambahan.
+		@private path /deploy /deploy/* /db /db/* /tests /tests/* /.git /.git/* /.env
+		respond @private 404
+
+		handle /health {
+			respond "ok" 200
+		}
+
+		# /rest/v1/master_relawan -> PostgREST /master_relawan
+		handle_path /rest/v1/* {
+			reverse_proxy rest:3000
+		}
+
+		# /auth/v1/token -> GoTrue /token
+		handle_path /auth/v1/* {
+			reverse_proxy auth:9999
+		}
+
+		# Frontend statis ditempatkan di direktori terpisah agar deploy/.env,
+		# dump database, dan source administrasi tidak pernah ikut tersaji.
+		handle {
+			root * /srv/web
+			try_files {path} {path}/ /index.html
+			file_server
+		}
+	}
+}

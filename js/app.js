@@ -142,9 +142,24 @@ async function applyAccessUi() {
     }
 
     if (akses.role === 'koordinator') {
-        document.querySelectorAll('a[href="master.html"], a[href="seragam.html"], button[onclick*="backupEverything"]')
+        const halamanDiizinkan = new Set([
+            'index.html', 'input.html', 'riwayat.html', 'kalender.html', 'statistik.html'
+        ]);
+        const halamanAktif = (window.location.pathname.split('/').pop() || 'index.html').toLowerCase();
+
+        document.querySelectorAll('#sidebar nav a[href], .mobile-bottom-nav a[href]').forEach(link => {
+            const tujuan = String(link.getAttribute('href') || '').split('/').pop().toLowerCase();
+            if (!halamanDiizinkan.has(tujuan)) link.classList.add('hidden');
+        });
+        document.querySelectorAll('button[onclick*="backupEverything"]')
             .forEach(el => el.classList.add('hidden'));
         document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+
+        if (!halamanDiizinkan.has(halamanAktif)) {
+            showToast("Halaman ini tidak tersedia untuk Penanggung Jawab proyek.", "error");
+            setTimeout(() => window.location.replace('index.html'), 700);
+            return;
+        }
 
         const lokasiInput = document.getElementById('inputLokasi');
         if (lokasiInput && akses.lokasi) {
@@ -161,14 +176,6 @@ async function applyAccessUi() {
             if (typeof simpanDraft === 'function') simpanDraft();
         }
 
-        if (window.location.pathname.endsWith('/master.html')) {
-            showToast("Master Data hanya dapat dikelola admin.", "error");
-            setTimeout(() => window.location.replace('index.html'), 700);
-        }
-        if (window.location.pathname.endsWith('/seragam.html')) {
-            showToast("Kontrol Seragam hanya dapat dikelola admin.", "error");
-            setTimeout(() => window.location.replace('peringkat.html'), 700);
-        }
     }
 
     // Transaksi stok yang dijadwalkan harus diproses saat admin membuka menu
@@ -185,7 +192,7 @@ async function applyAccessUi() {
 // ==========================================
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
+        navigator.serviceWorker.register('sw.js?v=41')
             .then(reg => console.log('PWA Service Worker Aktif!', reg.scope))
             .catch(err => console.log('PWA Service Worker Gagal:', err));
     });
